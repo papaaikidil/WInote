@@ -238,9 +238,10 @@ shot referensi-layer
 tutup_layer
 warna
 tap_node "Palet" 2
-tap_node "★ Palet saya" 2 || true
 shot palet-tab
-read X0 Y0 < <(find_node "Warna #1E88E5")
+# SwatchDrop dari baris palet utama di tab Cakram (warna merah palet bawaan).
+tap_node "Cakram" 2
+read X0 Y0 < <(find_node "Warna #E53935")
 if [ -n "$X0" ]; then
   gerak seret $X0 $Y0 $((W * 26 / 100)) $((H * 73 / 100)) 900
   sleep 4
