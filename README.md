@@ -1024,3 +1024,11 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Tekanan pena ringan sudah memberi efek penuh; hanya sentuhan sangat ringan yang memberi efek sebagian. Tepi sapuan
   sedikit lebih tegas, jadi bagian yang kena efek sesuai lingkaran pena.
 - Saat memilih *Pena* dan efeknya masih 0, kekuatan sedang dipasang otomatis supaya sapuan pertama langsung terlihat.
+
+## Tambahan 0.1.117: Panel penyesuaian bisa disembunyikan
+
+- Tombol **⌃** di kanan atas panel penyesuaian (semua penyesuaian, termasuk Liquify dan Klon) menyembunyikan panel
+  menjadi satu baris kecil berisi nama penyesuaian, **Atur** (tampilkan panel lagi), **Batal**, dan **Terapkan**,
+  supaya kanvas tidak tertutup.
+- Saat memilih **Pena**, panel otomatis disembunyikan; tombol **Hapus efek** tetap ada di baris kecil itu. Ketuk
+  **Atur** untuk mengubah kekuatan efek, lalu sembunyikan lagi.
