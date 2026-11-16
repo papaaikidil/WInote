@@ -177,6 +177,14 @@ class AppState(val app: Context) : Engine.Listener {
     val curvePts = List(4) { mutableStateListOf<Offset>() }
     /** Clone: ketukan berikutnya di kanvas memindah sumber. */
     var cloneArmed by mutableStateOf(false)
+    /** Mode Pena penyesuaian: efek hanya di bagian yang disapukan pena (seperti mode Pencil Procreate). */
+    var adjPen by mutableStateOf(false)
+    /** Mode Pena: sapuan menghapus efek (bukan menambah). */
+    var adjPenErase by mutableStateOf(false)
+    var penUndo by mutableIntStateOf(0)
+    var penRedo by mutableIntStateOf(0)
+    /** Mode Pena sedang dipakai (Liquify dan Klon punya sapuan sendiri). */
+    val adjPenActive: Boolean get() = adjPen && adjustKind >= 0 && adjustKind != Adj.LIQUIFY && adjustKind != Adj.CLONE
     var flash by mutableStateOf<String?>(null)
     var flashId by mutableIntStateOf(0)
     var busy by mutableStateOf<String?>(null)
@@ -204,6 +212,13 @@ class AppState(val app: Context) : Engine.Listener {
     var facePhoto: (() -> Unit)? = null
     /** Kanvas berubah sejak tekstur wajah terakhir diambil. */
     @Volatile var faceDirty = false
+
+    override fun onPenMode(on: Boolean, undo: Int, redo: Int) {
+        if (adjustKind < 0) return
+        adjPen = on
+        penUndo = undo
+        penRedo = redo
+    }
 
     override fun onFace(face: Boolean) {
         isFace = face
@@ -1704,11 +1719,13 @@ class AppState(val app: Context) : Engine.Listener {
     }
 
     fun undo() {
+        if (adjPenActive) { gl { it.penStep(redo = false) }; return }
         if (modalActive()) return
         gl { it.undo() }
     }
 
     fun redo() {
+        if (adjPenActive) { gl { it.penStep(redo = true) }; return }
         if (modalActive()) return
         gl { it.redo() }
     }
@@ -2103,6 +2120,10 @@ class AppState(val app: Context) : Engine.Listener {
         adjCx = docW / 2f
         adjCy = docH / 2f
         cloneArmed = false
+        adjPen = false
+        adjPenErase = false
+        penUndo = 0
+        penRedo = 0
         if (kind == Adj.CURVES) curvePts.forEach { it.clear(); it.add(Offset(0f, 0f)); it.add(Offset(1f, 1f)) }
         val en = canvasView?.engine
         en?.marker = if (kind == Adj.PERSP || kind == Adj.CHROMA) floatArrayOf(adjCx, adjCy) else null
@@ -2128,6 +2149,7 @@ class AppState(val app: Context) : Engine.Listener {
         Adj.BLOOM -> floatArrayOf(0f, 0.5f, (max(docW, docH) / 60f).coerceIn(6f, 120f), 0.3f)
         Adj.GLITCH -> floatArrayOf(0f, (max(docW, docH) / 50f).coerceIn(4f, 150f), 30f)
         Adj.HALFTONE -> floatArrayOf(0f)
+        Adj.SHARPEN -> floatArrayOf(0f, 3.5f)
         Adj.CHROMA -> floatArrayOf(0f, 0.5f, 0f)
         Adj.LIQUIFY -> floatArrayOf((max(docW, docH) / 10f).coerceIn(20f, 800f), 0.5f, 0.5f, 1f)
         else -> FloatArray(3)
@@ -2148,11 +2170,11 @@ class AppState(val app: Context) : Engine.Listener {
         Adj.MOTION -> floatArrayOf(av(0), rad(av(1)))
         Adj.PERSP -> floatArrayOf(av(0), adjMode.toFloat(), adjCx, adjCy)
         Adj.NOISE -> floatArrayOf(av(0), av(1), av(2), av(3), adjMode.toFloat(), av(4))
-        Adj.SHARPEN -> floatArrayOf(av(0))
+        Adj.SHARPEN -> floatArrayOf(av(0), av(1))
         Adj.BLOOM -> floatArrayOf(av(0), av(1), av(2), av(3))
         Adj.GLITCH -> floatArrayOf(av(0), av(1), av(2), adjMode.toFloat())
         Adj.HALFTONE -> floatArrayOf(av(0), adjMode.toFloat())
-        Adj.CHROMA -> floatArrayOf(av(0) * docMax / 25f, av(1), rad(av(2)), adjMode.toFloat(), adjCx, adjCy)
+        Adj.CHROMA -> floatArrayOf(av(0) * docMax / 10f, av(1), rad(av(2)), adjMode.toFloat(), adjCx, adjCy)
         Adj.LIQUIFY -> floatArrayOf(av(3))
         else -> null
     }
@@ -2208,6 +2230,20 @@ class AppState(val app: Context) : Engine.Listener {
         adjustChanged()
     }
 
+    /** Ganti mode Layer (false) / Pena (true) penyesuaian yang sedang terbuka. */
+    fun switchAdjPen(on: Boolean) {
+        if (adjustKind < 0 || adjustKind == Adj.LIQUIFY || adjustKind == Adj.CLONE) return
+        adjPen = on
+        adjPenErase = false
+        penUndo = 0
+        penRedo = 0
+        gl { it.adjustPen(on) }
+        if (on) showFlash("Sapukan pena di bagian yang ingin diberi efek")
+    }
+
+    /** Hapus semua sapuan mode Pena. */
+    fun penClear() = gl { it.penClear() }
+
     fun liquifyParamsChanged() {
         canvasView?.engine?.liqParams = floatArrayOf(adjMode.toFloat(), av(0), av(1), av(2))
     }
@@ -2224,6 +2260,10 @@ class AppState(val app: Context) : Engine.Listener {
         val k = adjustKind
         adjustKind = -1
         cloneArmed = false
+        adjPen = false
+        adjPenErase = false
+        penUndo = 0
+        penRedo = 0
         canvasView?.engine?.marker = null
         if (k == Adj.CLONE) {
             gl { it.cloneStop() }

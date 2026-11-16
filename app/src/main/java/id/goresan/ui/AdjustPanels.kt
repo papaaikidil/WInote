@@ -181,13 +181,14 @@ fun AdjustBar(state: AppState, modifier: Modifier) {
                 }
             }
             val big = state.docMax
+            if (k != Adj.LIQUIFY && k != Adj.CLONE) PenModeRow(state)
             when (k) {
                 Adj.HSB -> {
                     S(state, 0, "Rona", -180f..180f, ::deg)
                     S(state, 1, "Saturasi", -1f..1f, ::pct)
                     S(state, 2, "Kecerahan", -1f..1f, ::pct)
                 }
-                Adj.GAUSS -> S(state, 0, "Radius", 0f..max(120f, big / 25f), ::px)
+                Adj.GAUSS -> SQ(state, 0, "Radius", 0f, max(300f, big / 3f), ::px)
                 Adj.BALANCE -> {
                     Chips(listOf("Bayangan", "Nada tengah", "Sorotan"), state.adjTab) { state.adjTab = it }
                     val b = state.adjTab * 3
@@ -204,13 +205,13 @@ fun AdjustBar(state: AppState, modifier: Modifier) {
                     S(state, 0, "Jumlah", 0f..1f, ::pct)
                 }
                 Adj.MOTION -> {
-                    S(state, 0, "Jumlah", 0f..max(150f, big / 10f), ::px)
+                    SQ(state, 0, "Jumlah", 0f, max(300f, big / 3f), ::px)
                     S(state, 1, "Arah", -180f..180f, ::deg)
                 }
                 Adj.PERSP -> {
                     Chips(listOf("Posisional", "Searah"), state.adjMode) { state.chooseAdjMode(it) }
-                    S(state, 0, "Jumlah", 0f..1f, ::pct)
-                    Hint("Ketuk atau seret di kanvas untuk memindah titik pusat")
+                    S(state, 0, "Jumlah", 0f..2f, ::pct)
+                    CenterHint(state)
                 }
                 Adj.NOISE -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,17 +225,20 @@ fun AdjustBar(state: AppState, modifier: Modifier) {
                     S(state, 2, "Oktaf", 1f..8f, { "${it.roundToInt()}" }, steps = 6)
                     S(state, 3, "Turbulensi", 0f..1f, ::pct)
                 }
-                Adj.SHARPEN -> S(state, 0, "Jumlah", 0f..1f, ::pct)
+                Adj.SHARPEN -> {
+                    S(state, 0, "Jumlah", 0f..2f, ::pct)
+                    SQ(state, 1, "Radius", 1f, max(40f, big / 50f), ::px)
+                }
                 Adj.BLOOM -> {
                     S(state, 0, "Jumlah", 0f..1f, ::pct)
                     S(state, 1, "Transisi", 0f..1f, ::pct)
-                    S(state, 2, "Ukuran", 1f..max(60f, big / 15f), ::px)
+                    SQ(state, 2, "Ukuran", 1f, max(200f, big / 5f), ::px)
                     S(state, 3, "Bakar", 0f..1f, ::pct)
                 }
                 Adj.GLITCH -> {
                     Chips(listOf("Artefak", "Gelombang", "Sinyal", "Pecah"), state.adjMode) { state.chooseAdjMode(it) }
                     S(state, 0, "Jumlah", 0f..1f, ::pct)
-                    S(state, 1, "Ukuran blok", 2f..max(60f, big / 12f), ::px)
+                    SQ(state, 1, "Ukuran blok", 2f, max(120f, big / 6f), ::px)
                     S(state, 2, "Variasi", 0f..100f, { "${it.roundToInt()}" })
                 }
                 Adj.HALFTONE -> {
@@ -246,7 +250,7 @@ fun AdjustBar(state: AppState, modifier: Modifier) {
                     S(state, 0, "Jumlah", 0f..1f, ::pct)
                     if (state.adjMode == 0) {
                         S(state, 1, "Falloff", 0f..1f, ::pct)
-                        Hint("Ketuk atau seret di kanvas untuk memindah titik pusat")
+                        CenterHint(state)
                     } else {
                         S(state, 2, "Arah", -180f..180f, ::deg)
                     }
@@ -295,6 +299,50 @@ private fun S(
     } else {
         LabeledSlider(label, v, { state.setAdj(i, it) }, range, display)
     }
+}
+
+/**
+ * Penggeser dengan skala kuadrat: setengah pertama untuk nilai kecil yang perlu teliti, ujung kanan untuk efek yang
+ * sangat kuat (mis. blur ratusan piksel).
+ */
+@Composable
+private fun SQ(
+    state: AppState,
+    i: Int,
+    label: String,
+    lo: Float,
+    hi: Float,
+    display: (Float) -> String,
+) {
+    val v = state.adjV.getOrElse(i) { lo }
+    val span = max(1e-3f, hi - lo)
+    val t = kotlin.math.sqrt(((v - lo) / span).coerceIn(0f, 1f))
+    LabeledSlider(label, t, { state.setAdj(i, lo + span * it * it) }, 0f..1f, { display(lo + span * it * it) })
+}
+
+/** Pilihan mode Layer / Pena untuk penyesuaian (kecuali Liquify dan Klon). */
+@Composable
+private fun PenModeRow(state: AppState) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            Chips(listOf("Seluruh layer", "Pena"), if (state.adjPen) 1 else 0) { state.switchAdjPen(it == 1) }
+        }
+        if (state.adjPen) {
+            FilterChip(
+                selected = state.adjPenErase,
+                onClick = { state.adjPenErase = !state.adjPenErase },
+                label = { Text("Hapus efek") },
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
+            )
+            TextButton(onClick = { state.penClear() }) { Text("Hapus semua") }
+        }
+    }
+    if (state.adjPen) Hint("Sapukan pena di bagian yang ingin diberi efek · ukuran dan opasitas pena dari penggeser samping")
+}
+
+@Composable
+private fun CenterHint(state: AppState) {
+    Hint(if (state.adjPen) "Titik pusat dipindah di mode Seluruh layer" else "Ketuk atau seret di kanvas untuk memindah titik pusat")
 }
 
 @Composable

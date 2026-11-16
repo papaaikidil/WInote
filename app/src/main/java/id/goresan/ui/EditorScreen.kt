@@ -383,8 +383,9 @@ private fun SideBar(state: AppState, modifier: Modifier, onHint: (Int) -> Unit) 
             onEnd = { onHint(0); state.persistSliders() },
         )
         Spacer(Modifier.height(10.dp))
-        RepeatBarIcon(Icons.AutoMirrored.Filled.Undo, "Urungkan", enabled = state.canUndo) { state.undo() }
-        RepeatBarIcon(Icons.AutoMirrored.Filled.Redo, "Ulangi", enabled = state.canRedo) { state.redo() }
+        val pen = state.adjPenActive
+        RepeatBarIcon(Icons.AutoMirrored.Filled.Undo, "Urungkan", enabled = if (pen) state.penUndo > 0 else state.canUndo) { state.undo() }
+        RepeatBarIcon(Icons.AutoMirrored.Filled.Redo, "Ulangi", enabled = if (pen) state.penRedo > 0 else state.canRedo) { state.redo() }
     }
 }
 

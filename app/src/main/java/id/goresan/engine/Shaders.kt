@@ -792,6 +792,85 @@ void main() {
 """
 
     /**
+     * Pembesaran 2× untuk blur bertingkat: interpolasi B-spline kubik (4 sampel bilinear) supaya gradien hasil blur besar
+     * mulus tanpa "patahan" bilinear. Pada tingkat terakhir diberi dither ±½ LSB supaya gradien halus tidak berpita.
+     */
+    const val UPSAMPLE_FS = """#version 300 es
+precision highp float;
+in vec2 vPos;
+uniform sampler2D uSrc;
+uniform vec2 uSrcSize;
+uniform vec2 uDstSize;
+uniform int uDither;
+out vec4 o;
+float hash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+void main() {
+    vec2 coord = vPos / uDstSize * uSrcSize - 0.5;
+    vec2 idx = floor(coord);
+    vec2 f = coord - idx;
+    vec2 f2 = f * f;
+    vec2 f3 = f2 * f;
+    vec2 w0 = (-f3 + 3.0 * f2 - 3.0 * f + 1.0) / 6.0;
+    vec2 w1 = (3.0 * f3 - 6.0 * f2 + 4.0) / 6.0;
+    vec2 w2 = (-3.0 * f3 + 3.0 * f2 + 3.0 * f + 1.0) / 6.0;
+    vec2 w3 = f3 / 6.0;
+    vec2 g0 = w0 + w1;
+    vec2 g1 = w2 + w3;
+    vec2 h0 = (idx - 0.5 + w1 / g0) / uSrcSize;
+    vec2 h1 = (idx + 1.5 + w3 / g1) / uSrcSize;
+    vec4 r = g0.y * (g0.x * texture(uSrc, h0) + g1.x * texture(uSrc, vec2(h1.x, h0.y)))
+           + g1.y * (g0.x * texture(uSrc, vec2(h0.x, h1.y)) + g1.x * texture(uSrc, h1));
+    if (uDither == 1 && r.a > 0.0) {
+        float n = (hash(vPos) + hash(vPos + 17.0) - 1.0) / 255.0;
+        r.a = clamp(r.a + n, 0.0, 1.0);
+        r.rgb = clamp(r.rgb + n, vec3(0.0), vec3(r.a));
+    }
+    o = r;
+}
+"""
+
+    /**
+     * Mode Pena penyesuaian. uMode 0: satu tapak bulat lembut (ke masker goresan R8, dicampur MAX);
+     * 1: goresan → masker (dicampur lewat blending); 2: pratinjau = campuran layer asli dan hasil penuh menurut masker.
+     */
+    const val PEN_FS = """#version 300 es
+precision highp float;
+in vec2 vPos;
+uniform int uMode;
+uniform vec3 uDab;
+uniform float uAmt;
+uniform float uOp;
+uniform int uErase;
+uniform vec2 uSize;
+uniform sampler2D uSrc;
+uniform sampler2D uFull;
+uniform sampler2D uMask;
+uniform sampler2D uStroke;
+out vec4 o;
+void main() {
+    if (uMode == 0) {
+        float d = length(vPos - uDab.xy) / uDab.z;
+        float a = (1.0 - smoothstep(0.35, 1.0, d)) * uAmt;
+        o = vec4(a, 0.0, 0.0, a);
+        return;
+    }
+    vec2 uv = vPos / uSize;
+    float s = texture(uStroke, uv).r * uOp;
+    if (uMode == 1) {
+        o = vec4(s, 0.0, 0.0, s);
+        return;
+    }
+    float m = texture(uMask, uv).r;
+    float m2 = uErase == 1 ? m * (1.0 - s) : m + s * (1.0 - m);
+    o = mix(texture(uSrc, uv), texture(uFull, uv), m2);
+}
+"""
+
+    /**
      * Penyesuaian per piksel. Satu sumber untuk banyak jenis; tiap jenis dikompilasi sendiri dengan #define KIND = Adj.*.
      * uSrc = layer asli, uAux = hasil pass sebelumnya (blur untuk Sharpen/Bloom), uLut = tabel 256×1 (Curves, Gradient Map).
      */
@@ -957,10 +1036,11 @@ void main() {
             float n = sum / max(norm, 1e-5);
             if (uP[4] > 1.5) n = n * 1.3 - 0.37;
             else if (uP[4] > 0.5) n = n * 1.3 + 0.07;
-            n = clamp(n, 0.0, 1.0);
+            // Jumlah besar juga menaikkan kontras pola supaya efeknya bisa benar-benar kuat.
+            n = clamp((n - 0.5) * (1.0 + amt * 1.5) + 0.5, 0.0, 1.0);
             vec3 c = s.rgb / s.a;
             vec3 ov = mix(2.0 * c * n, 1.0 - 2.0 * (1.0 - c) * (1.0 - n), step(0.5, c));
-            r = vec4(mix(c, ov, amt) * s.a, s.a);
+            r = vec4(mix(c, ov, min(1.0, amt * 1.5)) * s.a, s.a);
         }
     }
 #elif KIND == 8
@@ -984,7 +1064,7 @@ void main() {
 #elif KIND == 9
     {
         // Bloom: cahaya hasil blur digabung "screen".
-        vec4 g = clamp(texture(uAux, uv) * uP[0] * 2.0 * (1.0 + 2.0 * uP[3]), 0.0, 1.0);
+        vec4 g = clamp(texture(uAux, uv) * uP[0] * 3.0 * (1.0 + 2.0 * uP[3]), 0.0, 1.0);
         r = s + g - s * g;
     }
 #elif KIND == 10
@@ -1035,7 +1115,7 @@ void main() {
         // Halftone: warna penuh (CMYK) / sablon / koran.
         float k = uP[0];
         if (k > 0.001) {
-            float cs = mix(3.0, max(uSize.x, uSize.y) / 25.0, pow(k, 1.5));
+            float cs = mix(3.0, max(uSize.x, uSize.y) / 12.0, pow(k, 1.5));
             int mode = int(uP[1] + 0.5);
             if (mode == 0) {
                 float cC = dotCover(vPos, cs, 0.2618, 0);
@@ -1077,8 +1157,13 @@ void main() {
             r = splitRgb(at(vPos - off), s, at(vPos + off));
         }
     }
+#elif KIND == 101
+    {
+        // Kunci alfa setelah blur berlapis: warna dari hasil (uAux), alfa dari layer asli (uSrc).
+        r = vec4(unpre(texture(uAux, uv)) * s.a, s.a);
+    }
 #endif
-#if KIND != 100
+#if KIND != 100 && KIND != 101
     if (uAlphaLock == 1) r = vec4(unpre(r) * s.a, s.a);
 #endif
     o = r;

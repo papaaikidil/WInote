@@ -405,7 +405,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             val palm = !stylus && (penRecent() || e.getTouchMajor(0) > 60f * density)
             when {
                 palm -> mode = Mode.IGNORE
-                k == Adj.LIQUIFY -> beginLiq(e, 0, finger = !stylus)
+                k == Adj.LIQUIFY || state.adjPenActive -> beginLiq(e, 0, finger = !stylus)
                 usesCenter() -> { mode = Mode.CENTER; centerAt(e.getX(0), e.getY(0)) }
                 stylus -> mode = Mode.IGNORE
                 else -> {
@@ -486,7 +486,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             Mode.IGNORE -> if (stylus) {
                 when {
                     state.selTool -> beginSel(e, i)
-                    state.adjustKind == Adj.LIQUIFY -> beginLiq(e, i, finger = false)
+                    state.adjustKind == Adj.LIQUIFY || state.adjPenActive -> beginLiq(e, i, finger = false)
                     usesCenter() -> { mode = Mode.CENTER; centerAt(e.getX(i), e.getY(i)) }
                     !state.modalActive() -> {
                         requestUnbufferedDispatch(e)
@@ -495,8 +495,9 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 }
             }
             Mode.LIQ -> if (liqFinger && !stylus) {
-                // Jari kedua: ini gerakan dua jari (geser/perbesar), bukan liquify.
-                endLiq(e, e.findPointerIndex(liqId))
+                // Jari kedua: ini gerakan dua jari (geser/perbesar), bukan liquify. Sapuan mode Pena yang baru saja
+                // dimulai dibuang (jari kedua datang hampir bersamaan = gerakan dua jari sejak awal).
+                if (liqPen && SystemClock.uptimeMillis() - liqBase < 400) cancelPen() else endLiq(e, e.findPointerIndex(liqId))
                 startNav(e)
             }
             Mode.CENTER, Mode.CLONE_SRC -> if (!stylus) startNav(e)
@@ -750,13 +751,16 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
 
     private var liqId = -1
     private var liqFinger = false
+    /** Sapuan ini untuk mode Pena penyesuaian (bukan Liquify). */
+    private var liqPen = false
+    private var liqErase = false
     private var liqBase = 0L
     private var liqLastX = 0f
     private var liqLastY = 0f
     private var liqLastP = 1f
     private val liqRepeat = object : Runnable {
         override fun run() {
-            if (mode != Mode.LIQ) return
+            if (mode != Mode.LIQ || liqPen) return
             // Pena diam: putar/cubit/kembangkan/kristal/pulihkan terus bekerja selama ditahan.
             engine.liqInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 1f, (SystemClock.uptimeMillis() - liqBase).toFloat()))
             requestRender()
@@ -769,10 +773,12 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         liqId = e.getPointerId(i)
         liqFinger = finger
         liqBase = e.eventTime
+        liqPen = state.adjustKind != Adj.LIQUIFY
+        liqErase = state.adjPenErase || e.getToolType(i) == MotionEvent.TOOL_TYPE_ERASER
         if (!finger) requestUnbufferedDispatch(e)
         liqPush(e, i, -1, 0)
         removeCallbacks(liqRepeat)
-        postDelayed(liqRepeat, 30)
+        if (!liqPen) postDelayed(liqRepeat, 30)
         requestRender()
     }
 
@@ -784,14 +790,22 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         pts[0] = sx; pts[1] = sy
         inv.mapPoints(pts)
         liqLastX = pts[0]; liqLastY = pts[1]; liqLastP = pr
-        engine.liqInput.add(floatArrayOf(pts[0], pts[1], pr, phase.toFloat(), (t - liqBase).toFloat()))
+        if (liqPen) engine.penInput.add(floatArrayOf(pts[0], pts[1], pr, phase.toFloat(), if (liqErase) 1f else 0f))
+        else engine.liqInput.add(floatArrayOf(pts[0], pts[1], pr, phase.toFloat(), (t - liqBase).toFloat()))
         engine.hover = floatArrayOf(sx, sy)
     }
 
     private fun endLiq(e: MotionEvent, i: Int) {
         removeCallbacks(liqRepeat)
         if (i >= 0) liqPush(e, i, -1, 2)
+        else if (liqPen) engine.penInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 2f, if (liqErase) 1f else 0f))
         else engine.liqInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 2f, (SystemClock.uptimeMillis() - liqBase).toFloat()))
+        if (liqFinger) engine.hover = null
+        requestRender()
+    }
+
+    private fun cancelPen() {
+        engine.penInput.add(floatArrayOf(liqLastX, liqLastY, 1f, 3f, 0f))
         if (liqFinger) engine.hover = null
         requestRender()
     }

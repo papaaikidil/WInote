@@ -181,6 +181,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         fun onModel(tris: Int, view3D: Boolean) {}
         /** Karya Face Paint. */
         fun onFace(face: Boolean) {}
+        /** Mode Pena penyesuaian: aktif atau tidak, jumlah langkah urungkan/ulangi sapuan. */
+        fun onPenMode(on: Boolean, undo: Int, redo: Int) {}
         /** Status Animation/Page Assist. */
         fun onAnim(assist: Int, s: AnimSettings, holds: Map<Int, Int>, playing: Boolean) {}
         fun onDocOpened(id: String, name: String, w: Int, h: Int)
@@ -222,6 +224,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     @Volatile var marker: FloatArray? = null
     /** Liquify: titik sentuh [x, y, tekanan, fase 0/1/2, waktu ms]. */
     val liqInput = ConcurrentLinkedQueue<FloatArray>()
+    /** Sapuan mode Pena penyesuaian: [x, y kanvas, tekanan, fase 0 mulai/1 gerak/2 selesai/3 batal, hapus 0/1]. */
+    val penInput = ConcurrentLinkedQueue<FloatArray>()
     /** Liquify: [mode, ukuran px, tekanan 0..1, distorsi 0..1]. */
     @Volatile var liqParams = floatArrayOf(0f, 150f, 0.5f, 0.5f)
     /** Posisi sumber Clone (piksel kanvas), untuk antarmuka. Null bila Clone tidak aktif. */
@@ -493,6 +497,33 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var adjKind = 0
     private var adjLayer: Layer? = null
 
+    // Blur bertingkat: piramida ½, ¼, … ukuran kanvas (dibuat saat perlu, dilepas setelah penyesuaian selesai).
+    private val pyr = arrayOfNulls<Tex>(12)
+    private var pyrTmp: Tex? = null
+    private lateinit var pUp: Program
+    private lateinit var pPen: Program
+
+    // Mode Pena penyesuaian: efek hanya di bagian yang disapukan. adjFull = hasil penuh penyesuaian,
+    // penMask = bagian yang sudah disapukan (R8), penStroke = sapuan yang sedang berjalan (R8).
+    private var penOn = false
+    private var adjFull: Tex? = null
+    private var penMask: Tex? = null
+    private var penStroke: Tex? = null
+    private var penDown = false
+    private var penErase = false
+    private var penSize = 40f
+    private var penOp = 1f
+    private var penX = 0f
+    private var penY = 0f
+    private var penP = 1f
+    private var penResid = 0f
+    private val penBox = IRect()
+    private var penDabBuf = FloatArray(384)
+    private var penDabN = 0
+    private class PenStep(val r: IRect, val data: ByteArray)
+    private val penUndo = ArrayDeque<PenStep>()
+    private val penRedo = ArrayDeque<PenStep>()
+
     // Liquify: medan pergeseran pada kisi kasar (tiap liqStep piksel), disimpan [dx, dy] per titik kisi.
     private var liqStep = 4
     private var liqGW = 0
@@ -574,6 +605,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             strokeActive = false; substitute = null
             fillOn = false; adjOn = false; xfOn = false
             liqD = null; liqTexId = 0; cloneOn = false; cloneMarker = null
+            pyr.fill(null); pyrTmp = null; adjFull = null; penMask = null; penStroke = null; penOn = false
             selTex = null; selOn = false; xfFloat = null; xfRest = null; xfSel = false
             // Jangan memuat di sini: thread antarmuka sedang menunggu frame pertama selesai.
             // Tampilkan frame kosong dulu, baru muat ulang di frame berikutnya.
@@ -601,6 +633,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pWetIn = Program(Shaders.RECT_VS, Shaders.WET_IN_FS)
         pWetInW = Program(Shaders.RECT_VS, Shaders.WET_IN_W_FS)
         pBlur = Program(Shaders.RECT_VS, Shaders.BLUR_FS)
+        pUp = Program(Shaders.RECT_VS, Shaders.UPSAMPLE_FS)
+        pPen = Program(Shaders.RECT_VS, Shaders.PEN_FS)
         pTransform = Program(Shaders.RECT_VS, Shaders.TRANSFORM_FS)
         pScreen = Program(Shaders.SCREEN_VS, Shaders.SCREEN_FS)
         pColor = Program(Shaders.RECT_VS, Shaders.COLOR_FS)
@@ -764,6 +798,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
                 applyAdjust(it)
             }
             if (adjOn && adjKind == Adj.LIQUIFY) liqDrain()
+            if (adjOn && penOn) penDrain()
             drainInput()
             // Pena diam tetapi masih menempel: goresan yang dihaluskan terus menyusul ke ujung pena.
             if (strokeActive && !stampOn && shapeBase == null && assistBuf.isEmpty()) {
@@ -944,6 +979,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         substitute = null
         fillOn = false; adjOn = false; xfOn = false
         liqFree(); cloneOn = false; cloneMarker = null; marker = null
+        pyrFree(); penFree()
         selTex?.delete(); selTex = null; selOn = false; selDraft = null
         xfFloat?.delete(); xfFloat = null; xfRest?.delete(); xfRest = null; xfSel = false
         worker.execute { selMask = null; selBase = null; selSaved.clear(); selBefore = null; selAutoSrc = null }
@@ -2766,6 +2802,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         }
         // Liquify: lingkaran ukuran sapuan di bawah pena/jari.
         if (h != null && adjOn && adjKind == Adj.LIQUIFY) ring(h[0], h[1], max(3f * density, liqParams[1] * zoom * 0.5f))
+        if (h != null && adjOn && penOn) ring(h[0], h[1], max(3f * density, (ts?.current()?.sizePx ?: penSize) * zoom * 0.5f))
         val mk = if (adjOn) marker else null
         if (mk != null) {
             val sx = v[0] * mk[0] + v[1] * mk[1] + v[2]
@@ -4044,6 +4081,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         listOf(wetBase, wetF[0], wetF[1], wetW[0], wetW[1], wetFs, wetWs).forEach { it?.delete() }
         wetForget()
         liqFree(); cloneOn = false; cloneMarker = null; marker = null
+        pyrFree(); penFree()
         selTex?.delete(); selTex = null; selOn = false; selDraft = null
         xfFloat?.delete(); xfFloat = null; xfRest?.delete(); xfRest = null; xfSel = false
         worker.execute { selMask = null; selBase = null; selSaved.clear(); selBefore = null; selAutoSrc = null }
@@ -4620,7 +4658,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         // Shader jenis ini disiapkan dulu; bila gagal, penyesuaian tidak dibuka.
         try {
             when (kind) {
-                Adj.HSB, Adj.GAUSS, Adj.LIQUIFY -> Unit
+                Adj.HSB, Adj.LIQUIFY -> Unit
+                Adj.GAUSS -> filterProg(Adj.ALPHA_LOCK)
+                Adj.MOTION, Adj.PERSP -> { filterProg(kind); filterProg(Adj.ALPHA_LOCK) }
                 Adj.BLOOM -> { filterProg(Adj.BRIGHT); filterProg(Adj.BLOOM) }
                 else -> filterProg(kind)
             }
@@ -4664,10 +4704,27 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val pv = preview!!
         when (adjKind) {
             Adj.HSB -> previewPass(l, full, 3, 1f, hsb = p)
-            Adj.GAUSS -> gaussian(l.tex, pv, p[0] / 2.5f)
+            Adj.GAUSS -> {
+                if (l.alphaLock) {
+                    val tmp = strokeBuf!!
+                    gaussian(l.tex, tmp, p[0] / 2.5f)
+                    filterPassTex(Adj.ALPHA_LOCK, l.tex, tmp, p, pv, false)
+                    clearRect(tmp, full)
+                } else {
+                    gaussian(l.tex, pv, p[0] / 2.5f)
+                }
+            }
+            Adj.MOTION -> multiPass(l, Adj.MOTION, p, chain(p[0], 1f))
+            Adj.PERSP -> {
+                // Jarak terjauh dari titik pusat ke sudut kanvas: di sanalah sebaran sampel paling lebar.
+                val cx = p.getOrElse(2) { W / 2f }
+                val cy = p.getOrElse(3) { H / 2f }
+                val far = max(max(hypot(cx, cy), hypot(W - cx, cy)), max(hypot(cx, H - cy), hypot(W - cx, H - cy)))
+                multiPass(l, Adj.PERSP, p, chain(p[0], far * 0.5f))
+            }
             Adj.SHARPEN -> {
                 val tmp = strokeBuf!!
-                gaussian(l.tex, tmp, 1.4f)
+                gaussian(l.tex, tmp, max(0.6f, p.getOrElse(1) { 3.5f } / 2.5f))
                 filterPass(Adj.SHARPEN, l, tmp, p, pv)
                 clearRect(tmp, full)
             }
@@ -4686,50 +4743,158 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         }
         // Rona/Saturasi/Kecerahan sudah dibatasi pilihan di shader pratinjau; yang lain dicampur di sini.
         if (selOn && adjKind != Adj.HSB && adjKind != Adj.LIQUIFY) selMix(l, IRect(0, 0, W, H))
+        // Mode Pena: hasil penuh disimpan, pratinjau hanya menampilkannya di bagian yang sudah disapukan.
+        val af = adjFull
+        if (penOn && af != null) {
+            blit(pv.fb, 0, 0, W, H, af.fb, 0, 0, W, H, false)
+            penComposite(full)
+        }
         dirty.set(0, 0, W, H)
     }
 
-    /** Blur Gaussian dua lintasan (mendatar ke scratch, lalu tegak ke [dst]). [src] boleh sama dengan [dst]. */
+    /**
+     * Panjang tiap lintasan blur berlapis untuk sebaran [amount]·[reach] piksel. Satu lintasan hanya punya uTaps sampel;
+     * bila sebarannya lebih panjang, sampelnya berjarak dan muncul garis-garis bayangan. Maka dibuat lintasan pendek dulu
+     * yang panjangnya sama dengan jarak antar-sampel lintasan berikutnya — gabungannya sama dengan satu blur rapat.
+     * Hasil: dari yang terpendek ke yang terpanjang ([amount] asli di akhir).
+     */
+    private fun chain(amount: Float, reach: Float): List<Float> {
+        val taps = if (softGpu) 12f else 128f
+        val out = ArrayList<Float>()
+        var a = amount
+        out.add(a)
+        while (a * reach > taps * 1.5f && out.size < 6) {
+            a /= taps
+            out.add(a)
+        }
+        out.reverse()
+        return out
+    }
+
+    /** Jalankan filter [kind] beberapa lintasan (jumlah per lintasan = [amounts], parameter lain dari [p]) ke pratinjau. */
+    private fun multiPass(l: Layer, kind: Int, p: FloatArray, amounts: List<Float>) {
+        val pv = preview!!
+        val sb = strokeBuf!!
+        val lock = l.alphaLock
+        val total = amounts.size + (if (lock) 1 else 0)
+        var src = l.tex
+        val q = p.copyOf()
+        for (i in amounts.indices) {
+            // Tujuan berselang-seling supaya lintasan terakhir mendarat di pratinjau.
+            val dst = if ((total - 1 - i) % 2 == 0) pv else sb
+            q[0] = amounts[i]
+            filterPassTex(kind, src, null, q, dst, false)
+            src = dst
+        }
+        if (lock) filterPassTex(Adj.ALPHA_LOCK, l.tex, src, p, pv, false)
+        clearRect(sb, IRect(0, 0, W, H))
+    }
+
+    /**
+     * Blur Gaussian. [src] boleh sama dengan [dst].
+     * Sigma kecil: dua lintasan langsung (mendatar ke scratch, lalu tegak ke [dst]).
+     * Sigma besar: gambar diperkecil bertahap (½, ¼, …), diblur di ukuran kecil, lalu diperbesar lagi dengan B-spline.
+     * Hasilnya membaur seperti gradien halus berapa pun radiusnya — tanpa jarak antar-sampel yang memunculkan
+     * bayangan bergaris dan tepi yang masih kontras.
+     */
     private fun gaussian(src: Tex, dst: Tex, sigma: Float) {
-        val full = IRect(0, 0, W, H)
         if (sigma < 0.5f) {
             if (src !== dst) blit(src.fb, 0, 0, W, H, dst.fb, 0, 0, W, H, false)
             return
         }
-        val tmp = scratch!!
+        G.glDisable(G.GL_BLEND)
+        var k = 0
+        while (sigma / (1 shl k) > 5.3f && k < pyr.size - 1 && (W shr (k + 1)) >= 4 && (H shr (k + 1)) >= 4) k++
+        if (k == 0) {
+            val tmp = scratch!!
+            blurPass(src, tmp, sigma, 1f, 0f)
+            blurPass(tmp, dst, sigma, 0f, 1f)
+            return
+        }
+        var prev = src
+        for (j in 1..k) {
+            val t = pyrLevel(j)
+            blit(prev.fb, 0, 0, prev.w, prev.h, t.fb, 0, 0, t.w, t.h, true)
+            prev = t
+        }
+        val low = pyr[k]!!
+        val tmp = pyrTmpFor(low.w, low.h)
+        // Sisa sigma di ukuran kecil (pengecilan dan pembesaran sendiri sudah sedikit memburamkan).
+        val s = (sigma / (1 shl k)).let { sqrt(max(0.25f, it * it - 0.6f)) }
+        blurPass(low, tmp, s, 1f, 0f)
+        blurPass(tmp, low, s, 0f, 1f)
+        for (j in k - 1 downTo 0) upsample(pyr[j + 1]!!, if (j == 0) dst else pyr[j]!!, j == 0)
+    }
+
+    private fun blurPass(src: Tex, dst: Tex, sigma: Float, dx: Float, dy: Float) {
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, dst.fb)
+        G.glViewport(0, 0, dst.w, dst.h)
         G.glDisable(G.GL_BLEND)
         pBlur.use()
-        pBlur.f2("uSize", W.toFloat(), H.toFloat())
+        pBlur.f2("uSize", dst.w.toFloat(), dst.h.toFloat())
         pBlur.f("uSigma", sigma)
-        G.glBindFramebuffer(G.GL_FRAMEBUFFER, tmp.fb)
-        G.glViewport(0, 0, W, H)
         pBlur.tex("uSrc", 0, src.id)
-        pBlur.f2("uDir", 1f, 0f)
-        drawRect(pBlur, full)
+        pBlur.f2("uDir", dx, dy)
+        drawRect(pBlur, IRect(0, 0, dst.w, dst.h), dst.w, dst.h)
+    }
+
+    private fun upsample(src: Tex, dst: Tex, dither: Boolean) {
         G.glBindFramebuffer(G.GL_FRAMEBUFFER, dst.fb)
-        G.glViewport(0, 0, W, H)
-        pBlur.tex("uSrc", 0, tmp.id)
-        pBlur.f2("uDir", 0f, 1f)
-        drawRect(pBlur, full)
+        G.glViewport(0, 0, dst.w, dst.h)
+        G.glDisable(G.GL_BLEND)
+        pUp.use()
+        pUp.tex("uSrc", 0, src.id)
+        pUp.f2("uSrcSize", src.w.toFloat(), src.h.toFloat())
+        pUp.f2("uDstSize", dst.w.toFloat(), dst.h.toFloat())
+        pUp.i("uDither", if (dither) 1 else 0)
+        drawRect(pUp, IRect(0, 0, dst.w, dst.h), dst.w, dst.h)
+    }
+
+    private fun pyrLevel(j: Int): Tex {
+        val w = max(1, (W + (1 shl j) - 1) shr j)
+        val h = max(1, (H + (1 shl j) - 1) shr j)
+        val t = pyr[j]
+        if (t != null && t.w == w && t.h == h) return t
+        t?.delete()
+        return Tex(w, h).also { pyr[j] = it }
+    }
+
+    private fun pyrTmpFor(w: Int, h: Int): Tex {
+        val t = pyrTmp
+        if (t != null && t.w == w && t.h == h) return t
+        t?.delete()
+        return Tex(w, h).also { pyrTmp = it }
+    }
+
+    private fun pyrFree() {
+        for (i in pyr.indices) {
+            pyr[i]?.delete()
+            pyr[i] = null
+        }
+        pyrTmp?.delete()
+        pyrTmp = null
     }
 
     private fun filterProg(kind: Int): Program = filters.getOrPut(kind) { Program(Shaders.RECT_VS, Shaders.filter(kind)) }
 
-    private fun filterPass(kind: Int, l: Layer, aux: Tex?, p: FloatArray, dst: Tex) {
+    private fun filterPass(kind: Int, l: Layer, aux: Tex?, p: FloatArray, dst: Tex) =
+        filterPassTex(kind, l.tex, aux, p, dst, l.alphaLock)
+
+    private fun filterPassTex(kind: Int, src: Tex, aux: Tex?, p: FloatArray, dst: Tex, alphaLock: Boolean) {
         val pFilter = filterProg(kind)
         G.glBindFramebuffer(G.GL_FRAMEBUFFER, dst.fb)
         G.glViewport(0, 0, W, H)
         G.glDisable(G.GL_BLEND)
         pFilter.use()
-        pFilter.tex("uSrc", 0, l.tex.id)
-        pFilter.tex("uAux", 1, (aux ?: l.tex).id)
+        pFilter.tex("uSrc", 0, src.id)
+        pFilter.tex("uAux", 1, (aux ?: src).id)
         pFilter.tex("uLut", 2, lutTex)
         pFilter.f2("uSize", W.toFloat(), H.toFloat())
         pFilter.f("uTaps", if (softGpu) 12f else 128f)
         java.util.Arrays.fill(filterP, 0f)
         System.arraycopy(p, 0, filterP, 0, min(p.size, filterP.size))
         pFilter.fv("uP", filterP)
-        pFilter.i("uAlphaLock", if (l.alphaLock) 1 else 0)
+        pFilter.i("uAlphaLock", if (alphaLock) 1 else 0)
         drawRect(pFilter, IRect(0, 0, W, H))
     }
 
@@ -4748,6 +4913,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         adjLayer = null
         substitute = null
         liqFree()
+        pyrFree()
+        penFree()
         marker = null
         dirty.set(0, 0, W, H)
     }
@@ -4759,8 +4926,265 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         adjRequest = null
         adjLut = null
         liqFree()
+        pyrFree()
+        penFree()
         marker = null
         dirty.set(0, 0, W, H)
+    }
+
+    // ================= mode Pena penyesuaian =================
+
+    /** Mode Pena (true): efek hanya muncul di bagian yang disapukan. Mode Layer (false): seluruh layer/pilihan. */
+    fun adjustPen(on: Boolean) {
+        if (!adjOn || adjKind == Adj.LIQUIFY || on == penOn) { penHistory(); return }
+        val pv = preview ?: return
+        val full = IRect(0, 0, W, H)
+        if (on) {
+            try {
+                adjFull = Tex(W, H)
+                penMask = Tex(W, H, single = true)
+                penStroke = Tex(W, H, single = true)
+            } catch (e: OutOfMemoryError) {
+                Diag.log("Mode Pena: ${e.message}")
+                penFree()
+                post { listener.onMessage("Memori grafis tidak cukup untuk mode Pena") }
+                penHistory()
+                return
+            }
+            blit(pv.fb, 0, 0, W, H, adjFull!!.fb, 0, 0, W, H, false)
+            penOn = true
+            penComposite(full)
+            Diag.log("Pena: mode Pena untuk penyesuaian $adjKind")
+        } else {
+            // Kembali ke mode Layer: hasil penuh tampil lagi di seluruh layer.
+            adjFull?.let { blit(it.fb, 0, 0, W, H, pv.fb, 0, 0, W, H, false) }
+            penFree()
+        }
+        penHistory()
+        dirty.set(0, 0, W, H)
+    }
+
+    private fun penFree() {
+        penOn = false
+        penDown = false
+        penDabN = 0
+        adjFull?.delete(); adjFull = null
+        penMask?.delete(); penMask = null
+        penStroke?.delete(); penStroke = null
+        penInput.clear()
+        penUndo.clear()
+        penRedo.clear()
+    }
+
+    private fun penHistory() {
+        val on = penOn
+        val u = penUndo.size
+        val r = penRedo.size
+        post { listener.onPenMode(on, u, r) }
+    }
+
+    /** Pratinjau di [r] = layer asli dicampur hasil penuh menurut masker sapuan (termasuk sapuan yang sedang berjalan). */
+    private fun penComposite(r: IRect) {
+        val l = adjLayer ?: return
+        val pv = preview ?: return
+        val af = adjFull ?: return
+        val pm = penMask ?: return
+        val ps = penStroke ?: return
+        val c = r.copy().clampTo(W, H)
+        if (c.isEmpty) return
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, pv.fb)
+        G.glViewport(0, 0, W, H)
+        G.glDisable(G.GL_BLEND)
+        pPen.use()
+        pPen.i("uMode", 2)
+        pPen.f2("uSize", W.toFloat(), H.toFloat())
+        pPen.tex("uSrc", 0, l.tex.id)
+        pPen.tex("uFull", 1, af.id)
+        pPen.tex("uMask", 2, pm.id)
+        pPen.tex("uStroke", 3, ps.id)
+        pPen.f("uOp", if (penDown) penOp else 0f)
+        pPen.i("uErase", if (penErase) 1 else 0)
+        drawRect(pPen, c)
+    }
+
+    private fun penDrain() {
+        val box = IRect()
+        while (true) {
+            val e = penInput.poll() ?: break
+            val x = e[0]
+            val y = e[1]
+            val pr = e[2].coerceIn(0.05f, 1f)
+            when (e[3].toInt()) {
+                0 -> penBegin(x, y, pr, e[4] > 0.5f, box)
+                1, 2 -> {
+                    if (!penDown) penBegin(x, y, pr, e[4] > 0.5f, box) else penLine(x, y, pr)
+                    if (e[3].toInt() == 2) penEnd(box)
+                }
+                else -> penCancel(box)
+            }
+        }
+        penFlush(box)
+        if (!box.isEmpty) {
+            penComposite(box)
+            dirty.union(box)
+        }
+    }
+
+    private fun penBegin(x: Float, y: Float, pr: Float, erase: Boolean, box: IRect) {
+        if (penDown) penEnd(box)
+        val set = tool?.current()
+        penDown = true
+        penErase = erase
+        penSize = max(2f, set?.sizePx ?: 40f)
+        penOp = (set?.opacity ?: 1f).coerceIn(0.02f, 1f)
+        penBox.clear()
+        penX = x; penY = y; penP = pr
+        penResid = 0f
+        penAddDab(x, y, pr)
+    }
+
+    private fun penLine(x: Float, y: Float, pr: Float) {
+        val dx = x - penX
+        val dy = y - penY
+        val d = hypot(dx, dy)
+        val sp = max(1f, penSize * 0.08f)
+        var t = sp - penResid
+        while (t <= d) {
+            val f = t / d
+            penAddDab(penX + dx * f, penY + dy * f, penP + (pr - penP) * f)
+            t += sp
+        }
+        penResid = d - (t - sp)
+        penX = x; penY = y; penP = pr
+    }
+
+    private fun penAddDab(x: Float, y: Float, pr: Float) {
+        if (penDabN * 3 + 3 > penDabBuf.size) penDabBuf = penDabBuf.copyOf(penDabBuf.size * 2)
+        penDabBuf[penDabN * 3] = x
+        penDabBuf[penDabN * 3 + 1] = y
+        penDabBuf[penDabN * 3 + 2] = pr
+        penDabN++
+    }
+
+    /** Tapak-tapak yang terkumpul digambar ke masker sapuan (campuran MAX: tumpang tindih tidak menebal). */
+    private fun penFlush(box: IRect) {
+        val ps = penStroke
+        if (penDabN == 0 || ps == null) { penDabN = 0; return }
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, ps.fb)
+        G.glViewport(0, 0, W, H)
+        G.glEnable(G.GL_BLEND)
+        G.glBlendEquation(G.GL_MAX)
+        pPen.use()
+        pPen.i("uMode", 0)
+        pPen.f2("uSize", W.toFloat(), H.toFloat())
+        val r = penSize / 2f
+        for (i in 0 until penDabN) {
+            val x = penDabBuf[i * 3]
+            val y = penDabBuf[i * 3 + 1]
+            val pr = penDabBuf[i * 3 + 2]
+            val rr = IRect(floor(x - r).toInt() - 1, floor(y - r).toInt() - 1, ceil(x + r).toInt() + 1, ceil(y + r).toInt() + 1).clampTo(W, H)
+            if (rr.isEmpty) continue
+            pPen.f3("uDab", x, y, r)
+            pPen.f("uAmt", pr.pow(0.6f))
+            drawRect(pPen, rr)
+            box.union(rr)
+            penBox.union(rr)
+        }
+        G.glBlendEquation(G.GL_FUNC_ADD)
+        G.glBlendFunc(G.GL_ONE, G.GL_ONE_MINUS_SRC_ALPHA)
+        G.glDisable(G.GL_BLEND)
+        penDabN = 0
+    }
+
+    /** Sapuan selesai: digabung ke masker (bisa diurungkan). */
+    private fun penEnd(box: IRect) {
+        penFlush(box)
+        if (!penDown) return
+        val pm = penMask
+        val ps = penStroke
+        val r = penBox.copy().clampTo(W, H)
+        if (pm == null || ps == null || r.isEmpty) { penDown = false; return }
+        penPush(penUndo, r)
+        penRedo.clear()
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, pm.fb)
+        G.glViewport(0, 0, W, H)
+        G.glEnable(G.GL_BLEND)
+        G.glBlendEquation(G.GL_FUNC_ADD)
+        if (penErase) G.glBlendFunc(G.GL_ZERO, G.GL_ONE_MINUS_SRC_ALPHA) else G.glBlendFunc(G.GL_ONE, G.GL_ONE_MINUS_SRC_ALPHA)
+        pPen.use()
+        pPen.i("uMode", 1)
+        pPen.f2("uSize", W.toFloat(), H.toFloat())
+        pPen.tex("uStroke", 3, ps.id)
+        pPen.f("uOp", penOp)
+        drawRect(pPen, r)
+        G.glBlendFunc(G.GL_ONE, G.GL_ONE_MINUS_SRC_ALPHA)
+        G.glDisable(G.GL_BLEND)
+        clearRect(ps, r)
+        penDown = false
+        box.union(r)
+        Diag.log("Pena: sapuan $r${if (penErase) " (hapus efek)" else ""}, ukuran ${penSize.roundToInt()} px")
+        penHistory()
+    }
+
+    /** Sapuan dibatalkan (mis. ternyata gerakan dua jari): dibuang tanpa mengubah masker. */
+    private fun penCancel(box: IRect) {
+        penDabN = 0
+        if (!penDown) return
+        penDown = false
+        val r = penBox.copy().clampTo(W, H)
+        penStroke?.let { clearRect(it, r) }
+        box.union(r)
+    }
+
+    private fun readMask(r: IRect): ByteArray {
+        val buf = readRegion(penMask!!.fb, r)
+        val out = ByteArray(r.w * r.h)
+        for (i in out.indices) out[i] = buf.get(i * 4)
+        return out
+    }
+
+    private fun writeMask(r: IRect, data: ByteArray) {
+        val bb = Buffers.direct(data.size)
+        bb.put(data)
+        bb.position(0)
+        G.glBindTexture(G.GL_TEXTURE_2D, penMask!!.id)
+        G.glPixelStorei(G.GL_UNPACK_ALIGNMENT, 1)
+        G.glTexSubImage2D(G.GL_TEXTURE_2D, 0, r.x0, r.y0, r.w, r.h, G.GL_RED, G.GL_UNSIGNED_BYTE, bb)
+    }
+
+    /** Simpan isi masker di [r] ke [stack]; langkah tertua dibuang bila terlalu banyak/besar. */
+    private fun penPush(stack: ArrayDeque<PenStep>, r: IRect) {
+        stack.addLast(PenStep(r.copy(), readMask(r)))
+        var bytes = penUndo.sumOf { it.data.size.toLong() } + penRedo.sumOf { it.data.size.toLong() }
+        while (stack.size > 1 && (stack.size > 40 || bytes > 160L * 1024 * 1024)) {
+            bytes -= stack.removeFirst().data.size
+        }
+    }
+
+    /** Urungkan ([redo] false) atau ulangi satu sapuan mode Pena. */
+    fun penStep(redo: Boolean) {
+        if (!penOn || penDown || penMask == null) return
+        val from = if (redo) penRedo else penUndo
+        val to = if (redo) penUndo else penRedo
+        val s = from.removeLastOrNull() ?: return
+        penPush(to, s.r)
+        writeMask(s.r, s.data)
+        penComposite(s.r)
+        dirty.union(s.r)
+        penHistory()
+    }
+
+    /** Hapus semua sapuan mode Pena (bisa diurungkan). */
+    fun penClear() {
+        val pm = penMask ?: return
+        if (!penOn || penDown) return
+        val full = IRect(0, 0, W, H)
+        penPush(penUndo, full)
+        penRedo.clear()
+        clearRect(pm, full)
+        penComposite(full)
+        dirty.set(0, 0, W, H)
+        penHistory()
     }
 
     // ================= liquify =================

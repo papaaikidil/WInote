@@ -24,6 +24,8 @@ object Adj {
 
     /** Pass dalam shader filter yang bukan penyesuaian tersendiri: ambil bagian terang untuk Bloom. */
     const val BRIGHT = 100
+    /** Pass penutup: kunci alfa setelah blur berlapis (warna dari hasil, alfa dari layer asli). */
+    const val ALPHA_LOCK = 101
 
     // Mode Liquify
     const val LQ_PUSH = 0
