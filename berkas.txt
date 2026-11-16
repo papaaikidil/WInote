@@ -1,0 +1,10 @@
+total 1584
+drwx------ 2 u0_a174 u0_a174    4096 2026-11-16 13:22 crash
+-rw-rw-rw- 1 u0_a174 u0_a174  316886 2026-11-16 13:22 im-16.psd
+-rw-rw-rw- 1 u0_a174 u0_a174  169769 2026-11-16 13:22 im-rle.psd
+drwx------ 3 u0_a174 u0_a174    4096 2026-11-16 13:22 karya
+drwx------ 2 u0_a174 u0_a174    4096 2026-11-16 13:22 kuas
+-rw------- 1 u0_a174 u0_a174     547 2026-11-16 13:22 laporan.txt
+-rw------- 1 u0_a174 u0_a174      24 2026-11-16 13:22 profileInstalled
+-rw-rw-rw- 1 u0_a174 u0_a174 1032881 2026-11-16 13:22 uji-procreate.procreate
+-rw-rw-rw- 1 u0_a174 u0_a174   35304 2026-11-16 13:22 uji.pdf

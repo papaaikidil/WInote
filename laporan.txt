@@ -1,0 +1,138 @@
+13:22:00.072  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:22:00.119  Aktivitas: lanjut
+13:22:00.677  Buka karya kmwjalwdt1629
+13:22:00.947  Permukaan kanvas dibuat
+13:22:01.027  Permukaan kanvas: sRGB
+13:22:01.032  GL: konteks dibuat
+13:22:02.257  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:22:02.311  GL: siap (1278 ms)
+13:22:02.311  GL: ukuran permukaan 2560x1800
+13:22:02.323  Karya dibuka 1600x1200, 1 layer, batas 110 layer (12 ms)
+13:22:03.763  Frame lambat: 1452 ms
+13:22:20.591  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:22:20.633  Aktivitas: lanjut
+13:22:20.703  Impor psd: 3 layer (75 ms)
+13:22:21.389  Buka karya kmwjamc800e92
+13:22:21.666  Permukaan kanvas dibuat
+13:22:21.712  Permukaan kanvas: sRGB
+13:22:21.717  GL: konteks dibuat
+13:22:22.358  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:22:22.409  GL: siap (689 ms)
+13:22:22.410  GL: ukuran permukaan 2560x1800
+13:22:22.420  Karya dibuka 320x240, 3 layer, batas 120 layer (10 ms)
+13:22:23.800  Frame lambat: 1390 ms
+13:22:58.055  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:22:58.099  Aktivitas: lanjut
+13:22:58.147  Impor psd: 3 layer (53 ms)
+13:22:58.792  Buka karya kmwjan54rf892
+13:22:58.998  Permukaan kanvas dibuat
+13:22:59.030  Permukaan kanvas: sRGB
+13:22:59.033  GL: konteks dibuat
+13:22:59.653  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:22:59.727  GL: siap (694 ms)
+13:22:59.728  GL: ukuran permukaan 2560x1800
+13:22:59.738  Karya dibuka 320x240, 3 layer, batas 120 layer (10 ms)
+13:23:01.152  Frame lambat: 1424 ms
+13:23:25.326  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:23:25.372  Aktivitas: lanjut
+13:23:25.511  Impor procreate: 4 layer (141 ms)
+13:23:26.177  Buka karya kmwjanq68a7bc
+13:23:26.445  Permukaan kanvas dibuat
+13:23:26.485  Permukaan kanvas: sRGB
+13:23:26.486  GL: konteks dibuat
+13:23:26.983  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:23:27.043  GL: siap (557 ms)
+13:23:27.044  GL: ukuran permukaan 2560x1800
+13:23:27.062  Karya dibuka 600x400, 4 layer, batas 120 layer (18 ms)
+13:23:28.576  Frame lambat: 1532 ms
+13:24:02.875  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:24:02.917  Aktivitas: lanjut
+13:24:03.747  Impor pdf: 3 layer (835 ms)
+13:24:03.832  Buka karya kmwjaojc7e9c0
+13:24:04.077  Permukaan kanvas dibuat
+13:24:04.175  Permukaan kanvas: sRGB
+13:24:04.182  GL: konteks dibuat
+13:24:04.759  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:24:04.814  GL: siap (628 ms)
+13:24:04.815  GL: ukuran permukaan 2560x1800
+13:24:05.178  Karya dibuka 2479x3508, 3 layer, batas 18 layer (363 ms)
+13:24:07.886  !!! Antarmuka macet 3003 ms. Posisi thread utama:
+13:24:07.890      android.graphics.HardwareRenderer.nSyncAndDrawFrame(Native Method)
+13:24:07.891      android.graphics.HardwareRenderer.syncAndDrawFrame(HardwareRenderer.java:457)
+13:24:07.891      android.view.ThreadedRenderer.draw(ThreadedRenderer.java:811)
+13:24:07.891      android.view.ViewRootImpl.draw(ViewRootImpl.java:4789)
+13:24:07.891      android.view.ViewRootImpl.performDraw(ViewRootImpl.java:4500)
+13:24:07.892      android.view.ViewRootImpl.performTraversals(ViewRootImpl.java:3687)
+13:24:07.892      android.view.ViewRootImpl.doTraversal(ViewRootImpl.java:2371)
+13:24:07.892      android.view.ViewRootImpl$TraversalRunnable.run(ViewRootImpl.java:9297)
+13:24:07.892      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1231)
+13:24:07.892      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1239)
+13:24:07.892      android.view.Choreographer.doCallbacks(Choreographer.java:899)
+13:24:07.893      android.view.Choreographer.doFrame(Choreographer.java:832)
+13:24:07.893      android.view.Choreographer$FrameDisplayEventReceiver.run(Choreographer.java:1214)
+13:24:07.893      android.os.Handler.handleCallback(Handler.java:942)
+13:24:07.893      android.os.Handler.dispatchMessage(Handler.java:99)
+13:24:07.893      android.os.Looper.loopOnce(Looper.java:201)
+13:24:07.893      android.os.Looper.loop(Looper.java:288)
+13:24:07.894      android.app.ActivityThread.main(ActivityThread.java:7924)
+13:24:07.894      java.lang.reflect.Method.invoke(Native Method)
+13:24:07.894      com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+13:24:07.894      com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+13:24:07.895  !!! Kanvas macet 3071 ms. Posisi thread kanvas:
+13:24:07.895      android.opengl.GLES20.glReadPixels(Native Method)
+13:24:07.896      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:3975)
+13:24:07.896      id.goresan.engine.Engine.onDrawFrame(Engine.kt:845)
+13:24:07.896      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+13:24:07.896      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+13:24:07.896      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+13:24:08.035  Frame lambat: 3219 ms
+13:24:08.906  Kanvas kembali merespons
+13:24:10.907  Antarmuka kembali merespons
+13:24:40.006  === Aplikasi dibuka · WInote Gambar 0.1.10 (10) · Google sdk_gphone64_x86_64 · Android 13
+13:24:40.048  Aktivitas: lanjut
+13:24:40.189  Impor procreate: 4 layer (142 ms)
+13:24:40.895  Buka karya kmwjapbsk5130
+13:24:41.178  Permukaan kanvas dibuat
+13:24:41.218  Permukaan kanvas: sRGB
+13:24:41.224  GL: konteks dibuat
+13:24:41.796  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:24:41.855  GL: siap (631 ms)
+13:24:41.856  GL: ukuran permukaan 2560x1800
+13:24:41.880  Karya dibuka 600x400, 4 layer, batas 120 layer (23 ms)
+13:24:43.422  Frame lambat: 1566 ms
+13:25:33.046  Frame lambat: 146 ms
+13:27:41.725  Frame lambat: 497 ms
+13:28:33.879  Frame lambat: 341 ms
+13:29:39.887  Frame lambat: 169 ms
+13:29:43.744  Simpan: 1 layer dibaca dari GPU (6 ms)
+13:29:57.580  Frame lambat: 224 ms
+13:30:00.158  !!! Antarmuka macet 3000 ms. Posisi thread utama:
+13:30:00.168      android.graphics.HardwareRenderer.nSyncAndDrawFrame(Native Method)
+13:30:00.169      android.graphics.HardwareRenderer.syncAndDrawFrame(HardwareRenderer.java:457)
+13:30:00.169      android.view.ThreadedRenderer.draw(ThreadedRenderer.java:811)
+13:30:00.169      android.view.ViewRootImpl.draw(ViewRootImpl.java:4789)
+13:30:00.170      android.view.ViewRootImpl.performDraw(ViewRootImpl.java:4500)
+13:30:00.171      android.view.ViewRootImpl.performTraversals(ViewRootImpl.java:3687)
+13:30:00.172      android.view.ViewRootImpl.doTraversal(ViewRootImpl.java:2371)
+13:30:00.172      android.view.ViewRootImpl$TraversalRunnable.run(ViewRootImpl.java:9297)
+13:30:00.172      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1231)
+13:30:00.172      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1239)
+13:30:00.172      android.view.Choreographer.doCallbacks(Choreographer.java:899)
+13:30:00.173      android.view.Choreographer.doFrame(Choreographer.java:832)
+13:30:00.173      android.view.Choreographer$FrameDisplayEventReceiver.run(Choreographer.java:1214)
+13:30:00.173      android.os.Handler.handleCallback(Handler.java:942)
+13:30:00.173      android.os.Handler.dispatchMessage(Handler.java:99)
+13:30:00.173      android.os.Looper.loopOnce(Looper.java:201)
+13:30:00.174      android.os.Looper.loop(Looper.java:288)
+13:30:00.174      android.app.ActivityThread.main(ActivityThread.java:7924)
+13:30:00.174      java.lang.reflect.Method.invoke(Native Method)
+13:30:00.176      com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+13:30:00.176      com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+13:30:01.177  Antarmuka kembali merespons
+13:30:06.344  Frame lambat: 252 ms
+13:30:10.127  Simpan: 1 layer dibaca dari GPU (6 ms)
+13:30:34.363  Simpan: 1 layer dibaca dari GPU (8 ms)
+13:30:41.297  Simpan: 1 layer dibaca dari GPU (8 ms)
+13:30:51.602  Frame lambat: 261 ms
+13:30:52.120  Frame lambat: 443 ms
+13:30:52.350  Frame lambat: 211 ms

@@ -1,0 +1,35 @@
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1887
+WaitTime: 1932
+Complete
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1749
+WaitTime: 1772
+Complete
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1714
+WaitTime: 1727
+Complete
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1838
+WaitTime: 1845
+Complete
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1764
+WaitTime: 1777
+Complete

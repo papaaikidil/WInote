@@ -1,0 +1,5 @@
+13:22:20.703  Impor psd: 3 layer (75 ms)
+13:22:58.147  Impor psd: 3 layer (53 ms)
+13:23:25.511  Impor procreate: 4 layer (141 ms)
+13:24:03.747  Impor pdf: 3 layer (835 ms)
+13:24:40.189  Impor procreate: 4 layer (142 ms)

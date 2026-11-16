@@ -1,0 +1,27 @@
+/sdcard/Download/WInote:
+total 1260
+-rwxrwx--- 1 u0_a172 media_rw 729390 2026-11-16 13:25 Uji Procreate-20261116-132533.tif
+-rwxrwx--- 1 u0_a172 media_rw 547054 2026-11-16 13:26 Uji Procreate-layer-20261116-132654.pdf
+
+/sdcard/Movies/WInote:
+total 32
+-rwxrwx--- 1 u0_a172 media_rw 27402 2026-11-16 13:28 Uji Procreate-animasi-20261116-132833.mp4
+
+/sdcard/Pictures/WInote:
+total 72
+drwxrws--- 2 u0_a172 media_rw  4096 2026-11-16 13:26 Uji Procreate-20261116-132611
+-rwxrwx--- 1 u0_a172 media_rw 58802 2026-11-16 13:27 Uji Procreate-animasi-20261116-132741.gif
+
+/sdcard/Pictures/WInote/Uji Procreate-20261116-132611:
+total 32
+-rwxrwx--- 1 u0_a172 media_rw 2053 2026-11-16 13:26 01 Dasar.png
+-rwxrwx--- 1 u0_a172 media_rw 3631 2026-11-16 13:26 02 Tengah bermasker.png
+-rwxrwx--- 1 u0_a172 media_rw 1212 2026-11-16 13:26 03 Tengah tersembunyi.png
+-rwxrwx--- 1 u0_a172 media_rw 1489 2026-11-16 13:26 04 Atas LZ4.png
+BACA uji-hasil/ekspor/WInote/Uji Procreate-20261116-132533.tif TIFF RGB (600, 400) 1 (264.0, 264.0)
+BACA uji-hasil/ekspor/WInote/Uji Procreate-20261116-132611/01 Dasar.png PNG RGBA (600, 400) 1 None
+BACA uji-hasil/ekspor/WInote/Uji Procreate-20261116-132611/02 Tengah bermasker.png PNG RGBA (600, 400) 1 None
+BACA uji-hasil/ekspor/WInote/Uji Procreate-20261116-132611/03 Tengah tersembunyi.png PNG RGBA (600, 400) 1 None
+BACA uji-hasil/ekspor/WInote/Uji Procreate-20261116-132611/04 Atas LZ4.png PNG RGBA (600, 400) 1 None
+BACA uji-hasil/ekspor/WInote/Uji Procreate-animasi-20261116-132741.gif GIF P (600, 400) 3 None
+MP4 uji-hasil/ekspor/film/WInote/Uji Procreate-animasi-20261116-132833.mp4 27402 ftyp moov
