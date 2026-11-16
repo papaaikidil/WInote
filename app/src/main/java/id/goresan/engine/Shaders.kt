@@ -1214,6 +1214,77 @@ void main() {
 }
 """
 
+    /**
+     * Satu sapuan Liquify di GPU (sama dengan Engine.cpuDab): titik kisi p mengambil isi dari titik q, jadi pergeseran
+     * barunya = q + D(q) − p, dengan D(q) diambil bilinear dari medan lama. Digambar hanya di kotak sapuan.
+     */
+    const val LIQ_DAB_FS = """#version 300 es
+precision highp float;
+precision highp int;
+in vec2 vPos;
+uniform highp sampler2D uField;
+uniform vec2 uGrid;
+uniform float uStep;
+uniform int uMode;
+uniform vec2 uC;
+uniform float uRad;
+uniform float uK;
+uniform vec2 uV;
+uniform vec2 uN;
+uniform float uDistort;
+uniform float uCell;
+uniform float uSeed;
+out vec4 o;
+vec2 fieldAt(vec2 g) {
+    g = clamp(g, vec2(0.0), uGrid - 1.0);
+    ivec2 i = ivec2(min(floor(g), uGrid - 2.0));
+    vec2 f = g - vec2(i);
+    vec2 a = texelFetch(uField, i, 0).rg;
+    vec2 b = texelFetch(uField, i + ivec2(1, 0), 0).rg;
+    vec2 c = texelFetch(uField, i + ivec2(0, 1), 0).rg;
+    vec2 d = texelFetch(uField, i + ivec2(1, 1), 0).rg;
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+void main() {
+    ivec2 gi = ivec2(floor(vPos));
+    vec2 old = texelFetch(uField, gi, 0).rg;
+    vec2 p = vec2(gi) * uStep;
+    vec2 dv = p - uC;
+    float d2 = dot(dv, dv);
+    float r2 = uRad * uRad;
+    if (d2 >= r2) { o = vec4(old, 0.0, 1.0); return; }
+    float t = 1.0 - d2 / r2;
+    float w = t * t * uK;
+    if (uMode == 7) { o = vec4(old * (1.0 - min(1.0, w)), 0.0, 1.0); return; }
+    vec2 q;
+    if (uMode == 0) {
+        q = p - uV * w;
+    } else if (uMode == 1 || uMode == 2) {
+        float ang = uMode == 1 ? w : -w;
+        float c = cos(ang);
+        float s = sin(ang);
+        q = uC + vec2(dv.x * c + dv.y * s, -dv.x * s + dv.y * c);
+    } else if (uMode == 3) {
+        q = uC + dv * (1.0 + w);
+    } else if (uMode == 4) {
+        q = uC + dv * (1.0 - w);
+    } else if (uMode == 5) {
+        ivec2 hc = ivec2(floor(p / uCell));
+        uint h = (uint(hc.x) * 73856093u) ^ (uint(hc.y) * 19349663u) ^ (uint(uSeed) * 83492791u);
+        h ^= h >> 13u;
+        h *= 0x5bd1e995u;
+        h ^= h >> 15u;
+        float a = float(h & 0xFFFFu) / 65535.0 * 6.2831855;
+        float m = w * uRad * (0.15 + uDistort * 0.6);
+        q = p + vec2(cos(a), sin(a)) * m;
+    } else {
+        float proj = dot(dv, uN);
+        q = p + uN * proj * w * (0.5 + uDistort);
+    }
+    o = vec4(q + fieldAt(q / uStep) - p, 0.0, 1.0);
+}
+"""
+
     /** Transformasi layer: tiap piksel target mengambil warna dari posisi asalnya. */
     const val TRANSFORM_FS = """#version 300 es
 precision highp float;

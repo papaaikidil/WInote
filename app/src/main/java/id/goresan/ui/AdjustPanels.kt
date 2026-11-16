@@ -260,10 +260,14 @@ fun AdjustBar(state: AppState, modifier: Modifier) {
                         listOf("Dorong", "Putar kanan", "Putar kiri", "Cubit", "Kembangkan", "Kristal", "Tepi", "Pulihkan"),
                         state.adjMode,
                     ) { state.chooseAdjMode(it) }
-                    S(state, 0, "Ukuran", 10f..max(200f, big / 2f), ::px)
-                    S(state, 1, "Tekanan", 0f..1f, ::pct)
-                    if (state.adjMode == Adj.LQ_CRYSTAL || state.adjMode == Adj.LQ_EDGE) S(state, 2, "Distorsi", 0f..1f, ::pct)
-                    S(state, 3, "Sesuaikan", 0f..1f, ::pct)
+                    // Penggeser dua kolom supaya bar tidak menutupi banyak kanvas saat menyapu.
+                    val distort = state.adjMode == Adj.LQ_CRYSTAL || state.adjMode == Adj.LQ_EDGE
+                    Two({ SQ(state, 0, "Ukuran", 10f, max(200f, big / 2f), ::px) }, { S(state, 1, "Tekanan", 0f..1f, ::pct) })
+                    Two(
+                        { S(state, 4, "Momentum", 0f..1f, ::pct) },
+                        { if (distort) S(state, 2, "Distorsi", 0f..1f, ::pct) else S(state, 3, "Sesuaikan", 0f..1f, ::pct) },
+                    )
+                    if (distort) Two({ S(state, 3, "Sesuaikan", 0f..1f, ::pct) }, {})
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Hint("Seret di kanvas · dua jari untuk geser/perbesar", Modifier.weight(1f))
                         TextButton(onClick = { state.liquifyReset() }) { Text("Atur ulang") }
@@ -318,6 +322,15 @@ private fun SQ(
     val span = max(1e-3f, hi - lo)
     val t = kotlin.math.sqrt(((v - lo) / span).coerceIn(0f, 1f))
     LabeledSlider(label, t, { state.setAdj(i, lo + span * it * it) }, 0f..1f, { display(lo + span * it * it) })
+}
+
+@Composable
+private fun Two(a: @Composable () -> Unit, b: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth()) {
+        Box(Modifier.weight(1f)) { a() }
+        Spacer(Modifier.width(14.dp))
+        Box(Modifier.weight(1f)) { b() }
+    }
 }
 
 /** Pilihan mode Layer / Pena untuk penyesuaian (kecuali Liquify dan Klon). */

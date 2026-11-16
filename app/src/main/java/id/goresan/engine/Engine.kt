@@ -230,7 +230,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     @Volatile var penSizePx = 80f
     @Volatile var penOpacity = 1f
     /** Liquify: [mode, ukuran px, tekanan 0..1, distorsi 0..1]. */
-    @Volatile var liqParams = floatArrayOf(0f, 150f, 0.5f, 0.5f)
+    @Volatile var liqParams = floatArrayOf(0f, 150f, 0.5f, 0.5f, 0.3f)
     /** Posisi sumber Clone (piksel kanvas), untuk antarmuka. Null bila Clone tidak aktif. */
     @Volatile var cloneMarker: FloatArray? = null
     /** Panduan menggambar (Drawing Guide) dokumen; diubah langsung dari antarmuka, ikut disimpan di data karya. */
@@ -543,6 +543,19 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var liqDirX = 1f
     private var liqDirY = 0f
     private var liqSeed = 0
+    // Liquify di GPU (bila framebuffer float didukung): medan di dua tekstur RG32F (baca A, tulis B, salin balik).
+    private var liqFloatOk = false
+    private var liqA: FieldTex? = null
+    private var liqB: FieldTex? = null
+    private var pLiqDab: Program? = null
+    private var liqP = 1f
+    /** Kecepatan pena (px/ms, dihaluskan) untuk Momentum, dan waktu gerak terakhir. */
+    private var liqVX = 0f
+    private var liqVY = 0f
+    private var liqMoveT = 0L
+    private var liqCoast = false
+    private var liqCoastT = 0L
+    private var liqCoastK = 1f
 
     // Clone: goresan kuas menyalin isi layer dari titik sumber (offset tetap sejak goresan pertama).
     private var cloneOn = false
@@ -607,7 +620,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             undoStack.clear(); redoStack.clear()
             strokeActive = false; substitute = null
             fillOn = false; adjOn = false; xfOn = false
-            liqD = null; liqTexId = 0; cloneOn = false; cloneMarker = null
+            liqD = null; liqTexId = 0; liqA = null; liqB = null; cloneOn = false; cloneMarker = null
             pyr.fill(null); pyrTmp = null; adjFull = null; penMask = null; penStroke = null; penOn = false
             selTex = null; selOn = false; xfFloat = null; xfRest = null; xfSel = false
             // Jangan memuat di sini: thread antarmuka sedang menunggu frame pertama selesai.
@@ -648,6 +661,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         filters.clear()
         val renderer = G.glGetString(G.GL_RENDERER) ?: ""
         softGpu = renderer.contains("SwiftShader", true) || renderer.contains("llvmpipe", true)
+        liqFloatOk = (G.glGetString(G.GL_EXTENSIONS) ?: "").contains("GL_EXT_color_buffer_float")
+        pLiqDab = null
         Diag.log("GL: $renderer")
         // MSAA tampilan 3D dimatikan di GPU perangkat lunak (emulator) supaya tidak terlalu lambat.
         r3d = Renderer3D(allowMsaa = !softGpu)
@@ -5212,14 +5227,36 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     private fun liqInit() {
         liqFree()
+        liqAmt = 1f
+        liqDown = false
+        liqCoast = false
+        liqSeed = 0
+        liqInput.clear()
+        if (liqFloatOk) {
+            // GPU: kisi lebih rapat (tiap 2 px sampai ±16 MP) dan semua sapuan dihitung shader.
+            liqStep = if (W.toLong() * H <= 16_800_000L) 2 else 4
+            liqGW = W / liqStep + 2
+            liqGH = H / liqStep + 2
+            try {
+                if (pLiqDab == null) pLiqDab = Program(Shaders.RECT_VS, Shaders.LIQ_DAB_FS)
+                liqA = FieldTex(liqGW, liqGH)
+                liqB = FieldTex(liqGW, liqGH)
+                liqTexId = liqA!!.id
+                G.glBindFramebuffer(G.GL_FRAMEBUFFER, 0)
+                Diag.log("Liquify: GPU, kisi ${liqGW}×$liqGH (tiap $liqStep px)")
+                return
+            } catch (e: Throwable) {
+                Diag.log("Liquify GPU gagal, pakai CPU: ${e.message}")
+                liqA?.delete(); liqB?.delete()
+                liqA = null; liqB = null; liqTexId = 0
+                liqFloatOk = false
+                G.glBindFramebuffer(G.GL_FRAMEBUFFER, 0)
+            }
+        }
         liqStep = if (W.toLong() * H <= 4_200_000L) 2 else 4
         liqGW = W / liqStep + 2
         liqGH = H / liqStep + 2
         liqD = FloatArray(liqGW * liqGH * 2)
-        liqAmt = 1f
-        liqDown = false
-        liqSeed = 0
-        liqInput.clear()
         val a = IntArray(1)
         G.glGenTextures(1, a, 0)
         liqTexId = a[0]
@@ -5233,8 +5270,16 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     }
 
     private fun liqFree() {
-        if (liqTexId != 0 && glReady) G.glDeleteTextures(1, intArrayOf(liqTexId), 0)
+        val a = liqA
+        if (a != null) {
+            if (glReady) { a.delete(); liqB?.delete() }
+            liqA = null
+            liqB = null
+        } else if (liqTexId != 0 && glReady) {
+            G.glDeleteTextures(1, intArrayOf(liqTexId), 0)
+        }
         liqTexId = 0
+        liqCoast = false
         liqD = null
         liqUp = null
         liqTmp = FloatArray(0)
@@ -5243,9 +5288,17 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     /** Liquify: kembalikan semua ke bentuk asli. */
     fun liquifyReset() {
-        val dd = liqD ?: return
-        java.util.Arrays.fill(dd, 0f)
-        liqUpload(IRect(0, 0, liqGW, liqGH))
+        liqCoast = false
+        val a = liqA
+        if (a != null) {
+            a.clear()
+            liqB?.clear()
+            G.glBindFramebuffer(G.GL_FRAMEBUFFER, 0)
+        } else {
+            val dd = liqD ?: return
+            java.util.Arrays.fill(dd, 0f)
+            liqUpload(IRect(0, 0, liqGW, liqGH))
+        }
         liqRender(IRect(0, 0, W, H))
     }
 
@@ -5275,6 +5328,43 @@ class Engine(private val ctx: Context, private val listener: Listener) {
      * isi dari titik q, jadi pergeseran barunya = q + D(q) − p. [k] = kekuatan sapuan ini, (vx, vy) = gerak pena.
      */
     private fun liqDab(cx: Float, cy: Float, mode: Int, rad: Float, k: Float, vx: Float, vy: Float, distort: Float, box: IRect) {
+        if (liqA != null) gpuDab(cx, cy, mode, rad, k, vx, vy, distort, box) else cpuDab(cx, cy, mode, rad, k, vx, vy, distort, box)
+    }
+
+    /** Sapuan Liquify di GPU: hitung medan baru di kotak sapuan (baca A, tulis B), lalu salin kotak itu balik ke A. */
+    private fun gpuDab(cx: Float, cy: Float, mode: Int, rad: Float, k: Float, vx: Float, vy: Float, distort: Float, box: IRect) {
+        val a = liqA ?: return
+        val b = liqB ?: return
+        val prog = pLiqDab ?: return
+        val st = liqStep.toFloat()
+        val gx0 = max(0, floor((cx - rad) / st).toInt())
+        val gx1 = min(liqGW - 1, ceil((cx + rad) / st).toInt())
+        val gy0 = max(0, floor((cy - rad) / st).toInt())
+        val gy1 = min(liqGH - 1, ceil((cy + rad) / st).toInt())
+        if (gx1 < gx0 || gy1 < gy0) return
+        val r = IRect(gx0, gy0, gx1 + 1, gy1 + 1)
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, b.fb)
+        G.glViewport(0, 0, liqGW, liqGH)
+        G.glDisable(G.GL_BLEND)
+        prog.use()
+        prog.tex("uField", 0, a.id)
+        prog.f2("uGrid", liqGW.toFloat(), liqGH.toFloat())
+        prog.f("uStep", st)
+        prog.i("uMode", mode)
+        prog.f2("uC", cx, cy)
+        prog.f("uRad", rad)
+        prog.f("uK", k)
+        prog.f2("uV", vx, vy)
+        prog.f2("uN", -liqDirY, liqDirX)
+        prog.f("uDistort", distort)
+        prog.f("uCell", max(6f, rad * 0.22f))
+        prog.f("uSeed", liqSeed.toFloat())
+        drawRect(prog, r, liqGW, liqGH)
+        blit(b.fb, r.x0, r.y0, r.x1, r.y1, a.fb, r.x0, r.y0, r.x1, r.y1, false)
+        box.union(r)
+    }
+
+    private fun cpuDab(cx: Float, cy: Float, mode: Int, rad: Float, k: Float, vx: Float, vy: Float, distort: Float, box: IRect) {
         val dd = liqD ?: return
         val st = liqStep.toFloat()
         val gx0 = max(0, floor((cx - rad) / st).toInt())
@@ -5354,14 +5444,42 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         box.union(IRect(gx0, gy0, gx1 + 1, gy1 + 1))
     }
 
+    /**
+     * Masukan Liquify diproses tiap frame. Dorong mengikuti gerak pena (jaraknya). Mode lain (putar, cubit, kembangkan,
+     * kristal, tepi, pulihkan) bekerja menurut waktu: tiap frame, kekuatan sebesar waktu sejak frame sebelumnya
+     * disebar rata di sepanjang jalur pena frame itu — jadi tetap bekerja mulus saat pena ditahan diam, dan jejaknya
+     * tidak putus saat pena digerakkan cepat. Setelah pena diangkat, Momentum meneruskan sapuan sebentar dengan
+     * kecepatan terakhir yang makin melambat.
+     */
+    private var liqStatN = 0
+    private var liqStatSum = 0L
+    private var liqStatMax = 0L
+
     private fun liqDrain() {
-        if (liqD == null) { liqInput.clear(); return }
+        if (liqD == null && liqA == null) { liqInput.clear(); return }
+        val t0 = System.nanoTime()
+        val wasDown = liqDown || liqCoast
+        liqDrainInner()
+        if (wasDown || liqDown) {
+            val dt = System.nanoTime() - t0
+            liqStatN++; liqStatSum += dt; liqStatMax = max(liqStatMax, dt)
+            if (!liqDown && !liqCoast && liqStatN > 0) {
+                Diag.log("Liquify: ${liqStatN} frame, rata-rata ${"%.1f".format(liqStatSum / 1e6 / liqStatN)} ms, maks ${"%.1f".format(liqStatMax / 1e6)} ms (${if (liqA != null) "GPU" else "CPU"})")
+                liqStatN = 0; liqStatSum = 0L; liqStatMax = 0L
+            }
+        }
+    }
+
+    private fun liqDrainInner() {
         val box = IRect()
         val par = liqParams
         val mode = par[0].toInt()
         val rad = max(2f, par[1] / 2f)
         val strength = par[2].coerceIn(0f, 1f)
         val distort = par[3].coerceIn(0f, 1f)
+        val momentum = par.getOrElse(4) { 0f }.coerceIn(0f, 1f)
+        val timed = mode != Adj.LQ_PUSH
+        val now = android.os.SystemClock.uptimeMillis()
         while (true) {
             val e = liqInput.poll() ?: break
             val x = e[0]
@@ -5370,49 +5488,164 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             val phase = e[3].toInt()
             val t = e[4].toLong()
             if (phase == 0 || !liqDown) {
-                liqDown = true
-                liqX = x; liqY = y; liqT = t
+                liqDown = phase != 2
+                liqCoast = false
+                liqX = x; liqY = y; liqT = t; liqP = pr
+                liqAx = x; liqAy = y; liqPtsN = 0
+                liqApplyT = now
+                liqVX = 0f; liqVY = 0f
+                liqMoveT = t
                 liqSeed++
-                if (phase == 2) liqDown = false
                 continue
             }
             val vx = x - liqX
             val vy = y - liqY
             val dist = hypot(vx, vy)
-            if (dist > 0.5f) { liqDirX = vx / dist; liqDirY = vy / dist }
-            val dt = ((t - liqT).coerceIn(0L, 60L)) / 1000f
-            if (mode == Adj.LQ_PUSH) {
-                if (dist > 0.01f) {
-                    val n = max(1, ceil(dist / max(2f, rad * 0.1f)).toInt())
-                    val k = (0.15f + 0.85f * strength) * pr
-                    for (i in 1..n) {
-                        val f = i / n.toFloat()
-                        liqDab(liqX + vx * f, liqY + vy * f, mode, rad, k, vx / n, vy / n, distort, box)
-                    }
-                }
+            if (dist > 0.5f) {
+                liqDirX = vx / dist; liqDirY = vy / dist
+                // Kecepatan pena (px/ms, dihaluskan) untuk Momentum.
+                val dtv = max(4L, t - liqT).toFloat()
+                liqVX = liqVX * 0.5f + vx / dtv * 0.5f
+                liqVY = liqVY * 0.5f + vy / dtv * 0.5f
+                liqMoveT = t
+            }
+            if (timed) {
+                liqPathAdd(x, y)
             } else {
-                val rate = when (mode) {
-                    Adj.LQ_TWIRL_R, Adj.LQ_TWIRL_L -> 2.2f
-                    Adj.LQ_PINCH, Adj.LQ_EXPAND -> 0.9f
-                    Adj.LQ_CRYSTAL -> 1.2f
-                    Adj.LQ_EDGE -> 1.4f
-                    else -> 2.5f
-                }
-                // Gerakan cepat dipecah supaya jejaknya tidak putus-putus.
-                val n = max(1, ceil(dist / max(2f, rad * 0.25f)).toInt())
-                val k = rate * dt * (0.15f + 0.85f * strength) * pr / n
-                if (k > 0f) for (i in 1..n) {
-                    val f = i / n.toFloat()
-                    liqDab(liqX + vx * f, liqY + vy * f, mode, rad, k, 0f, 0f, distort, box)
+                liqPushAlong(vx, vy, dist, rad, (0.15f + 0.85f * strength) * pr, distort, box)
+            }
+            liqX = x; liqY = y; liqP = pr
+            liqT = max(liqT, t)
+            if (phase == 2) {
+                if (timed) liqTimedFlush(now, 1f, mode, rad, strength, distort, box)
+                liqDown = false
+                // Pena sempat diam sebelum diangkat: tidak ada momentum.
+                if (t - liqMoveT > 60) { liqVX = 0f; liqVY = 0f }
+                if (momentum > 0.01f && hypot(liqVX, liqVY) > 0.03f) {
+                    liqCoast = true
+                    liqCoastT = now
+                    liqCoastK = 1f
                 }
             }
-            liqX = x; liqY = y; liqT = t
-            if (phase == 2) liqDown = false
+        }
+        if (liqDown && timed) {
+            liqTimedFlush(now, 1f, mode, rad, strength, distort, box)
+            // Pena ditahan: efek berjalan terus tiap frame.
+            requestRender()
+        } else if (liqCoast && !liqDown) {
+            liqCoastStep(now, mode, rad, strength, distort, momentum, box)
         }
         if (box.isEmpty) return
-        liqUpload(box)
+        if (liqA == null) liqUpload(box)
         val st = liqStep
         liqRender(IRect((box.x0 - 1) * st, (box.y0 - 1) * st, (box.x1 + 1) * st, (box.y1 + 1) * st).clampTo(W, H))
+    }
+
+    private fun liqRate(mode: Int) = when (mode) {
+        Adj.LQ_TWIRL_R, Adj.LQ_TWIRL_L -> 2.2f
+        Adj.LQ_PINCH, Adj.LQ_EXPAND -> 0.9f
+        Adj.LQ_CRYSTAL -> 1.2f
+        Adj.LQ_EDGE -> 1.4f
+        else -> 2.5f
+    }
+
+    // Jalur pena sejak penerapan terakhir (mode berbasis waktu): mulai di (liqAx, liqAy), titik-titik di liqPts.
+    private var liqPts = FloatArray(64)
+    private var liqPtsN = 0
+    private var liqAx = 0f
+    private var liqAy = 0f
+    private var liqApplyT = 0L
+
+    private fun liqPathAdd(x: Float, y: Float) {
+        if (liqPtsN * 2 + 2 > liqPts.size) liqPts = liqPts.copyOf(liqPts.size * 2)
+        liqPts[liqPtsN * 2] = x
+        liqPts[liqPtsN * 2 + 1] = y
+        liqPtsN++
+    }
+
+    /**
+     * Terapkan mode berbasis waktu: kekuatan untuk waktu sejak penerapan terakhir (dikali [scale]) disebar rata di
+     * sepanjang jalur pena sejak itu; pena diam = satu tapak di tempatnya.
+     */
+    private fun liqTimedFlush(now: Long, scale: Float, mode: Int, rad: Float, strength: Float, distort: Float, box: IRect) {
+        val dt = (now - liqApplyT).coerceIn(0L, 60L) / 1000f
+        liqApplyT = now
+        val k = liqRate(mode) * dt * (0.15f + 0.85f * strength) * liqP * scale
+        var len = 0f
+        var px = liqAx
+        var py = liqAy
+        for (i in 0 until liqPtsN) {
+            len += hypot(liqPts[i * 2] - px, liqPts[i * 2 + 1] - py)
+            px = liqPts[i * 2]; py = liqPts[i * 2 + 1]
+        }
+        if (k > 0f) {
+            if (len < 0.5f) {
+                liqDab(px, py, mode, rad, k, 0f, 0f, distort, box)
+            } else {
+                // Tapak berjarak sama di sepanjang jalur.
+                val n = max(1, ceil(len / max(2f, rad * 0.25f)).toInt())
+                val kk = k / n
+                val sp = len / n
+                var ax = liqAx
+                var ay = liqAy
+                var next = sp
+                var walked = 0f
+                var placed = 0
+                for (i in 0 until liqPtsN) {
+                    val bx = liqPts[i * 2]
+                    val by = liqPts[i * 2 + 1]
+                    val sl = hypot(bx - ax, by - ay)
+                    if (sl > 0f) {
+                        liqDirX = (bx - ax) / sl; liqDirY = (by - ay) / sl
+                        while (placed < n && next <= walked + sl + 1e-3f) {
+                            val f = ((next - walked) / sl).coerceIn(0f, 1f)
+                            liqDab(ax + (bx - ax) * f, ay + (by - ay) * f, mode, rad, kk, 0f, 0f, distort, box)
+                            placed++
+                            next += sp
+                        }
+                    }
+                    walked += sl
+                    ax = bx; ay = by
+                }
+            }
+        }
+        liqAx = px; liqAy = py
+        liqPtsN = 0
+    }
+
+    /** Dorong sepanjang (vx, vy) dari posisi terakhir, dipecah menjadi tapak-tapak rapat. */
+    private fun liqPushAlong(vx: Float, vy: Float, dist: Float, rad: Float, k: Float, distort: Float, box: IRect) {
+        if (dist <= 0.01f) return
+        val n = max(1, ceil(dist / max(2f, rad * 0.1f)).toInt())
+        for (i in 1..n) {
+            val f = i / n.toFloat()
+            liqDab(liqX + vx * f, liqY + vy * f, Adj.LQ_PUSH, rad, k, vx / n, vy / n, distort, box)
+        }
+    }
+
+    /** Momentum: lanjutkan sapuan dengan kecepatan terakhir yang meluruh (makin besar Momentum, makin lama). */
+    private fun liqCoastStep(now: Long, mode: Int, rad: Float, strength: Float, distort: Float, momentum: Float, box: IRect) {
+        val dtMs = (now - liqCoastT).coerceIn(1L, 50L).toFloat()
+        liqCoastT = now
+        val tau = 40f + 700f * momentum * momentum
+        val decay = kotlin.math.exp(-dtMs / tau)
+        val sx = liqVX * dtMs
+        val sy = liqVY * dtMs
+        if (mode == Adj.LQ_PUSH) {
+            liqPushAlong(sx, sy, hypot(sx, sy), rad, (0.15f + 0.85f * strength) * liqP, distort, box)
+            liqX += sx; liqY += sy
+        } else {
+            liqX += sx; liqY += sy
+            liqPathAdd(liqX, liqY)
+            liqApplyT = now - dtMs.toLong()
+            liqTimedFlush(now, liqCoastK, mode, rad, strength, distort, box)
+        }
+        liqVX *= decay
+        liqVY *= decay
+        liqCoastK *= decay
+        val done = if (mode == Adj.LQ_PUSH) hypot(liqVX, liqVY) < 0.01f else liqCoastK < 0.04f
+        if (done || liqX < -rad || liqY < -rad || liqX > W + rad || liqY > H + rad) liqCoast = false
+        if (liqCoast) requestRender()
     }
 
     private fun liqUpload(b: IRect) {

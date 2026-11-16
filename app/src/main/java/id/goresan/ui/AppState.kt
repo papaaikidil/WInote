@@ -2180,7 +2180,7 @@ class AppState(val app: Context) : Engine.Listener {
         Adj.HALFTONE -> floatArrayOf(0f)
         Adj.SHARPEN -> floatArrayOf(0f, 3.5f)
         Adj.CHROMA -> floatArrayOf(0f, 0.5f, 0f)
-        Adj.LIQUIFY -> floatArrayOf((max(docW, docH) / 10f).coerceIn(20f, 800f), 0.5f, 0.5f, 1f)
+        Adj.LIQUIFY -> floatArrayOf((max(docW, docH) / 10f).coerceIn(20f, 800f), 0.5f, 0.5f, 1f, 0.3f)
         else -> FloatArray(3)
     }
 
@@ -2275,7 +2275,7 @@ class AppState(val app: Context) : Engine.Listener {
     fun penClear() = gl { it.penClear() }
 
     fun liquifyParamsChanged() {
-        canvasView?.engine?.liqParams = floatArrayOf(adjMode.toFloat(), av(0), av(1), av(2))
+        canvasView?.engine?.liqParams = floatArrayOf(adjMode.toFloat(), av(0), av(1), av(2), av(4))
     }
 
     fun liquifyReset() = gl { it.liquifyReset() }

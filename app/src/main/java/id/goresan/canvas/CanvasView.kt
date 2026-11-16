@@ -758,15 +758,6 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
     private var liqLastX = 0f
     private var liqLastY = 0f
     private var liqLastP = 1f
-    private val liqRepeat = object : Runnable {
-        override fun run() {
-            if (mode != Mode.LIQ || liqPen) return
-            // Pena diam: putar/cubit/kembangkan/kristal/pulihkan terus bekerja selama ditahan.
-            engine.liqInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 1f, (SystemClock.uptimeMillis() - liqBase).toFloat()))
-            requestRender()
-            postDelayed(this, 30)
-        }
-    }
 
     private fun beginLiq(e: MotionEvent, i: Int, finger: Boolean) {
         mode = Mode.LIQ
@@ -777,8 +768,6 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         liqErase = state.adjPenErase || e.getToolType(i) == MotionEvent.TOOL_TYPE_ERASER
         if (!finger) requestUnbufferedDispatch(e)
         liqPush(e, i, -1, 0)
-        removeCallbacks(liqRepeat)
-        if (!liqPen) postDelayed(liqRepeat, 30)
         requestRender()
     }
 
@@ -796,7 +785,6 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
     }
 
     private fun endLiq(e: MotionEvent, i: Int) {
-        removeCallbacks(liqRepeat)
         if (i >= 0) liqPush(e, i, -1, 2)
         else if (liqPen) engine.penInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 2f, if (liqErase) 1f else 0f))
         else engine.liqInput.add(floatArrayOf(liqLastX, liqLastY, liqLastP, 2f, (SystemClock.uptimeMillis() - liqBase).toFloat()))

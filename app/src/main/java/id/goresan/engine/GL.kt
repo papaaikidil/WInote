@@ -95,6 +95,54 @@ class Tex(val w: Int, val h: Int, val single: Boolean = false, repeat: Boolean =
     }
 }
 
+/** Tekstur float dua kanal (RG32F) dengan framebuffer: medan pergeseran Liquify yang dihitung di GPU. */
+class FieldTex(val w: Int, val h: Int) {
+    val id: Int
+    val fb: Int
+
+    init {
+        val a = IntArray(1)
+        G.glGenTextures(1, a, 0)
+        id = a[0]
+        G.glBindTexture(G.GL_TEXTURE_2D, id)
+        G.glTexImage2D(G.GL_TEXTURE_2D, 0, G.GL_RG32F, w, h, 0, G.GL_RG, G.GL_FLOAT, null)
+        if (G.glGetError() == G.GL_OUT_OF_MEMORY) {
+            G.glDeleteTextures(1, a, 0)
+            throw OutOfMemoryError("Memori grafis penuh")
+        }
+        G.glTexParameteri(G.GL_TEXTURE_2D, G.GL_TEXTURE_MIN_FILTER, G.GL_NEAREST)
+        G.glTexParameteri(G.GL_TEXTURE_2D, G.GL_TEXTURE_MAG_FILTER, G.GL_NEAREST)
+        G.glTexParameteri(G.GL_TEXTURE_2D, G.GL_TEXTURE_WRAP_S, G.GL_CLAMP_TO_EDGE)
+        G.glTexParameteri(G.GL_TEXTURE_2D, G.GL_TEXTURE_WRAP_T, G.GL_CLAMP_TO_EDGE)
+        G.glGenFramebuffers(1, a, 0)
+        fb = a[0]
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, fb)
+        G.glFramebufferTexture2D(G.GL_FRAMEBUFFER, G.GL_COLOR_ATTACHMENT0, G.GL_TEXTURE_2D, id, 0)
+        val st = G.glCheckFramebufferStatus(G.GL_FRAMEBUFFER)
+        if (st != G.GL_FRAMEBUFFER_COMPLETE) {
+            G.glBindFramebuffer(G.GL_FRAMEBUFFER, 0)
+            G.glDeleteFramebuffers(1, intArrayOf(fb), 0)
+            G.glDeleteTextures(1, intArrayOf(id), 0)
+            throw IllegalStateException("Framebuffer float tidak didukung ($st)")
+        }
+        clear()
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, 0)
+    }
+
+    fun clear() {
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, fb)
+        G.glViewport(0, 0, w, h)
+        G.glDisable(G.GL_SCISSOR_TEST)
+        G.glClearColor(0f, 0f, 0f, 0f)
+        G.glClear(G.GL_COLOR_BUFFER_BIT)
+    }
+
+    fun delete() {
+        G.glDeleteTextures(1, intArrayOf(id), 0)
+        G.glDeleteFramebuffers(1, intArrayOf(fb), 0)
+    }
+}
+
 class Program(vs: String, fs: String) {
     val id: Int
     private val locs = HashMap<String, Int>()
