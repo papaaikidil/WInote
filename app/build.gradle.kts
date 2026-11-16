@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -9,7 +11,7 @@ val buildNumber = (System.getenv("WINOTE_BUILD") ?: System.getenv("GITHUB_RUN_NU
 
 // Kunci tanda tangan TIDAK disimpan terbuka di repository ini. Alur rakit membuka app/kunci.enc dengan rahasia
 // KUNCI_RAKIT ke folder app/kunci/ (diabaikan git). Tanpa kunci itu, rakitan memakai kunci debug biasa.
-val kunciProps = java.util.Properties().apply {
+val kunciProps = Properties().apply {
     val f = file("kunci/kunci.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
