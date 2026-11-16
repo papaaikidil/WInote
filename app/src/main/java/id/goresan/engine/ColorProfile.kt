@@ -145,7 +145,8 @@ object ColorProfile {
             val counts = IntArray(h)
             val row = ByteArray(w * 4)
             val rowIn = ByteArray(w * 4)
-            val packed = ByteArray(w * 4 + w * 4 / 128 + 8)
+            // PackBits di sini bisa memanjangkan data sampai ±4/3 kali (literal 1 byte + ulangan 2 byte).
+            val packed = ByteArray(w * 8 + 16)
             val cache = HashMap<Int, Int>(4096)
             val tmp = FloatArray(4)
             rgba.position(0)

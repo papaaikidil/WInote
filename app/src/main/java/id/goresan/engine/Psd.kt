@@ -173,7 +173,7 @@ object Psd {
             f.write(ByteArray(3 * h * 2))
             val rowLens = IntArray(3 * h)
             val row = ByteArray(w)
-            val packed = ByteArray(w + w / 128 + 8)
+            val packed = ByteArray(w * 2 + 16)
             for (c in 0 until 3) {
                 for (y in 0 until h) {
                     val o = y * w * 4
@@ -220,7 +220,7 @@ object Psd {
         f.write(ByteArray(h * 2))
         val lens = IntArray(h)
         val row = ByteArray(w)
-        val packed = ByteArray(w + w / 128 + 8)
+        val packed = ByteArray(w * 2 + 16)
         for (y in 0 until h) {
             System.arraycopy(plane, y * w, row, 0, w)
             val n = packBits(row, w, packed)

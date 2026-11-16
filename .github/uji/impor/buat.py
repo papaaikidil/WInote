@@ -216,7 +216,7 @@ root = add({
 arch = {"$version": 100000, "$archiver": "NSKeyedArchiver", "$top": {"root": root}, "$objects": objs}
 import zipfile
 
-pp = os.path.join(out, "uji.procreate")
+pp = os.path.join(out, "uji-procreate.procreate")
 with zipfile.ZipFile(pp, "w", zipfile.ZIP_STORED) as z:
     z.writestr("Document.archive", plistlib.dumps(arch, fmt=plistlib.FMT_BINARY))
     for n, d in files.items():
