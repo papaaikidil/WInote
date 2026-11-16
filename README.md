@@ -986,3 +986,19 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   dikenali di tablet dengan ML Kit (tanpa internet, gambar kamera tidak disimpan), cat menempel dan ikut bergerak.
   *Tekstur 2D* membuka tekstur wajahnya; layer *Peta wajah* (tersembunyi) jadi panduan letak mata, hidung, dan mulut.
   *Foto* menyimpan gambar kamera beserta catnya ke Pictures/WInote.
+
+## Tambahan 0.1.114: Mode Pena penyesuaian, efek yang lebih kuat dan halus
+
+- **Mode Pena** di semua penyesuaian (kecuali Liquify dan Klon): pilih *Pena* di bar penyesuaian, atur efeknya, lalu
+  sapukan pena/jari hanya di bagian yang ingin diberi efek (seperti mode Pencil di Procreate). Ukuran dan opasitas
+  sapuan memakai penggeser samping; tekanan pena mengatur kekuatan. *Hapus efek* (atau ujung penghapus pena)
+  menghapus efek dari bagian tertentu, *Hapus semua* mengosongkan sapuan. Urungkan/ulangi (tombol samping atau ketuk
+  dua/tiga jari) bekerja per sapuan selama penyesuaian masih terbuka. Penggeser efek tetap bisa diubah setelah
+  menyapu. *Seluruh layer* kembali ke efek penuh.
+- **Blur Gaussian bertingkat:** radius sampai sepertiga sisi kanvas, dan berapa pun radiusnya hasilnya membaur
+  seperti gradien halus (tidak lagi berbayang/bergaris atau masih kontras di nilai maksimum). Penggeser memakai skala
+  kuadrat: separuh kiri untuk radius kecil yang teliti, ujung kanan untuk blur yang sangat kuat.
+- **Efek lain lebih kuat:** Blur Gerak sampai sepertiga sisi kanvas dan tetap rapat tanpa garis bayangan; Blur
+  Perspektif sampai 200%; Pertajam sampai 200% dengan penggeser *Radius*; Bloom lebih terang dengan ukuran sampai
+  seperlima kanvas; Noise lebih kontras; Glitch, Halftone, dan Aberasi Kromatik dengan rentang lebih besar.
+  Blur kini juga menghormati *Kunci alfa* layer.
