@@ -1016,3 +1016,11 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   makin melambat. 0% = berhenti saat pena diangkat.
 - Putar, Cubit/Kembangkan, Kristal, dan Tepi lebih kuat (Tepi cocok untuk menipiskan garis: sapukan di sepanjang
   garisnya). Penggeser Ukuran memakai skala kuadrat, dan bar Liquify dibuat dua kolom supaya lebih sedikit menutupi kanvas.
+
+## Tambahan 0.1.116: Mode Pena penyesuaian lebih responsif
+
+- Langkah urungkan sapuan disalin langsung di GPU (dulu dibaca ke prosesor tiap selesai menyapu, sehingga ada jeda
+  sesaat setelah pena diangkat, makin terasa untuk sapuan lebar).
+- Tekanan pena ringan sudah memberi efek penuh; hanya sentuhan sangat ringan yang memberi efek sebagian. Tepi sapuan
+  sedikit lebih tegas, jadi bagian yang kena efek sesuai lingkaran pena.
+- Saat memilih *Pena* dan efeknya masih 0, kekuatan sedang dipasang otomatis supaya sapuan pertama langsung terlihat.
