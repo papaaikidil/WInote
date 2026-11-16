@@ -364,7 +364,7 @@ private fun ClipMenu(state: AppState, modifier: Modifier) {
                 ClipItem(Icons.Filled.ContentCopy, "Salin") { state.clipCopy() }
                 ClipItem(Icons.Filled.CopyAll, "Salin semua") { state.clipCopy(merged = true) }
                 ClipItem(Icons.Filled.ControlPointDuplicate, "Duplikat") { state.clipCopy(thenPaste = true) }
-                ClipItem(Icons.Filled.OpenWith, "Potong & tempel") { state.clipCopy(cut = true, thenPaste = true) }
+                ClipItem(Icons.Filled.OpenWith, "Pindahkan") { state.clipCopy(cut = true, thenPaste = true) }
                 ClipItem(Icons.Filled.ContentPaste, "Tempel") { state.clipPaste() }
             }
         }
@@ -379,7 +379,7 @@ private fun ClipItem(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
     ) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
         Spacer(Modifier.height(4.dp))
-        Text(label, color = Color.White, fontSize = 12.sp, maxLines = 1)
+        Text(label, color = Color.White, fontSize = 12.sp, maxLines = 2, lineHeight = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 

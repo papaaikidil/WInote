@@ -107,7 +107,7 @@ object Psd {
                 if (uniLen % 2 != 0) uniLen++
                 // 'lsct' = penanda folder grup (12 byte isi untuk folder, 4 byte untuk penutup)
                 val lsctLen = when (l.section) { 1, 2 -> 12; 3 -> 4; else -> 0 }
-                val extra = 4 + 4 + nameLen + 12 + uniLen + (if (lsctLen > 0) 12 + lsctLen else 0)
+                val extra = 4 + 4 + nameLen + 12 + uniLen + 16 + (if (lsctLen > 0) 12 + lsctLen else 0)
                 f.writeInt(extra)
                 f.writeInt(0) // masker layer
                 f.writeInt(0) // rentang campur
@@ -120,6 +120,11 @@ object Psd {
                 f.writeInt(uni.length)
                 for (ch in uni) f.writeShort(ch.code)
                 if (4 + uni.length * 2 < uniLen) f.writeByte(0)
+                // 'lspf' = kunci layer (bit 0 transparansi), selalu ditulis seperti Photoshop
+                f.writeBytes("8BIM")
+                f.writeBytes("lspf")
+                f.writeInt(4)
+                f.writeInt(if (l.alphaLock && l.section == 0) 1 else 0)
                 if (lsctLen > 0) {
                     f.writeBytes("8BIM")
                     f.writeBytes("lsct")

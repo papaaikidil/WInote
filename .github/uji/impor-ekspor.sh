@@ -207,11 +207,15 @@ aksi "Ekspor tiap layer: PDF" || true
 sleep 10; shot layer-pdf
 aksi "Ekspor animasi GIF" || true
 sleep 15; shot gif
+aksi "Ekspor animasi MP4" || true
+sleep 30; shot mp4
 depan
 adb shell ls -lR /sdcard/Download/WInote /sdcard/Pictures/WInote /sdcard/Movies/WInote > $OUT/ekspor.txt 2>&1
 mkdir -p $OUT/ekspor
 adb pull /sdcard/Download/WInote $OUT/ekspor/ > /dev/null 2>&1
 adb pull /sdcard/Pictures/WInote $OUT/ekspor/ > /dev/null 2>&1
+mkdir -p $OUT/ekspor/film
+adb pull /sdcard/Movies/WInote $OUT/ekspor/film/ > /dev/null 2>&1
 python3 - "$OUT/ekspor" <<'PY' >> $OUT/ekspor.txt 2>&1
 import glob, sys
 from PIL import Image
@@ -222,6 +226,9 @@ for p in sorted(glob.glob(sys.argv[1] + "/**/*", recursive=True)):
             print("BACA", p, im.format, im.mode, im.size, getattr(im, "n_frames", 1), im.info.get("dpi"))
         except Exception as e:
             print("GAGAL BACA", p, e)
+    if p.lower().endswith(".mp4"):
+        b = open(p, "rb").read()
+        print("MP4", p, len(b), "ftyp" if b[4:8] == b"ftyp" else "BUKAN-MP4", "moov" if b"moov" in b else "tanpa-moov")
 PY
 
 # 5. Salin & tempel lewat panel Aksi, lalu menu geser tiga jari.

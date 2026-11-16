@@ -79,6 +79,8 @@ object PsdReader {
         var opacity = 255
         var clip = 0
         var flags = 0
+        /** Isi blok 'lspf' (kunci layer Photoshop), -1 bila tidak ada. */
+        var lock = -1
         var name = ""
         var section = 0
         var fill = 255
@@ -196,6 +198,7 @@ object PsdReader {
                     }
                     "lsct", "lsdk" -> rec.section = r.u32().toInt()
                     "iOpa" -> rec.fill = r.u8()
+                    "lspf" -> rec.lock = r.u32().toInt()
                     else -> if (k in adjustKeys) rec.adjust = true
                 }
                 r.seek(dEnd)
@@ -271,7 +274,10 @@ object PsdReader {
                         blend = keys.indexOf(rec.key).coerceAtLeast(0),
                         visible = rec.flags and 2 == 0,
                         clip = rec.clip != 0,
-                        alphaLock = rec.flags and 1 != 0,
+                        // Bit 0 'flags' juga berarti kunci transparansi, tetapi sebagian penulis (mis. ImageMagick)
+                        // selalu menyalakannya; yang dipercaya hanya blok 'lspf' yang selalu ditulis Photoshop.
+                        alphaLock = rec.lock != -1 && (rec.lock and 1 != 0 || rec.lock < 0),
+                        locked = rec.lock != -1 && (rec.lock and 2 != 0 || rec.lock < 0),
                         group = topGroup,
                     )
                     sink.layer(info, px)
