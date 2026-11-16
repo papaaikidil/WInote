@@ -1,0 +1,22 @@
+09:01:35.137  === Aplikasi dibuka · WInote Gambar 0.1.2 (2) · Google sdk_gphone64_x86_64 · Android 13
+09:01:35.204  Aktivitas: lanjut
+09:01:36.094  Buka karya kmwj1b0446a8a
+09:01:36.367  Permukaan kanvas dibuat
+09:01:36.430  Permukaan kanvas: sRGB
+09:01:36.442  GL: konteks dibuat
+09:01:37.484  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+09:01:37.589  GL: siap (1145 ms)
+09:01:37.591  GL: ukuran permukaan 2560x1800
+09:01:37.625  Karya dibuka 1024x1024, 2 layer, batas 120 layer (33 ms)
+09:01:39.326  Frame lambat: 1734 ms
+09:01:43.324  Face Paint: kamera depan siap
+09:02:06.584  Sistem minta hemat memori (level 5)
+09:02:06.995  Sistem minta hemat memori (level 10)
+09:02:07.298  Sistem minta hemat memori (level 15)
+09:02:08.231  Sistem minta hemat memori (level 10)
+09:02:10.804  Sistem minta hemat memori (level 15)
+09:02:16.233  Sistem minta hemat memori (level 5)
+09:02:47.572  Frame lambat: 275 ms
+09:02:50.630  Frame lambat: 172 ms
+09:02:58.632  Simpan: 1 layer dibaca dari GPU (140 ms)
+09:02:58.635  Frame lambat: 143 ms

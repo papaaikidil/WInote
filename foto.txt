@@ -1,0 +1,2 @@
+total 72
+-rwxrwx--- 1 u0_a159 media_rw 68660 2026-11-16 09:02 Face Paint-wajah-20261116-090225.png

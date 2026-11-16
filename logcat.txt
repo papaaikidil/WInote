@@ -1,0 +1,28 @@
+11-16 09:02:43.196  7405  7405 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-16 09:02:44.731  5783  7358 I ChimeraConfigurator: Detected pending changes for urgent request: [vision.ocr]. Pending module sets: container:2318189190800+mlkit.ocr.common,tflite_dynamite:2640104055100800+tflite_dynamite,vision_ocr:2316024025100000+vision.ocr
+11-16 09:02:44.759  5783  7358 I GmsDebugLogger: [30] [VisionOcrDynamite.integ:231602402100000],[TfliteDynamiteDynamite.integ:264010405100800],[MlkitOcrCommon.optional:231818100800]
+11-16 09:02:44.784  5783  7115 W PrereqChecker: No rear-facing camera detected.
+11-16 09:02:44.914  5783  7361 I ChimeraConfigurator: Detected pending changes for urgent request: [vision.ocr]. Pending module sets: container:2318189190800+mlkit.ocr.common,tflite_dynamite:2640104055100800+tflite_dynamite,vision_ocr:2316024025100000+vision.ocr
+11-16 09:02:44.928  5783  7361 I GmsDebugLogger: [30] [VisionOcrDynamite.integ:231602402100000],[TfliteDynamiteDynamite.integ:264010405100800],[MlkitOcrCommon.optional:231818100800]
+11-16 09:02:45.099  5783  7118 I ChimeraConfigurator: Detected pending changes for urgent request: [vision.ocr]. Pending module sets: container:2318189190800+mlkit.ocr.common,tflite_dynamite:2640104055100800+tflite_dynamite,vision_ocr:2316024025100000+vision.ocr
+11-16 09:02:45.106  5783  7118 I GmsDebugLogger: [30] [VisionOcrDynamite.integ:231602402100000],[TfliteDynamiteDynamite.integ:264010405100800],[MlkitOcrCommon.optional:231818100800]
+11-16 09:02:58.315  7636  7636 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 09:02:58.319  7636  7636 I AndroidRuntime: Using default boot image
+11-16 09:02:58.319  7636  7636 I AndroidRuntime: Leaving lock profiling enabled
+11-16 09:02:58.414  7636  7636 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 09:02:58.601  6178  6190 I id.hananote.app: Background concurrent copying GC freed 16549(983KB) AllocSpace objects, 26(12MB) LOS objects, 49% free, 16MB/33MB, paused 28us,12us total 108.450ms
+11-16 09:02:58.603   438  3929 D Camera2ClientBase: Camera 1: start to disconnect
+11-16 09:02:58.604   438  3929 D Camera2ClientBase: Camera 1: serializationLock acquired
+11-16 09:02:58.604   438  3929 D Camera2ClientBase: Camera 1: Shutting down
+11-16 09:02:58.604   438  3929 I Camera3-Device: disconnectImpl: E
+11-16 09:02:58.604   438  3929 I Camera2ClientBase: Closed Camera 1. Client was: id.hananote.app (PID 6178, UID 10174)
+11-16 09:02:58.604   438  3929 I Camera3-Device: disconnectImpl: E
+11-16 09:02:58.604   438  3929 I Camera3DeviceInjectionMethods: injectionDisconnectImpl: Injection camera disconnect
+11-16 09:02:59.532  7636  7636 D AndroidRuntime: Shutting down VM
+11-16 09:02:59.801  5783  7629 I ChimeraConfigurator: Detected pending changes for urgent request: [vision.ocr]. Pending module sets: container:2318189190800+mlkit.ocr.common,tflite_dynamite:2640104055100800+tflite_dynamite,vision_ocr:2316024025100000+vision.ocr
+11-16 09:02:59.808  5783  7629 I GmsDebugLogger: [30] [VisionOcrDynamite.integ:231602402100000],[TfliteDynamiteDynamite.integ:264010405100800],[MlkitOcrCommon.optional:231818100800]
+11-16 09:03:03.891  7690  7690 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 09:03:03.895  7690  7690 I AndroidRuntime: Using default boot image
+11-16 09:03:03.895  7690  7690 I AndroidRuntime: Leaving lock profiling enabled
+11-16 09:03:03.998  7690  7690 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 09:03:05.072  7690  7690 D AndroidRuntime: Shutting down VM
