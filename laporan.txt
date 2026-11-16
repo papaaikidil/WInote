@@ -1,0 +1,53 @@
+11:12:18.101  === Aplikasi dibuka · WInote Gambar 0.1.6 (6) · Google sdk_gphone64_x86_64 · Android 13
+11:12:18.167  Aktivitas: lanjut
+11:12:18.927  Sistem minta hemat memori (level 5)
+11:12:18.933  Buka karya kmwj5z3sef1d4
+11:12:19.256  Permukaan kanvas dibuat
+11:12:19.374  Permukaan kanvas: sRGB
+11:12:19.380  GL: konteks dibuat
+11:12:20.532  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+11:12:20.797  GL: siap (1417 ms)
+11:12:20.798  GL: ukuran permukaan 2560x1800
+11:12:20.847  Karya dibuka 1600x1200, 1 layer, batas 110 layer (49 ms)
+11:12:23.117  Frame lambat: 2319 ms
+11:12:36.960  Sistem minta hemat memori (level 5)
+11:12:59.383  Frame lambat: 284 ms
+11:13:02.603  Frame lambat: 214 ms
+11:13:03.102  Frame lambat: 130 ms
+11:13:07.347  ColorDrop di layar (563, 1260) → kanvas (275, 840)
+11:13:07.511  Frame lambat: 158 ms
+11:13:36.358  Frame lambat: 109 ms
+11:13:38.031  Frame lambat: 103 ms
+11:13:39.684  Frame lambat: 99 ms
+11:13:45.254  Simpan: 1 layer dibaca dari GPU (14 ms)
+11:14:04.465  Frame lambat: 163 ms
+11:14:08.332  Simpan: 1 layer dibaca dari GPU (23 ms)
+11:14:19.216  Frame lambat: 130 ms
+11:15:17.303  Frame lambat: 320 ms
+11:15:52.820  Frame lambat: 176 ms
+11:16:27.337  Frame lambat: 364 ms
+11:17:16.885  Pena: mode Pena untuk penyesuaian 1
+11:17:17.050  Frame lambat: 176 ms
+11:17:30.709  Pena: sapuan [8,617 - 1099,852], ukuran 233 px
+11:17:30.720  Pena: 10 frame, rata-rata 1.9 ms, maks 15.7 ms
+11:17:35.090  Pena: sapuan [8,854 - 1099,1090], ukuran 233 px
+11:17:35.101  Pena: 11 frame, rata-rata 3.8 ms, maks 39.0 ms
+11:17:43.699  Pena: sapuan [308,525 - 543,1188] (hapus efek), ukuran 233 px
+11:17:43.701  Pena: 11 frame, rata-rata 1.1 ms, maks 10.0 ms
+11:18:06.378  Pena: mode Pena untuk penyesuaian 1
+11:18:10.853  Pena: sapuan [495,722 - 1568,958], ukuran 233 px
+11:18:10.863  Pena: 12 frame, rata-rata 1.2 ms, maks 12.4 ms
+11:18:16.931  Frame lambat: 544 ms
+11:18:20.434  Simpan: 1 layer dibaca dari GPU (22 ms)
+11:18:23.608  Frame lambat: 457 ms
+11:18:27.200  Simpan: 1 layer dibaca dari GPU (32 ms)
+11:18:29.125  Frame lambat: 482 ms
+11:18:32.693  Simpan: 1 layer dibaca dari GPU (26 ms)
+11:18:44.372  Pena: mode Pena untuk penyesuaian 0
+11:18:54.479  Pena: sapuan [8,722 - 615,958], ukuran 233 px
+11:18:54.480  Pena: 12 frame, rata-rata 2.8 ms, maks 32.4 ms
+11:19:00.535  Frame lambat: 494 ms
+11:19:04.118  Simpan: 1 layer dibaca dari GPU (20 ms)
+11:19:16.906  Pena: mode Pena untuk penyesuaian 5
+11:19:27.014  Pena: sapuan [589,564 - 1473,1165], ukuran 233 px
+11:19:27.018  Pena: 11 frame, rata-rata 0.9 ms, maks 9.1 ms
