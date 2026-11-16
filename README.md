@@ -1003,3 +1003,16 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   Perspektif sampai 200%; Pertajam sampai 200% dengan penggeser *Radius*; Bloom lebih terang dengan ukuran sampai
   seperlima kanvas; Noise lebih kontras; Glitch, Halftone, dan Aberasi Kromatik dengan rentang lebih besar.
   Blur kini juga menghormati *Kunci alfa* layer.
+
+## Tambahan 0.1.115: Liquify lebih cepat, mulus, dan natural
+
+- **Liquify dihitung di GPU:** medan pergeseran disimpan di tekstur float dan tiap sapuan dihitung shader, jadi tetap
+  ringan walau ukuran sapuan besar atau kanvas besar (kisinya juga lebih rapat: tiap 2 px sampai ±16 MP). Hasil
+  dorongan berulang tetap tajam karena gambar asli hanya diambil ulang sekali. Perangkat tanpa framebuffer float
+  otomatis memakai cara lama (CPU).
+- **Mulus saat pena ditahan:** Putar, Cubit, Kembangkan, Kristal, Tepi, dan Pulihkan bekerja tiap frame (dulu tiap
+  30 ms), dan kekuatannya disebar rata di sepanjang jalur pena — jejaknya tidak putus saat pena digerakkan cepat.
+- **Momentum** (seperti Procreate): setelah pena diangkat, sapuan berlanjut sebentar dengan kecepatan terakhir yang
+  makin melambat. 0% = berhenti saat pena diangkat.
+- Putar, Cubit/Kembangkan, Kristal, dan Tepi lebih kuat (Tepi cocok untuk menipiskan garis: sapukan di sepanjang
+  garisnya). Penggeser Ukuran memakai skala kuadrat, dan bar Liquify dibuat dua kolom supaya lebih sedikit menutupi kanvas.

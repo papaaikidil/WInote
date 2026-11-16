@@ -5542,10 +5542,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     }
 
     private fun liqRate(mode: Int) = when (mode) {
-        Adj.LQ_TWIRL_R, Adj.LQ_TWIRL_L -> 2.2f
-        Adj.LQ_PINCH, Adj.LQ_EXPAND -> 0.9f
-        Adj.LQ_CRYSTAL -> 1.2f
-        Adj.LQ_EDGE -> 1.4f
+        Adj.LQ_TWIRL_R, Adj.LQ_TWIRL_L -> 3.2f
+        Adj.LQ_PINCH, Adj.LQ_EXPAND -> 1.6f
+        Adj.LQ_CRYSTAL -> 1.8f
+        Adj.LQ_EDGE -> 3.0f
         else -> 2.5f
     }
 
@@ -5568,7 +5568,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
      * sepanjang jalur pena sejak itu; pena diam = satu tapak di tempatnya.
      */
     private fun liqTimedFlush(now: Long, scale: Float, mode: Int, rad: Float, strength: Float, distort: Float, box: IRect) {
-        val dt = (now - liqApplyT).coerceIn(0L, 60L) / 1000f
+        val dt = (now - liqApplyT).coerceIn(0L, 100L) / 1000f
         liqApplyT = now
         val k = liqRate(mode) * dt * (0.15f + 0.85f * strength) * liqP * scale
         var len = 0f
