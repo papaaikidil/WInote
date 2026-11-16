@@ -2209,10 +2209,10 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
-    fun deleteFont(id: String) {
-        id.goresan.engine.Fonts.delete(app, id)
+    fun deleteFont(fontId: String) {
+        id.goresan.engine.Fonts.delete(app, fontId)
         fontsVersion++
-        if (textEditing && textSpec.font == id) updateText(textSpec.copy(font = "sans"))
+        if (textEditing && textSpec.font == fontId) updateText(textSpec.copy(font = "sans"))
     }
 
     /** SwatchDrop: warna palet diseret ke kanvas = ColorDrop dengan warna itu. */
