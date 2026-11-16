@@ -252,6 +252,13 @@ shot dipotong
 gerak ketuk 2
 sleep 3
 shot potong-diurungkan
+gerak geser3 25
+sleep 3
+shot menu-pindahkan
+tap_node "Pindahkan" 3 || true
+sleep 4
+shot pindahkan-transformasi
+layer pindahkan-layer
 adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
 adb logcat -d > $OUT/logcat-penuh.txt
 grep -E "Impor|impor|FATAL|AndroidRuntime: (FATAL|java)|Papan klip|TIFF|layer .* gagal" $OUT/logcat-penuh.txt | head -80 > $OUT/galat.txt

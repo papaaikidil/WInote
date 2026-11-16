@@ -1032,3 +1032,36 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   supaya kanvas tidak tertutup.
 - Saat memilih **Pena**, panel otomatis disembunyikan; tombol **Hapus efek** tetap ada di baris kecil itu. Ketuk
   **Atur** untuk mengubah kekuatan efek, lalu sembunyikan lagi.
+
+## Tambahan 0.1.118: Impor berlapis, ekspor lengkap, salin-tempel
+
+**Impor berlapis** (galeri › **Impor**)
+
+- **PSD/PSB** (Photoshop, Krita, Clip Studio, Photopea, dll.): tiap layer jadi layer, lengkap dengan nama, opasitas
+  (termasuk *fill*), mode campur, tampil/sembunyi, clipping mask, kunci alfa, grup (grup bersarang diratakan ke grup
+  teratas; sifat grup dalam ikut diterapkan), masker layer (langsung diterapkan ke piksel), dan DPI. Mendukung 8/16 bit,
+  RGB/Grayscale/CMYK. Layer penyesuaian Photoshop dilewati.
+- **.procreate**: layer, grup, opasitas, mode campur, tampil/sembunyi, clipping, kunci alfa, masker, warna latar, nama
+  karya, dan DPI.
+- **PDF**: tiap halaman menjadi satu layer (300 DPI, sisi terpanjang maksimal 4096 px) dan Page Assist menyala bila
+  lebih dari satu halaman.
+- Foto/gambar biasa tetap bisa diimpor seperti sebelumnya.
+- Bila jumlah layer melebihi batas memori perangkat, layer paling bawah digabung menjadi satu layer "Gabungan N layer".
+
+**Ekspor** (panel Aksi)
+
+- **Simpan TIFF** → `Download/WInote` (tanpa latar = TIFF RGBA transparan; dengan DPI dan profil P3 bila karya P3).
+- **Ekspor tiap layer: PNG** → satu folder di `Pictures/WInote` berisi `01 Nama layer.png`, `02 …` (ukuran kanvas penuh).
+- **Ekspor tiap layer: PDF** → satu PDF di `Download/WInote`, satu halaman per layer.
+- **Ekspor animasi GIF / MP4** sekarang bisa tanpa Animation Assist: tiap layer/grup dipakai sebagai satu frame.
+
+**Potong / salin / tempel**
+
+- Geser **tiga jari ke bawah** di kanvas membuka menu **Salin & Tempel**: Potong, Salin, Salin semua (gabungan semua
+  layer), Duplikat, Pindahkan (potong ke layer baru lalu langsung bisa digeser), dan Tempel.
+- Yang disalin adalah isi pilihan bila ada, atau isi layer aktif. Hasilnya juga masuk papan klip Android, jadi bisa
+  ditempel ke aplikasi lain, dan gambar yang disalin dari aplikasi lain bisa ditempel ke WInote (jadi layer baru yang
+  langsung bisa diubah posisi/ukurannya).
+- Menu yang sama ada di panel Aksi › **Salin & tempel**. Di HyperOS, geser tiga jari ke bawah dipakai sistem untuk
+  tangkapan layar; matikan di Setelan › Setelan tambahan › Pintasan gerakan › Ambil tangkapan layar bila ingin memakai
+  gerakan ini di WInote.

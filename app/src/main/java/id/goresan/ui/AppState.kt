@@ -2898,7 +2898,7 @@ class AppState(val app: Context) : Engine.Listener {
     /**
      * Salin isi layer aktif (atau gabungan semua layer bila [merged]) di dalam pilihan, atau seluruh isinya.
      * [cut] = sekaligus dihapus dari layer. [thenPaste] = langsung ditempel ke layer baru di tempat yang sama
-     * (Duplikat / Potong & tempel; papan klip tidak berubah).
+     * (Duplikat / Pindahkan; papan klip tidak berubah).
      */
     fun clipCopy(merged: Boolean = false, cut: Boolean = false, thenPaste: Boolean = false) {
         clipMenu = false
@@ -2906,8 +2906,12 @@ class AppState(val app: Context) : Engine.Listener {
         gl { e ->
             val c = e.clipCopy(merged, cut) ?: return@gl
             if (thenPaste) {
-                e.clipPaste(c, c.x, c.y, if (cut) "Potongan" else "Salinan")
-                main.post { showFlash(if (cut) "Dipindah ke layer baru" else "Diduplikat ke layer baru") }
+                val ok = e.clipPaste(c, c.x, c.y, if (cut) "Potongan" else "Salinan")
+                main.post {
+                    showFlash(if (cut) "Dipindah ke layer baru" else "Diduplikat ke layer baru")
+                    // Pindahkan: hasil potongan langsung bisa digeser/diubah ukurannya.
+                    if (ok && cut) main.postDelayed({ startTransform(useSelection = false) }, 120)
+                }
                 return@gl
             }
             main.post {
