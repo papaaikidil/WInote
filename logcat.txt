@@ -1,0 +1,179 @@
+11-16 23:22:45.782 10071 10071 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:22:45.784 10071 10071 I AndroidRuntime: Using default boot image
+11-16 23:22:45.784 10071 10071 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:22:45.856 10071 10071 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:22:46.883 10071 10071 D AndroidRuntime: Shutting down VM
+11-16 23:22:48.096  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-16 23:22:49.767 10099 10099 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:22:49.768 10099 10099 I AndroidRuntime: Using default boot image
+11-16 23:22:49.768 10099 10099 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:22:49.817 10099 10099 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:22:50.902 10099 10099 D AndroidRuntime: Shutting down VM
+11-16 23:22:52.095  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-16 23:22:55.061 10134 10134 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:22:55.063 10134 10134 I AndroidRuntime: Using default boot image
+11-16 23:22:55.063 10134 10134 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:22:55.120 10134 10134 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:22:56.161 10134 10134 D AndroidRuntime: Shutting down VM
+11-16 23:22:57.024 10153 10153 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:22:57.026 10153 10153 I AndroidRuntime: Using default boot image
+11-16 23:22:57.026 10153 10153 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:22:57.088 10153 10153 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:22:58.112 10153 10153 D AndroidRuntime: Shutting down VM
+11-16 23:23:01.022 10177 10177 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:01.024 10177 10177 I AndroidRuntime: Using default boot image
+11-16 23:23:01.024 10177 10177 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:01.083 10177 10177 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:02.099 10177 10177 D AndroidRuntime: Shutting down VM
+11-16 23:23:02.963 10196 10196 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:02.964 10196 10196 I AndroidRuntime: Using default boot image
+11-16 23:23:02.964 10196 10196 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:03.020 10196 10196 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:04.043 10196 10196 D AndroidRuntime: Shutting down VM
+11-16 23:23:07.921 10220 10220 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:07.923 10220 10220 I AndroidRuntime: Using default boot image
+11-16 23:23:07.923 10220 10220 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:07.975 10220 10220 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:08.998 10220 10220 D AndroidRuntime: Shutting down VM
+11-16 23:23:13.908 10264 10264 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:13.911 10264 10264 I AndroidRuntime: Using default boot image
+11-16 23:23:13.911 10264 10264 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:13.969 10264 10264 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:15.009 10264 10264 D AndroidRuntime: Shutting down VM
+11-16 23:23:18.546 10295 10295 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:18.548 10295 10295 I AndroidRuntime: Using default boot image
+11-16 23:23:18.548 10295 10295 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:18.608 10295 10295 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:19.643 10295 10295 D AndroidRuntime: Shutting down VM
+11-16 23:23:23.790 10335 10335 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:23.792 10335 10335 I AndroidRuntime: Using default boot image
+11-16 23:23:23.792 10335 10335 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:23.852 10335 10335 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:24.900 10335 10335 D AndroidRuntime: Shutting down VM
+11-16 23:23:28.485 10366 10366 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:28.488 10366 10366 I AndroidRuntime: Using default boot image
+11-16 23:23:28.488 10366 10366 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:28.551 10366 10366 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:29.594 10366 10366 D AndroidRuntime: Shutting down VM
+11-16 23:23:32.477 10395 10395 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:32.478 10395 10395 I AndroidRuntime: Using default boot image
+11-16 23:23:32.478 10395 10395 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:32.526 10395 10395 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:33.551 10395 10395 D AndroidRuntime: Shutting down VM
+11-16 23:23:34.417 10415 10415 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:34.419 10415 10415 I AndroidRuntime: Using default boot image
+11-16 23:23:34.419 10415 10415 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:34.481 10415 10415 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:35.508 10415 10415 D AndroidRuntime: Shutting down VM
+11-16 23:23:38.033  7358  7367 I id.hananote.app: Background young concurrent copying GC freed 119858(5737KB) AllocSpace objects, 18(11MB) LOS objects, 15% free, 55MB/65MB, paused 689us,10us total 126.855ms
+11-16 23:23:42.493 10510 10510 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:42.495 10510 10510 I AndroidRuntime: Using default boot image
+11-16 23:23:42.495 10510 10510 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:42.555 10510 10510 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:43.588 10510 10510 D AndroidRuntime: Shutting down VM
+11-16 23:23:44.461 10529 10529 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:44.463 10529 10529 I AndroidRuntime: Using default boot image
+11-16 23:23:44.463 10529 10529 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:44.520 10529 10529 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:45.544 10529 10529 D AndroidRuntime: Shutting down VM
+11-16 23:23:48.430 10553 10553 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:48.432 10553 10553 I AndroidRuntime: Using default boot image
+11-16 23:23:48.432 10553 10553 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:48.488 10553 10553 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:49.504 10553 10553 D AndroidRuntime: Shutting down VM
+11-16 23:23:53.386 10577 10577 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:53.388 10577 10577 I AndroidRuntime: Using default boot image
+11-16 23:23:53.388 10577 10577 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:53.436 10577 10577 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:54.475 10577 10577 D AndroidRuntime: Shutting down VM
+11-16 23:23:57.635 10606 10606 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:23:57.638 10606 10606 I AndroidRuntime: Using default boot image
+11-16 23:23:57.638 10606 10606 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:23:57.699 10606 10606 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:23:58.741 10606 10606 D AndroidRuntime: Shutting down VM
+11-16 23:23:59.888  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-16 23:24:01.625 10632 10632 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:01.627 10632 10632 I AndroidRuntime: Using default boot image
+11-16 23:24:01.627 10632 10632 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:01.687 10632 10632 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:24:02.713 10632 10632 D AndroidRuntime: Shutting down VM
+11-16 23:24:03.736  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-16 23:24:05.875 10661 10661 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:05.878 10661 10661 I AndroidRuntime: Using default boot image
+11-16 23:24:05.878 10661 10661 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:05.939 10661 10661 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:24:06.971 10661 10661 D AndroidRuntime: Shutting down VM
+11-16 23:24:10.110 10690 10690 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:10.112 10690 10690 I AndroidRuntime: Using default boot image
+11-16 23:24:10.112 10690 10690 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:10.177 10690 10690 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:24:11.209 10690 10690 D AndroidRuntime: Shutting down VM
+11-16 23:24:12.377  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-16 23:24:14.094 10715 10715 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:14.096 10715 10715 I AndroidRuntime: Using default boot image
+11-16 23:24:14.096 10715 10715 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:14.155 10715 10715 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:24:15.171 10715 10715 D AndroidRuntime: Shutting down VM
+11-16 23:24:16.065  1700  4082 W MediaProvider: Ignoring mutation of date_expires from id.hananote.app
+11-16 23:24:16.109  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-16 23:24:20.065 10741 10741 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:20.067 10741 10741 I AndroidRuntime: Using default boot image
+11-16 23:24:20.067 10741 10741 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:20.116 10741 10741 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:24:21.139 10741 10741 D AndroidRuntime: Shutting down VM
+11-16 23:24:32.023 10777 10777 W ls      : type=1400 audit(0.0:52): avc: denied { ioctl } for path="socket:[117643]" dev="sockfs" ino=117643 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-16 23:24:32.023 10777 10777 W ls      : type=1400 audit(0.0:53): avc: denied { ioctl } for path="socket:[117643]" dev="sockfs" ino=117643 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-16 23:24:32.023 10777 10777 W ls      : type=1400 audit(0.0:54): avc: denied { ioctl } for path="socket:[117643]" dev="sockfs" ino=117643 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-16 23:24:32.023 10777 10777 W ls      : type=1400 audit(0.0:55): avc: denied { ioctl } for path="socket:[117645]" dev="sockfs" ino=117645 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-16 23:24:32.047 10781 10781 W ls      : type=1400 audit(0.0:56): avc: denied { ioctl } for path="socket:[119174]" dev="sockfs" ino=119174 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-16 23:24:32.069   510   764 I ActivityManager: Force stopping id.hananote.app appid=10174 user=0: from pid 10785
+11-16 23:24:32.069   510   764 I ActivityManager: Killing 7358:id.hananote.app/u0a174 (adj 0): stop id.hananote.app due to from pid 10785
+11-16 23:24:32.070   510   764 W ActivityTaskManager: Force removing ActivityRecord{959b5f u0 id.hananote.app/id.goresan.DrawActivity} t10 f}}: app died, no saved state
+11-16 23:24:32.072   510   764 W InputManager-JNI: Input channel object '82d8d37 id.hananote.app/id.goresan.DrawActivity (client)' was disposed without first being removed with the input manager!
+11-16 23:24:32.081  1081  1081 D CarrierSvcBindHelper: onHandleForceStop: [id.hananote.app]
+11-16 23:24:32.112   510  2108 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=id.hananote.app/id.goresan.DrawActivity (has extras)} from uid 0
+11-16 23:24:32.117   510   551 W ActivityManager: ProcessRecord{f8449ac 0:id.hananote.app/u0a174} is attached to a previous process 7358
+11-16 23:24:32.121   510  2149 D CoreBackPreview: Window{9c4be01 u0 Splash Screen id.hananote.app}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@e7c9ee7, mPriority=0}
+11-16 23:24:32.122   510   544 V ActivityManager: Got obituary of 7358:id.hananote.app
+11-16 23:24:32.135   510   560 I ActivityManager: Start proc 10798:id.hananote.app/u0a174 for next-top-activity {id.hananote.app/id.goresan.DrawActivity}
+11-16 23:24:32.173 10798 10798 I id.hananote.app: Late-enabling -Xcheck:jni
+11-16 23:24:32.200 10798 10798 I id.hananote.app: Using CollectorTypeCC GC.
+11-16 23:24:32.201 10798 10798 W id.hananote.app: Unexpected CPU variant for x86: x86_64.
+11-16 23:24:32.201 10798 10798 W id.hananote.app: Known variants: atom, sandybridge, silvermont, kabylake, default
+11-16 23:24:32.241 10798 10798 W ziparchive: Unable to open '/data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/base.dm': No such file or directory
+11-16 23:24:32.241 10798 10798 W ziparchive: Unable to open '/data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/base.dm': No such file or directory
+11-16 23:24:32.805 10798 10798 D nativeloader: Configuring classloader-namespace for other apk /data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/lib/x86_64:/data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/id.hananote.app
+11-16 23:24:32.809 10798 10798 V GraphicsEnvironment: ANGLE Developer option for 'id.hananote.app' set to: 'default'
+11-16 23:24:32.809 10798 10798 V GraphicsEnvironment: ANGLE GameManagerService for id.hananote.app: false
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Common causes for lock verification issues are non-optimized dex code
+11-16 23:24:32.859 10798 10798 W id.hananote.app: and incorrect proguard optimizations.
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateList.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.859 10798 10798 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+11-16 23:24:32.867 10798 10798 W id.hananote.app: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateMap.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.867 10798 10798 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateMap.update(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.867 10798 10798 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateMap.removeIf$runtime_release(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-16 23:24:32.882   510   764 D CoreBackPreview: Window{d4816db u0 id.hananote.app/id.goresan.DrawActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@c33451, mPriority=0}
+11-16 23:24:37.948 10798 10835 D ProfileInstaller: Installing profile for id.hananote.app
+11-16 23:24:38.908   510   548 W ziparchive: Unable to open '/data/app/~~tNhnKNpMudijo1PSJlLNHQ==/id.hananote.app-Ah-mNJYPub34jqq1CgNEpg==/base.dm': No such file or directory
+11-16 23:24:38.909   510   548 I ActivityTaskManager: Displayed id.hananote.app/id.goresan.DrawActivity: +6s795ms
+11-16 23:24:38.935   510   764 D CoreBackPreview: Window{9c4be01 u0 Splash Screen id.hananote.app EXITING}: Setting back callback null
+11-16 23:24:38.935   510   764 W InputManager-JNI: Input channel object '9c4be01 Splash Screen id.hananote.app (client)' was disposed without first being removed with the input manager!
+11-16 23:24:39.102  1611  1611 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-16 23:24:59.210 10857 10857 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:24:59.212 10857 10857 I AndroidRuntime: Using default boot image
+11-16 23:24:59.212 10857 10857 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:24:59.273 10857 10857 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:25:00.305 10857 10857 D AndroidRuntime: Shutting down VM
+11-16 23:25:01.174 10876 10876 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:25:01.176 10876 10876 I AndroidRuntime: Using default boot image
+11-16 23:25:01.176 10876 10876 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:25:01.235 10876 10876 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:25:02.254 10876 10876 D AndroidRuntime: Shutting down VM
+11-16 23:25:06.400 10906 10906 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-16 23:25:06.403 10906 10906 I AndroidRuntime: Using default boot image
+11-16 23:25:06.403 10906 10906 I AndroidRuntime: Leaving lock profiling enabled
+11-16 23:25:06.465 10906 10906 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-16 23:25:07.523 10906 10906 D AndroidRuntime: Shutting down VM

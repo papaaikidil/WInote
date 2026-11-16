@@ -1,0 +1,8 @@
+{"name":"Uji","w":1600,"h":1200,"bg":-1,"bgVisible":true,"dpi":300,"paper":0,"paperStrength":0.550000011920929,"paperScale":1,"active":5,"nextId":7,"created":1794871111462,"modified":1794871422126,"timeMs":87879,"strokes":13,"tlOn":true,"profile":0,"assist":0,"anim":{"mode":0,"fps":12,"onion":2,"onionOpacity":0.44999998807907104,"blendPrimary":false,"colorOnion":true,"bgFrame":false,"fgFrame":false},"holds":{},"layers":[{"id":1,"name":"Layer 1","visible":true,"opacity":1,"blend":0,"alphaLock":false,"clip":false,"locked":false,"mask":{"id":3,"name":"Masker layer","visible":true,"opacity":1,"blend":0,"alphaLock":false,"clip":false,"locked":false}},{"id":4,"name":"Layer 2","visible":true,"opacity":1,"blend":0,"alphaLock":false,"clip":false,"locked":false,"reference":true},{"id":5,"name":"Layer 3","visible":true,"opacity":1,"blend":0,"alphaLock":false,"clip":false,"locked":false}],"groups":[],"guide":{"type":0,"color":-13657089,"opacity":0.75,"thickness":0.20000000298023224,"gridSize":150,"angle":0,"vps":[],"symmetry":0,"rotational":false},"guideOn":false}total 276
+-rw------- 1 u0_a174 u0_a174 71451 2026-11-16 23:20 L1.lyr
+-rw------- 1 u0_a174 u0_a174 67292 2026-11-16 23:20 L3.lyr
+-rw------- 1 u0_a174 u0_a174 50493 2026-11-16 23:21 L4.lyr
+-rw------- 1 u0_a174 u0_a174 38182 2026-11-16 23:23 L5.lyr
+-rw------- 1 u0_a174 u0_a174  1068 2026-11-16 23:23 doc.json
+-rw------- 1 u0_a174 u0_a174  4319 2026-11-16 23:23 thumb.png
+drwx------ 2 u0_a174 u0_a174  4096 2026-11-16 23:23 timelapse

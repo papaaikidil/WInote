@@ -1,0 +1,2 @@
+total 8
+-rwxrwx--- 1 u0_a172 media_rw 342 2026-11-16 23:24 Foto 16 Nov 23.18.swatches
