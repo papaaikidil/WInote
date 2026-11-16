@@ -1,0 +1,7 @@
+10:50:34.582  Liquify: GPU, kisi 802×602 (tiap 2 px)
+10:50:43.408  Liquify: 36 frame, rata-rata 8.0 ms, maks 279.7 ms (GPU)
+10:50:50.905  Liquify: 20 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)
+10:50:58.625  Liquify: 14 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)
+10:51:19.470  Liquify: 71 frame, rata-rata 0.2 ms, maks 1.0 ms (GPU)
+10:51:25.038  Liquify: 9 frame, rata-rata 0.2 ms, maks 0.4 ms (GPU)
+10:51:33.844  Liquify: 19 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)

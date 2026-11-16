@@ -1,0 +1,51 @@
+10:48:36.561  === Aplikasi dibuka · WInote Gambar 0.1.5 (5) · Google sdk_gphone64_x86_64 · Android 13
+10:48:36.669  Aktivitas: lanjut
+10:48:36.681  Sistem minta hemat memori (level 5)
+10:48:37.724  Buka karya kmwj54myf554f
+10:48:38.161  Permukaan kanvas dibuat
+10:48:38.240  Sistem minta hemat memori (level 5)
+10:48:38.517  Permukaan kanvas: sRGB
+10:48:38.529  GL: konteks dibuat
+10:48:40.186  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+10:48:40.872  GL: siap (2323 ms)
+10:48:40.873  GL: ukuran permukaan 2560x1800
+10:48:40.889  Karya dibuka 1600x1200, 1 layer, batas 110 layer (16 ms)
+10:48:43.570  !!! Kanvas macet 2696 ms. Posisi thread kanvas:
+10:48:43.571      android.opengl.GLES20.glGenTextures(Native Method)
+10:48:43.571      id.goresan.engine.Tex.<init>(GL.kt:49)
+10:48:43.571      id.goresan.engine.Tex.<init>(GL.kt:43)
+10:48:43.572      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:3956)
+10:48:43.572      id.goresan.engine.Engine.onDrawFrame(Engine.kt:840)
+10:48:43.572      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+10:48:43.573      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+10:48:43.573      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+10:48:44.225  Frame lambat: 3352 ms
+10:48:44.575  Kanvas kembali merespons
+10:48:55.598  Sistem minta hemat memori (level 15)
+10:48:56.414  Sistem minta hemat memori (level 15)
+10:49:03.514  Sistem minta hemat memori (level 5)
+10:49:18.931  Frame lambat: 641 ms
+10:49:26.441  Frame lambat: 603 ms
+10:49:26.859  Frame lambat: 112 ms
+10:49:30.806  Simpan: 1 layer dibaca dari GPU (25 ms)
+10:49:49.981  Frame lambat: 141 ms
+10:49:51.456  Frame lambat: 90 ms
+10:49:53.039  Frame lambat: 96 ms
+10:49:54.631  Frame lambat: 99 ms
+10:49:56.194  Frame lambat: 95 ms
+10:50:00.176  Simpan: 1 layer dibaca dari GPU (60 ms)
+10:50:20.754  Frame lambat: 92 ms
+10:50:25.441  Frame lambat: 91 ms
+10:50:27.017  Frame lambat: 115 ms
+10:50:30.958  Simpan: 1 layer dibaca dari GPU (51 ms)
+10:50:34.582  Liquify: GPU, kisi 802×602 (tiap 2 px)
+10:50:39.411  Frame lambat: 280 ms
+10:50:43.408  Liquify: 36 frame, rata-rata 8.0 ms, maks 279.7 ms (GPU)
+10:50:50.905  Liquify: 20 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)
+10:50:58.625  Liquify: 14 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)
+10:51:19.470  Liquify: 71 frame, rata-rata 0.2 ms, maks 1.0 ms (GPU)
+10:51:25.038  Liquify: 9 frame, rata-rata 0.2 ms, maks 0.4 ms (GPU)
+10:51:33.844  Liquify: 19 frame, rata-rata 0.1 ms, maks 0.2 ms (GPU)
+10:51:38.747  Frame lambat: 591 ms
+10:51:42.217  Simpan: 1 layer dibaca dari GPU (36 ms)
+10:51:45.415  Frame lambat: 589 ms
