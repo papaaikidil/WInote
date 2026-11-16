@@ -47,7 +47,12 @@ import id.goresan.engine.TextSpec
 import id.goresan.engine.LayerInfo
 import id.goresan.engine.LayersSnapshot
 import id.goresan.engine.ColorProfile
+import id.goresan.engine.ImportDoc
+import id.goresan.engine.ImportLayer
+import id.goresan.engine.ImportSink
 import id.goresan.engine.LayerProps
+import id.goresan.engine.ProcreateReader
+import id.goresan.engine.PsdReader
 import id.goresan.engine.ModelLoader
 import id.goresan.engine.Cam3D
 import id.goresan.engine.Storage
@@ -357,6 +362,240 @@ class AppState(val app: Context) : Engine.Listener {
             }
             out.toByteArray()
         } ?: error("Berkas tidak bisa dibaca")
+
+    // ================= impor berkas berlapis =================
+
+    /**
+     * Buat karya baru dari berkas: PSD/PSB (layer, grup, masker), .procreate (layer, grup, masker), PDF (tiap halaman
+     * jadi satu layer; Page Assist menyala bila lebih dari satu halaman), atau gambar biasa (PNG/JPG/WebP/HEIC).
+     */
+    fun importFile(uri: Uri) {
+        busy = "Membaca berkas…"
+        bg.execute {
+            val res = runCatching { importFileNow(uri) }
+            main.post {
+                busy = null
+                res.onSuccess { (id, notes) ->
+                    galleryVersion++
+                    openArtwork(id)
+                    if (notes.isNotEmpty()) showFlash(notes.joinToString(" · "))
+                }.onFailure {
+                    Diag.log("Impor berkas gagal: $it")
+                    showFlash(if (it is OutOfMemoryError) "Memori tidak cukup untuk berkas ini" else it.message ?: "Berkas tidak bisa diimpor")
+                }
+            }
+        }
+    }
+
+    private fun importFileNow(uri: Uri): Pair<String, List<String>> {
+        val name = nameOf(uri)
+        val ext = name.substringAfterLast('.', "").lowercase()
+        val dir = File(app.cacheDir, "impor").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
+        val tmp = File(dir, "berkas.${ext.ifBlank { "bin" }}")
+        (app.contentResolver.openInputStream(uri) ?: error("Berkas tidak bisa dibaca")).use { inp ->
+            tmp.outputStream().use { inp.copyTo(it, 256 * 1024) }
+        }
+        val head = ByteArray(4)
+        tmp.inputStream().use { it.read(head) }
+        val magic = String(head, Charsets.ISO_8859_1)
+        val base = name.substringBeforeLast('.').ifBlank { "Impor" }
+        val sink = StoreSink(base)
+        val t0 = android.os.SystemClock.uptimeMillis()
+        try {
+            when {
+                magic == "8BPS" -> PsdReader.read(tmp, sink)
+                magic == "PK\u0003\u0004" -> ProcreateReader.read(tmp, sink)
+                magic == "%PDF" -> importPdf(tmp, sink)
+                else -> importImage(tmp, sink)
+            }
+            val id = sink.finish()
+            Diag.log("Impor $ext: ${sink.count} layer (${android.os.SystemClock.uptimeMillis() - t0} ms)")
+            return id to sink.notes
+        } catch (e: Throwable) {
+            sink.abort()
+            throw e
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /** PDF: tiap halaman jadi satu layer (dirender di atas kertas putih, muat di kanvas seukuran halaman pertama). */
+    private fun importPdf(f: File, sink: StoreSink) {
+        val pfd = android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+        val r = android.graphics.pdf.PdfRenderer(pfd)
+        try {
+            val total = r.pageCount
+            if (total == 0) error("PDF ini tidak punya halaman")
+            val first = r.openPage(0)
+            val pw = first.width
+            val ph = first.height
+            first.close()
+            // 300 DPI, sisi terpanjang paling besar 4096 px.
+            val k = min(300f / 72f, 4096f / max(pw, ph))
+            val w = max(16, (pw * k).roundToInt())
+            val h = max(16, (ph * k).roundToInt())
+            val limit = estimateLayerLimit(w, h)
+            val n = min(total, limit)
+            if (n < total) sink.notes.add("Memori cukup untuk $n halaman pertama dari $total")
+            val doc = ImportDoc(w, h).apply { dpi = (k * 72f).roundToInt(); bg = Color.WHITE; bgVisible = true }
+            sink.begin(doc, n)
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val px = ByteArray(w * h * 4)
+            val bb = java.nio.ByteBuffer.wrap(px)
+            for (i in 0 until n) {
+                main.post { if (busy != null) busy = "Membaca PDF… halaman ${i + 1}/$n" }
+                val p = r.openPage(i)
+                try {
+                    bmp.eraseColor(Color.WHITE)
+                    val s = min(w / p.width.toFloat(), h / p.height.toFloat())
+                    val m = Matrix().apply {
+                        postScale(s, s)
+                        postTranslate((w - p.width * s) / 2f, (h - p.height * s) / 2f)
+                    }
+                    p.render(bmp, null, m, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                } finally {
+                    p.close()
+                }
+                bb.position(0)
+                bmp.copyPixelsToBuffer(bb)
+                sink.layer(ImportLayer("Halaman ${i + 1}"), px)
+            }
+            bmp.recycle()
+            if (n > 1) sink.assist = 2
+        } finally {
+            r.close()
+            pfd.close()
+        }
+    }
+
+    /** Gambar biasa jadi karya seukuran gambarnya (sisi terpanjang paling besar 8192 px). */
+    private fun importImage(f: File, sink: StoreSink) {
+        val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(f.path, o)
+        if (o.outWidth <= 0 || o.outHeight <= 0) error("Jenis berkas ini belum didukung (PSD, .procreate, PDF, atau gambar)")
+        var sample = 1
+        while (max(o.outWidth, o.outHeight) / sample > 8192) sample *= 2
+        val src = BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.ARGB_8888 })
+            ?: error("Gambar tidak bisa dibuka")
+        val bmp = if (src.config == Bitmap.Config.ARGB_8888) src else src.copy(Bitmap.Config.ARGB_8888, false).also { src.recycle() }
+        val doc = ImportDoc(bmp.width, bmp.height).apply { bg = Color.WHITE; bgVisible = !bmp.hasAlpha() }
+        sink.begin(doc, 1)
+        val px = ByteArray(bmp.width * bmp.height * 4)
+        bmp.copyPixelsToBuffer(java.nio.ByteBuffer.wrap(px))
+        bmp.recycle()
+        sink.layer(ImportLayer("Gambar"), px)
+    }
+
+    /**
+     * Menulis layer hasil impor langsung ke penyimpanan karya (tanpa GPU). Bila layernya lebih banyak dari yang muat di
+     * memori grafis, layer-layer terbawah digabung jadi satu.
+     */
+    private inner class StoreSink(private val fallbackName: String) : ImportSink {
+        private var id: String? = null
+        private var dir: File? = null
+        private lateinit var doc: ImportDoc
+        private val written = ArrayList<Pair<Int, ImportLayer>>()
+        private var merge = 0
+        private var seen = 0
+        private var acc: ByteArray? = null
+        private var nextId = 1
+        val notes = ArrayList<String>()
+        var assist = 0
+        val count: Int get() = written.size
+
+        override fun begin(doc: ImportDoc, layers: Int) {
+            this.doc = doc
+            if (doc.w > 16384 || doc.h > 16384) error("Kanvas ${doc.w}×${doc.h} terlalu besar (paling besar 16384 px)")
+            val limit = estimateLayerLimit(doc.w, doc.h)
+            if (layers > limit) {
+                merge = layers - limit + 1
+                notes.add("Memori cukup untuk $limit layer: $merge layer terbawah digabung jadi satu")
+            }
+            val dpi = if (doc.dpi in 1..9600) doc.dpi else 300
+            val prof = if (doc.p3) ColorProfile.P3 else ColorProfile.SRGB
+            val nid = Storage.create(app, (doc.name ?: fallbackName).ifBlank { fallbackName }, doc.w, doc.h, doc.bg ?: Color.WHITE, doc.bgVisible, dpi, Paper.NONE, prof)
+            id = nid
+            dir = Storage.dir(app, nid)
+            main.post { if (busy != null) busy = "Mengimpor ${doc.w} × ${doc.h} px…" }
+        }
+
+        override fun layer(info: ImportLayer, px: ByteArray) {
+            seen++
+            if (merge > 1 && seen <= merge) {
+                val a = acc ?: ByteArray(px.size).also { acc = it }
+                if (info.visible) overInto(a, px, info.opacity.coerceIn(0f, 1f))
+                if (seen < merge) return
+                write(ImportLayer("Gabungan $merge layer"), a)
+                acc = null
+                return
+            }
+            write(info, px)
+        }
+
+        private fun write(info: ImportLayer, px: ByteArray) {
+            val lid = nextId++
+            Storage.writeLayer(dir!!, lid, doc.w, doc.h, java.nio.ByteBuffer.wrap(px))
+            written.add(lid to info)
+            val n = written.size
+            main.post { if (busy != null) busy = "Mengimpor… layer $n" }
+        }
+
+        /** Tumpuk [src] (premultiplied) di atas [dst] dengan opasitas [op]. */
+        private fun overInto(dst: ByteArray, src: ByteArray, op: Float) {
+            val k = (op * 256f).roundToInt()
+            var i = 0
+            while (i < dst.size) {
+                val sa = ((src[i + 3].toInt() and 0xFF) * k) shr 8
+                if (sa != 0) {
+                    val inv = 255 - sa
+                    for (c in 0 until 4) {
+                        val s = ((src[i + c].toInt() and 0xFF) * k) shr 8
+                        dst[i + c] = (s + ((dst[i + c].toInt() and 0xFF) * inv + 127) / 255).coerceAtMost(255).toByte()
+                    }
+                }
+                i += 4
+            }
+        }
+
+        fun finish(): String {
+            val d = dir ?: error("Berkas kosong")
+            if (written.isEmpty()) error("Tidak ada layer yang bisa diimpor")
+            val meta = Storage.readMeta(d) ?: error("Karya gagal dibuat")
+            // Nomor grup sesudah nomor layer.
+            val gidBase = nextId
+            val arr = org.json.JSONArray()
+            for ((lid, l) in written) {
+                val g = if (l.group in 1..doc.groups.size) gidBase + l.group - 1 else 0
+                arr.put(
+                    Storage.layerJson(
+                        lid,
+                        LayerProps(
+                            name = l.name.ifBlank { "Layer" }, visible = l.visible, opacity = l.opacity.coerceIn(0f, 1f),
+                            blend = l.blend, alphaLock = l.alphaLock, clip = l.clip, locked = l.locked, group = g,
+                        ),
+                    ),
+                )
+            }
+            meta.put("layers", arr)
+            val ga = org.json.JSONArray()
+            doc.groups.forEachIndexed { i, g ->
+                if (written.any { it.second.group == i + 1 }) {
+                    ga.put(org.json.JSONObject().apply { put("id", gidBase + i); put("name", g.name); put("visible", g.visible); put("collapsed", g.collapsed) })
+                }
+            }
+            meta.put("groups", ga)
+            meta.put("active", written.last().first)
+            meta.put("nextId", gidBase + doc.groups.size)
+            if (assist != 0) meta.put("assist", assist)
+            Storage.writeMeta(d, meta)
+            notes.addAll(0, doc.notes)
+            return id!!
+        }
+
+        fun abort() {
+            id?.let { Storage.delete(app, it) }
+        }
+    }
 
     /**
      * Buat karya dari model 3D: GLB, atau OBJ (+ MTL + gambar tekstur bila ikut dipilih). Tekstur bawaan jadi layer

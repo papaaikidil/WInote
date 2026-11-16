@@ -104,5 +104,25 @@ fun main(args: Array<String>) {
         println("GAGAL pulang-pergi: sifat layer/grup tidak sesuai")
         fail++
     }
+    // TIFF: tulis dengan Tiff.write (RGBA dan RGB), dibandingkan Python/PIL di banding.py.
+    val tw = 203
+    val th = 77
+    val tb = ByteBuffer.allocate(tw * th * 4)
+    val straight = ByteArray(tw * th * 4)
+    for (y in 0 until th) for (x in 0 until tw) {
+        val a = when { x % 9 == 0 -> 0; (x + y) % 4 == 0 -> 100; else -> 255 }
+        val r = if (x in 20..60) 200 else (x * 7) % 256
+        val g = if (y % 3 == 0) 17 else (y * 5) % 256
+        val b = if (x % 2 == 0) 255 else 0
+        val o = (y * tw + x) * 4
+        straight[o] = r.toByte(); straight[o + 1] = g.toByte(); straight[o + 2] = b.toByte(); straight[o + 3] = a.toByte()
+        tb.put((r * a / 255).toByte()); tb.put((g * a / 255).toByte()); tb.put((b * a / 255).toByte()); tb.put(a.toByte())
+    }
+    tb.position(0)
+    File(out, "tiff.straight.rgba").writeBytes(straight)
+    File(out, "tiff.premul.rgba").writeBytes(ByteArray(tw * th * 4).also { tb.get(it); tb.position(0) })
+    id.goresan.engine.Tiff.write(File(out, "uji-rgba.tif"), tw, th, 150, tb, alpha = true)
+    id.goresan.engine.Tiff.write(File(out, "uji-rgb.tif"), tw, th, 150, tb, alpha = false)
+    println("TIFF ditulis ${tw}x$th")
     println(if (fail == 0) "SEMUA LULUS (Kotlin)" else "ADA $fail KEGAGALAN (Kotlin)")
 }

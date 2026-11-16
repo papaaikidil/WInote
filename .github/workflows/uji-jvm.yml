@@ -9,6 +9,7 @@ on:
     paths:
       - "app/src/main/java/id/goresan/engine/LayeredImport.kt"
       - "app/src/main/java/id/goresan/engine/Psd.kt"
+      - "app/src/main/java/id/goresan/engine/Tiff.kt"
       - ".github/uji/impor/**"
       - ".github/workflows/uji-jvm.yml"
 
@@ -39,6 +40,7 @@ jobs:
         run: |
           kotlinc -version
           kotlinc app/src/main/java/id/goresan/engine/LayeredImport.kt app/src/main/java/id/goresan/engine/Psd.kt \
+            app/src/main/java/id/goresan/engine/Tiff.kt \
             .github/uji/impor/ImporTest.kt -include-runtime -d t.jar 2>&1 | grep -v "^warning" || true
           mkdir -p uji-hasil/keluar
           java -jar t.jar uji-hasil/fixtures uji-hasil/keluar 2>&1 | tee uji-hasil/laporan.txt

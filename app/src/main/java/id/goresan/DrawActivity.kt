@@ -52,11 +52,15 @@ class DrawActivity : ComponentActivity() {
                     } else if (model != null) {
                         // Uji model 3D: berkas di folder data aplikasi (GLB/OBJ), diimpor seperti dari pemilih berkas.
                         state.import3D(model.split(',').map { android.net.Uri.fromFile(java.io.File(filesDir, it)) })
-                    } else {
+                    } else if (!intent.hasExtra("uji_impor")) {
                         state.createArtwork(
                             "Uji", intent.getIntExtra("uji_w", 1600), intent.getIntExtra("uji_h", 1200),
                             profile = intent.getIntExtra("uji_profil", 0),
                         )
+                    }
+                    // Uji impor berkas berlapis (PSD/.procreate/PDF/gambar) dari folder data aplikasi: jadi karya baru.
+                    intent.getStringExtra("uji_impor")?.let { f ->
+                        state.importFile(android.net.Uri.fromFile(java.io.File(filesDir, f)))
                     }
                     // Uji impor kuas: berkas di folder data aplikasi (mis. .abr), diimpor seperti dari pemilih berkas.
                     intent.getStringExtra("uji_kuas")?.let { f ->

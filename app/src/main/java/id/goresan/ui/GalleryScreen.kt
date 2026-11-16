@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
@@ -89,6 +91,11 @@ fun GalleryScreen(state: AppState) {
 
     fun refresh() { state.galleryVersion++ }
 
+    // Impor PSD, .procreate, PDF, atau gambar sebagai karya baru (jenis berkas dikenali dari isinya).
+    val importPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) state.importFile(uri) }
+
     Column(Modifier.fillMaxSize().background(Color(0xFF121214)).windowInsetsPadding(WindowInsets.statusBars)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 18.dp),
@@ -103,6 +110,12 @@ fun GalleryScreen(state: AppState) {
             Text("${arts.size} karya", color = Muted, fontSize = 14.sp)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = { state.showReport = true }) { Text("Laporan teknis", color = Muted) }
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.material3.OutlinedButton(onClick = { importPicker.launch(arrayOf("*/*")) }) {
+                Icon(Icons.Filled.FileOpen, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Impor")
+            }
             Spacer(Modifier.width(8.dp))
             Button(
                 onClick = { showNew = true },
@@ -147,6 +160,18 @@ fun GalleryScreen(state: AppState) {
                 msg, color = Color.White,
                 modifier = Modifier.padding(30.dp).clip(RoundedCornerShape(14.dp)).background(PanelBg).padding(horizontal = 16.dp, vertical = 10.dp),
             )
+        }
+    }
+
+    state.busy?.let { msg ->
+        Box(Modifier.fillMaxSize().background(Color(0x88000000)).pointerInput(Unit) { detectTapGestures { } }) {
+            androidx.compose.material3.Surface(color = PanelBg, shape = RoundedCornerShape(16.dp), modifier = Modifier.align(Alignment.Center)) {
+                Row(Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.CircularProgressIndicator(Modifier.size(22.dp), color = Accent, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Text(msg, color = Color.White)
+                }
+            }
         }
     }
 
