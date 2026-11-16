@@ -99,12 +99,34 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 state.pickPhoto?.invoke()
             }
 
+            SectionTitle("Salin & tempel")
+            Text(
+                "Juga lewat geser tiga jari ke bawah di kanvas. Dengan pilihan aktif, hanya isi pilihan yang disalin.",
+                color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+            )
+            ActionRow("Potong", "Isi layer aktif dipindah ke papan klip") { state.panel = Panel.NONE; state.clipCopy(cut = true) }
+            ActionRow("Salin", "Isi layer aktif ke papan klip (juga bisa ditempel di aplikasi lain)") { state.panel = Panel.NONE; state.clipCopy() }
+            ActionRow("Salin semua", "Gabungan semua layer yang terlihat") { state.panel = Panel.NONE; state.clipCopy(merged = true) }
+            ActionRow("Tempel", "Jadi layer baru; gambar dari aplikasi lain bisa langsung dipindah dan diubah ukurannya") {
+                state.panel = Panel.NONE
+                state.clipPaste()
+            }
+
             SectionTitle("Bagikan & ekspor")
             ActionRow("Simpan PNG ke Galeri", "Kualitas penuh") { state.panel = Panel.NONE; state.exportImage(jpg = false, transparent = false) }
             ActionRow("Simpan PNG transparan", "Tanpa warna latar") { state.panel = Panel.NONE; state.exportImage(jpg = false, transparent = true) }
             ActionRow("Simpan JPG ke Galeri", "File lebih kecil, tanpa transparansi") { state.panel = Panel.NONE; state.exportImage(jpg = true, transparent = false) }
             ActionRow("Simpan PDF", "Satu halaman, resolusi penuh. Disimpan di Download/WInote") { state.panel = Panel.NONE; state.exportPdf() }
             ActionRow("Ekspor PSD berlapis", "Untuk Photoshop, Krita, dll. Disimpan di Download/WInote") { state.panel = Panel.NONE; state.exportPsd() }
+            ActionRow("Simpan TIFF", "8 bit, DPI karya; transparan bila latar disembunyikan. Disimpan di Download/WInote") { state.exportTiff() }
+            ActionRow("Ekspor tiap layer: PNG", "Satu PNG transparan per layer ke Galeri › Pictures/WInote") { state.exportLayers(pdf = false) }
+            ActionRow("Ekspor tiap layer: PDF", "Satu halaman per layer (paling bawah = halaman 1). Disimpan di Download/WInote") {
+                state.exportLayers(pdf = true)
+            }
+            ActionRow("Ekspor animasi GIF", "Tiap layer atau grup jadi satu frame (pengaturan dari Animation Assist), ke Galeri › Pictures/WInote") {
+                state.exportAnim(gif = true)
+            }
+            ActionRow("Ekspor animasi MP4", "Tiap layer atau grup jadi satu frame, video ke Galeri › Movies/WInote") { state.exportAnim(gif = false) }
             if (state.is3D) {
                 ActionRow("Ekspor model 3D (GLB)", "Model + tekstur dalam satu berkas, untuk Blender dan penampil 3D. Disimpan di Download/WInote") {
                     state.exportGlb()
@@ -140,10 +162,6 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 "Tiap layer atau grup jadi satu halaman, untuk komik dan buku",
                 state.assist == 2,
             ) { state.switchAssist(if (it) 2 else 0) }
-            if (state.assist == 1) {
-                ActionRow("Ekspor animasi GIF", "Berulang terus, ke Galeri › Pictures/WInote") { state.exportAnim(gif = true) }
-                ActionRow("Ekspor animasi MP4", "Video ke Galeri › Movies/WInote") { state.exportAnim(gif = false) }
-            }
             if (state.assist == 2) {
                 ActionRow("Ekspor PDF semua halaman", "Satu PDF berisi tiap halaman. Disimpan di Download/WInote") { state.exportPagesPdf() }
             }
@@ -241,7 +259,8 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 state.showReport = true
             }
             Text(
-                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat · cubit cepat = pas layar · tahan jari = pipet",
+                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat · geser 3 jari ke bawah = salin & tempel · " +
+                    "cubit cepat = pas layar · tahan jari = pipet",
                 color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }

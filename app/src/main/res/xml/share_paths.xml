@@ -4,4 +4,6 @@
     <cache-path name="export" path="export/" />
     <!-- Gambar yang dibagikan dari ruang gambar. -->
     <cache-path name="bagikan" path="bagikan/" />
+    <!-- Salinan untuk papan klip sistem (bisa ditempel di aplikasi lain). -->
+    <cache-path name="papan_klip" path="papan-klip/" />
 </paths>

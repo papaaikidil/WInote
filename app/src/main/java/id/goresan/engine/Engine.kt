@@ -41,6 +41,9 @@ object ToolKind {
 
 data class BrushSetting(val brush: Brush, val sizePx: Float, val opacity: Float, val dual: Brush? = null)
 
+/** Isi papan klip: potongan RGBA premultiplied (baris 0 = atas) yang berasal dari (x, y) di kanvas. */
+class ClipImage(val x: Int, val y: Int, val w: Int, val h: Int, val px: ByteBuffer)
+
 data class ToolState(
     val tool: Int,
     val paint: BrushSetting,
@@ -4441,6 +4444,17 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         if (strokeActive) commitStroke()
         val fr = framesOf(d)
         if (fr.isEmpty()) return false
+        // Ekspor animasi juga bisa tanpa Animation Assist: selama ekspor tiap layer/grup diperlakukan sebagai frame.
+        val prevAssist = d.assist
+        d.assist = 1
+        try {
+            return animExportFrames(d, fr, maxDim, bgColor, align, sink)
+        } finally {
+            d.assist = prevAssist
+        }
+    }
+
+    private fun animExportFrames(d: Doc, fr: List<AnimFrame>, maxDim: Int, bgColor: Int?, align: Int, sink: (ByteBuffer, Int, Int, Int) -> Unit): Boolean {
         // Urutan unik: frame berturut-turut yang sama digabung jadi satu bingkai yang lebih lama.
         val seq = Frames.sequence(fr.size, d.anim) { i -> holdOf(d, i) }
         val runs = ArrayList<Pair<Int, Int>>()
@@ -5917,6 +5931,98 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         post { listener.onMessage("Isi pilihan disalin ke layer baru") }
     }
 
+    /**
+     * Salin isi layer aktif — atau gabungan semua layer terlihat bila [merged] — di dalam pilihan, atau seluruh isinya
+     * bila tidak ada pilihan. [cut]: isi itu sekaligus dihapus dari layer aktif (satu langkah urungkan). Thread GL.
+     */
+    fun clipCopy(merged: Boolean, cut: Boolean): ClipImage? {
+        val d = doc ?: return null
+        if (modal) {
+            post { listener.onMessage("Selesaikan dulu mode yang sedang aktif") }
+            return null
+        }
+        if (strokeActive) commitStroke()
+        val l = d.activeLayer() ?: return null
+        if (cut && l.locked) {
+            post { listener.onMessage("Layer ini terkunci") }
+            return null
+        }
+        val full = IRect(0, 0, W, H)
+        val src: Tex
+        if (merged) {
+            val sub = substitute
+            substitute = null
+            compositeInto(d, full, scratch!!, preview!!, null, if (d.assist != 0) animCurrent(d, framesOf(d)) else -1)
+            substitute = sub
+            dirty.set(0, 0, W, H)
+            src = scratch!!
+        } else {
+            src = l.tex
+        }
+        val r = if (selOn) selBox.copy().clampTo(W, H) else contentBoundsOf(src)
+        if (r.isEmpty) {
+            post { listener.onMessage(if (selOn) "Pilihan kosong" else if (merged) "Kanvas kosong" else "Layer ini kosong") }
+            return null
+        }
+        val tmp = strokeBuf!!
+        val buf: ByteBuffer
+        if (selOn) {
+            // Hanya bagian di dalam pilihan (tepi lembut ikut).
+            selOp(0, src, null, tmp, r)
+            buf = readRegion(tmp.fb, r)
+            clearRect(tmp, r)
+        } else {
+            buf = readRegion(src.fb, r)
+        }
+        if (cut && !merged) {
+            val before = readRegion(l.tex.fb, r)
+            if (selOn) {
+                selOp(1, l.tex, null, tmp, r)
+                blit(tmp.fb, r.x0, r.y0, r.x1, r.y1, l.tex.fb, r.x0, r.y0, r.x1, r.y1, false)
+                clearRect(tmp, r)
+            } else {
+                clearRect(l.tex, r)
+            }
+            pushEdit(Edit.Pixels(l.id, r, RegionData(r.w, r.h, before)))
+            layerChanged(l)
+            makeThumbs()
+            dirty.union(r)
+        }
+        return ClipImage(r.x0, r.y0, r.w, r.h, buf)
+    }
+
+    /** Tempel [c] sebagai layer baru di atas layer aktif, sudut kiri-atasnya di (x, y). Thread GL. */
+    fun clipPaste(c: ClipImage, x: Int, y: Int, name: String): Boolean {
+        if (modal) {
+            post { listener.onMessage("Selesaikan dulu mode yang sedang aktif") }
+            return false
+        }
+        if (strokeActive) commitStroke()
+        val l = addLayer(name) ?: return false
+        val cr = IRect(x, y, x + c.w, y + c.h).clampTo(W, H)
+        if (!cr.isEmpty) {
+            val buf = if (cr.w == c.w && cr.h == c.h) {
+                c.px
+            } else {
+                // Bagian di luar kanvas dipotong.
+                val b = Buffers.direct(cr.w * cr.h * 4)
+                val row = ByteArray(cr.w * 4)
+                for (yy in 0 until cr.h) {
+                    c.px.position(((cr.y0 - y + yy) * c.w + (cr.x0 - x)) * 4)
+                    c.px.get(row)
+                    b.put(row)
+                }
+                c.px.position(0)
+                b
+            }
+            writeRegion(l.tex, cr, buf)
+            dirty.union(cr)
+        }
+        layerChanged(l)
+        makeThumbs()
+        return true
+    }
+
     /** Isi warna di dalam pilihan pada layer aktif (satu langkah urungkan). */
     fun selFill(color: Int) {
         val d = doc ?: return
@@ -6253,6 +6359,18 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     }
 
     // ================= ekspor =================
+
+    /** Jumlah layer karya terbuka. */
+    val layerCount: Int get() = doc?.layers?.size ?: 0
+
+    /** Satu layer (indeks 0 = paling bawah) sebagai Bitmap transparan beserta namanya. Thread GL. */
+    fun layerBitmap(index: Int): Pair<String, Bitmap>? {
+        val d = doc ?: return null
+        if (strokeActive) commitStroke()
+        val l = d.layers.getOrNull(index) ?: return null
+        val buf = readRegion(l.tex.fb, IRect(0, 0, W, H))
+        return l.name to outBitmap(d, buf, W, H)
+    }
 
     /** Gambar gabungan sebagai Bitmap; [bg] null = latar transparan. */
     fun exportBitmap(bg: Int?): Bitmap? {

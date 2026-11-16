@@ -4,6 +4,7 @@ Membuat skrip sendevent (multi-sentuh protokol B) untuk emulator: goresan jari b
 Pemakaian: gerak.py <perangkat> <maxX> <maxY> <W> <H> <dens> <perintah> [argumen...]
   garis x0 y0 x1 y1 getar   — satu jari dari (x0,y0) ke (x1,y1) (persen layar), getaran tangan `getar` dp
   ketuk n                   — ketukan n jari di tengah kanvas
+  geser3 persen             — tiga jari bergeser ke bawah (menu Salin & Tempel)
   tahan n ms                — n jari ditahan diam selama ms
 Hasilnya: folder g/ berisi bingkai biner struct input_event (satu berkas per bingkai, ditulis sekaligus dengan cat
 supaya jari-jari mendarat hampir bersamaan) dan run.sh untuk dijalankan di perangkat.
@@ -89,6 +90,28 @@ if cmd == "garis":
     if not (len(a) > 5 and a[5] == "tahan"):
         up(0)
         ev(1, 330, 0)
+        syn()
+elif cmd == "geser3":
+    # Tiga jari mendarat hampir bersamaan lalu bergeser ke bawah sejauh a[0] persen tinggi layar.
+    dist = H * float(a[0]) / 100
+    cx, cy = W * 0.55, H * 0.35
+    gap = 80 * dp
+    fingers = [(cx + (k - 1) * gap, cy + (k % 2) * 15 * dp) for k in range(3)]
+    for k, (x, y) in enumerate(fingers):
+        down(k, 700 + k, x, y)
+        if k == 0:
+            ev(1, 330, 1)
+        syn()
+    steps = 24
+    for i in range(1, steps + 1):
+        for k, (x, y) in enumerate(fingers):
+            move(k, x, y + dist * i / steps)
+        syn()
+        out.append("usleep 12000")
+    for k in range(3):
+        up(k)
+        if k == 2:
+            ev(1, 330, 0)
         syn()
 elif cmd == "angkat":
     up(0)

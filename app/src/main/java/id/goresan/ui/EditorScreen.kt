@@ -35,6 +35,10 @@ import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.ControlPointDuplicate
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.IndeterminateCheckBox
 import androidx.compose.material.icons.filled.AddBox
@@ -195,6 +199,11 @@ fun EditorScreen(state: AppState) {
         if (state.xfActive) TransformBar(state, Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
         if (state.selTool) SelectBar(state, Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
         if (state.adjustKind >= 0) AdjustBar(state, Modifier.align(Alignment.TopCenter).padding(top = 58.dp + top))
+        if (state.clipMenu) {
+            // Ketuk di luar menu untuk menutup.
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { state.clipMenu = false } })
+            ClipMenu(state, Modifier.align(Alignment.TopCenter).padding(top = 64.dp + top))
+        }
         if (state.pickArmed && state.loupe == null) {
             Hint("Sentuh kanvas untuk mengambil warna", Modifier.align(Alignment.TopCenter).padding(top = 64.dp + top))
         }
@@ -342,6 +351,36 @@ private fun ColorButton(state: AppState) {
                 }
             },
     )
+}
+
+/** Menu Salin & Tempel (seperti menu geser tiga jari Procreate). */
+@Composable
+private fun ClipMenu(state: AppState, modifier: Modifier) {
+    Surface(color = PanelBg, shape = RoundedCornerShape(18.dp), shadowElevation = 8.dp, modifier = modifier) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Salin & Tempel", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Row(Modifier.padding(top = 4.dp)) {
+                ClipItem(Icons.Filled.ContentCut, "Potong") { state.clipCopy(cut = true) }
+                ClipItem(Icons.Filled.ContentCopy, "Salin") { state.clipCopy() }
+                ClipItem(Icons.Filled.CopyAll, "Salin semua") { state.clipCopy(merged = true) }
+                ClipItem(Icons.Filled.ControlPointDuplicate, "Duplikat") { state.clipCopy(thenPaste = true) }
+                ClipItem(Icons.Filled.OpenWith, "Potong & tempel") { state.clipCopy(cut = true, thenPaste = true) }
+                ClipItem(Icons.Filled.ContentPaste, "Tempel") { state.clipPaste() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClipItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        Modifier.width(92.dp).clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(label, color = Color.White, fontSize = 12.sp, maxLines = 1)
+    }
 }
 
 @Composable

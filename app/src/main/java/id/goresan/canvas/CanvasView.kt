@@ -1397,7 +1397,57 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         postDelayed(mtRepeat, 550L)
     }
 
+    // Geser tiga jari ke bawah = menu Salin & Tempel (seperti Procreate).
+    private var sw3 = false
+    private var sw3T = 0L
+    private var sw3X = 0f
+    private var sw3Y = 0f
+    private var sw3Dy = 0f
+
+    private fun avg3(e: MotionEvent, y: Boolean): Float {
+        var s = 0f
+        for (k in 0 until 3) s += if (y) e.getY(k) else e.getX(k)
+        return s / 3f
+    }
+
+    private fun trackSwipe3(e: MotionEvent) {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { sw3 = false; sw3Dy = 0f }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                var finger = true
+                for (k in 0 until e.pointerCount) if (isStylus(e, k)) finger = false
+                sw3 = finger && e.pointerCount == 3 && e.eventTime - mtStart < 700L
+                if (sw3) {
+                    sw3T = e.eventTime
+                    sw3X = avg3(e, false)
+                    sw3Y = avg3(e, true)
+                    sw3Dy = 0f
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!sw3 || e.pointerCount < 3) return
+                val dy = avg3(e, true) - sw3Y
+                val dx = avg3(e, false) - sw3X
+                sw3Dy = dy
+                if (dy > 70f * density && kotlin.math.abs(dx) < dy * 0.7f && e.eventTime - sw3T < 1500L) {
+                    sw3 = false
+                    mtActive = false
+                    stopRepeat()
+                    // Kanvas yang ikut tergeser selama gerakan dikembalikan.
+                    if (mode == Mode.NAV) {
+                        view.set(navStart)
+                        pushView()
+                    }
+                    mode = Mode.IGNORE
+                    post { state.openClipMenu() }
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> if (e.pointerCount <= 3) sw3 = false
+        }
+    }
+
     private fun trackMultiTap(e: MotionEvent) {
+        trackSwipe3(e)
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 stopRepeat()
@@ -1453,6 +1503,13 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             }
             MotionEvent.ACTION_CANCEL -> {
                 stopRepeat()
+                // Sistem merebut geser tiga jari (mis. tangkapan layar HyperOS) setelah jari sempat turun: tetap buka menu.
+                if (sw3 && sw3Dy > 30f * density) {
+                    sw3 = false
+                    mtActive = false
+                    post { state.openClipMenu() }
+                    return
+                }
                 // HyperOS memakai sentuhan tiga jari untuk tangkapan layar dan merebut sentuhannya;
                 // bila dua jari atau lebih baru saja mendarat diam, anggap ketukan tiga jari.
                 if (mtActive && !mtRepeated && mtMax >= 2 && SystemClock.uptimeMillis() - mtStart < 700L && !penTouchRecent()) {

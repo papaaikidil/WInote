@@ -2753,6 +2753,259 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
+    /** TIFF RGB (latar terlihat) atau RGBA transparan, 8 bit, DPI karya, ke Download/WInote. */
+    fun exportTiff() {
+        if (docW <= 0 || modalActive()) return
+        panel = Panel.NONE
+        busy = "Membuat TIFF…"
+        val withBg = bgVisible
+        val bgc = if (withBg) bgColor else null
+        val dpi = docDpi
+        val p3 = profile == ColorProfile.P3
+        gl { e ->
+            val buf = e.compositePixels(bgc)
+            val w = docW
+            val h = docH
+            if (buf == null) { main.post { busy = null }; return@gl }
+            bg.execute {
+                val dir = File(app.cacheDir, "ekspor").apply { mkdirs() }
+                val file = File(dir, "${safeName()}-${stamp()}.tif")
+                val saved = runCatching {
+                    id.goresan.engine.Tiff.write(file, w, h, dpi, buf, alpha = !withBg, icc = if (p3) ColorProfile.iccDisplayP3 else null) { f ->
+                        main.post { if (busy != null) busy = "Membuat TIFF… ${(f * 100).roundToInt()}%" }
+                    }
+                    saveDownload(file, "image/tiff")
+                }.onFailure { Diag.log("TIFF gagal: $it") }.isSuccess
+                file.delete()
+                main.post {
+                    busy = null
+                    showFlash(if (saved) "TIFF tersimpan di Download/WInote" else "Gagal membuat TIFF")
+                }
+            }
+        }
+    }
+
+    /** Salin berkas sementara ke Download/WInote. */
+    private fun saveDownload(file: File, mime: String) {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
+            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/WInote")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val resolver = app.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: error("Folder menolak")
+        resolver.openOutputStream(uri)?.use { out -> FileInputStream(file).use { it.copyTo(out, 256 * 1024) } } ?: error("Tidak bisa menulis")
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+    }
+
+    /**
+     * Ekspor tiap layer terpisah: [pdf] false = satu PNG transparan per layer di Galeri › Pictures/WInote/<karya>;
+     * true = satu PDF di Download/WInote, satu halaman per layer (paling bawah = halaman 1).
+     */
+    fun exportLayers(pdf: Boolean) {
+        if (docW <= 0 || modalActive()) return
+        panel = Panel.NONE
+        busy = "Mengekspor layer…"
+        val folder = "${safeName()}-${stamp()}"
+        val k = 72f / docDpi.coerceAtLeast(1)
+        val doc = if (pdf) android.graphics.pdf.PdfDocument() else null
+        var done = 0
+        var failed = false
+        fun finish() {
+            bg.execute {
+                var ok = !failed && done > 0
+                if (doc != null) {
+                    if (ok) {
+                        val file = File(File(app.cacheDir, "ekspor").apply { mkdirs() }, "${safeName()}-layer-${stamp()}.pdf")
+                        ok = runCatching {
+                            file.outputStream().use { doc.writeTo(it) }
+                            saveDownload(file, "application/pdf")
+                        }.onFailure { Diag.log("PDF layer gagal: $it") }.isSuccess
+                        file.delete()
+                    }
+                    doc.close()
+                }
+                main.post {
+                    busy = null
+                    showFlash(
+                        when {
+                            !ok -> "Gagal mengekspor layer"
+                            pdf -> "PDF $done halaman (tiap layer) tersimpan di Download/WInote"
+                            else -> "$done PNG tersimpan di Galeri › Pictures/WInote/$folder"
+                        },
+                    )
+                }
+            }
+        }
+        fun step(i: Int) {
+            gl { e ->
+                val r = if (failed) null else e.layerBitmap(i)
+                if (r == null) { finish(); return@gl }
+                val (name, bmp) = r
+                bg.execute {
+                    val ok = runCatching {
+                        if (doc != null) {
+                            val pw = max(1, (bmp.width * k).roundToInt())
+                            val ph = max(1, (bmp.height * k).roundToInt())
+                            val page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(pw, ph, i + 1).create())
+                            page.canvas.drawBitmap(bmp, null, RectF(0f, 0f, pw.toFloat(), ph.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
+                            doc.finishPage(page)
+                        } else {
+                            val clean = name.replace(Regex("[\\\\/:*?\"<>|]"), "").trim().ifBlank { "Layer" }
+                            val values = ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, String.format(Locale.US, "%02d %s.png", i + 1, clean))
+                                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/WInote/" + folder)
+                                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                            }
+                            val resolver = app.contentResolver
+                            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: error("Galeri menolak")
+                            resolver.openOutputStream(uri)?.use { out -> bmp.compress(Bitmap.CompressFormat.PNG, 100, out) }
+                            values.clear()
+                            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                            resolver.update(uri, values, null, null)
+                        }
+                    }.onFailure { Diag.log("Ekspor layer $i gagal: $it") }.isSuccess
+                    bmp.recycle()
+                    if (ok) done++ else failed = true
+                    main.post {
+                        if (busy != null) busy = "Mengekspor layer ${i + 1}…"
+                        step(i + 1)
+                    }
+                }
+            }
+        }
+        step(0)
+    }
+
+    // ================= potong / salin / tempel =================
+
+    /** Menu Salin & Tempel (geser tiga jari ke bawah di kanvas, atau dari panel Aksi). */
+    var clipMenu by mutableStateOf(false)
+    private var clipData: id.goresan.engine.ClipImage? = null
+    /** Uri salinan terakhir yang kita taruh di papan klip sistem (supaya tidak ditempel dua kali sebagai gambar luar). */
+    private var clipUri: Uri? = null
+
+    fun openClipMenu() {
+        if (docW <= 0 || textEditing || guideEditing || paperEditing) return
+        panel = Panel.NONE
+        clipMenu = true
+    }
+
+    /**
+     * Salin isi layer aktif (atau gabungan semua layer bila [merged]) di dalam pilihan, atau seluruh isinya.
+     * [cut] = sekaligus dihapus dari layer. [thenPaste] = langsung ditempel ke layer baru di tempat yang sama
+     * (Duplikat / Potong & tempel; papan klip tidak berubah).
+     */
+    fun clipCopy(merged: Boolean = false, cut: Boolean = false, thenPaste: Boolean = false) {
+        clipMenu = false
+        if (docW <= 0 || modalActive()) return
+        gl { e ->
+            val c = e.clipCopy(merged, cut) ?: return@gl
+            if (thenPaste) {
+                e.clipPaste(c, c.x, c.y, if (cut) "Potongan" else "Salinan")
+                main.post { showFlash(if (cut) "Dipindah ke layer baru" else "Diduplikat ke layer baru") }
+                return@gl
+            }
+            main.post {
+                clipData = c
+                showFlash(if (cut) "Dipotong ke papan klip" else if (merged) "Semua layer disalin ke papan klip" else "Disalin ke papan klip")
+                publishClip(c)
+            }
+        }
+    }
+
+    /** Salinan juga ditaruh di papan klip sistem sebagai PNG, supaya bisa ditempel di aplikasi lain. */
+    private fun publishClip(c: id.goresan.engine.ClipImage) {
+        bg.execute {
+            val uri = runCatching {
+                val dir = File(app.cacheDir, "papan-klip").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
+                val f = File(dir, "salinan-${stamp()}.png")
+                val bmp = Bitmap.createBitmap(c.w, c.h, Bitmap.Config.ARGB_8888)
+                val px = c.px.duplicate()
+                px.position(0)
+                bmp.copyPixelsFromBuffer(px)
+                f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                bmp.recycle()
+                FileProvider.getUriForFile(app, app.packageName + ".files", f)
+            }.onFailure { Diag.log("Papan klip sistem gagal: $it") }.getOrNull() ?: return@execute
+            main.post {
+                runCatching {
+                    val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newUri(app.contentResolver, "WInote", uri))
+                    clipUri = uri
+                }.onFailure { Diag.log("Papan klip sistem gagal: $it") }
+            }
+        }
+    }
+
+    /**
+     * Tempel jadi layer baru. Gambar dari aplikasi lain (papan klip sistem) ditaruh di tengah lalu bisa dipindah;
+     * salinan dari WInote ditaruh di tempat asalnya.
+     */
+    fun clipPaste() {
+        clipMenu = false
+        if (docW <= 0 || modalActive()) return
+        val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val item = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) }.getOrNull()
+        val uri = item?.uri
+        val own = clipData
+        if (uri != null && uri != clipUri) {
+            pasteImage(uri)
+            return
+        }
+        if (own == null) {
+            showFlash(if (item != null) "Papan klip tidak berisi gambar" else "Papan klip kosong")
+            return
+        }
+        val w = docW
+        val h = docH
+        val fits = own.x >= 0 && own.y >= 0 && own.x + own.w <= w && own.y + own.h <= h
+        val x = if (fits) own.x else (w - own.w) / 2
+        val y = if (fits) own.y else (h - own.h) / 2
+        gl { e -> if (e.clipPaste(own, x, y, "Tempelan")) main.post { showFlash("Ditempel ke layer baru") } }
+    }
+
+    private fun pasteImage(uri: Uri) {
+        val w = docW
+        val h = docH
+        busy = "Menempel…"
+        bg.execute {
+            val res = runCatching {
+                val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                app.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) }
+                if (o.outWidth <= 0) error("Papan klip tidak berisi gambar")
+                var sample = 1
+                while (o.outWidth / (sample * 2) >= w || o.outHeight / (sample * 2) >= h) sample *= 2
+                val src = app.contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+                } ?: error("Gambar tidak bisa dibuka")
+                val k = min(1f, min(w.toFloat() / src.width, h.toFloat() / src.height))
+                val bw = max(1, (src.width * k).roundToInt())
+                val bh = max(1, (src.height * k).roundToInt())
+                val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+                Canvas(bmp).drawBitmap(src, null, RectF(0f, 0f, bw.toFloat(), bh.toFloat()), Paint(Paint.FILTER_BITMAP_FLAG))
+                src.recycle()
+                val buf = Buffers.direct(bw * bh * 4)
+                bmp.copyPixelsToBuffer(buf)
+                bmp.recycle()
+                buf.position(0)
+                id.goresan.engine.ClipImage((w - bw) / 2, (h - bh) / 2, bw, bh, buf)
+            }
+            main.post {
+                busy = null
+                res.onSuccess { c ->
+                    gl { e ->
+                        if (e.clipPaste(c, c.x, c.y, "Tempelan")) main.post { main.postDelayed({ startTransform(useSelection = false) }, 120) }
+                    }
+                }.onFailure { showFlash(it.message ?: "Gagal menempel") }
+            }
+        }
+    }
+
     fun sharePng(launch: (Intent) -> Unit) {
         if (modalActive()) return
         busy = "Menyiapkan…"
