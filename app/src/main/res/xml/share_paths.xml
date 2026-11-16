@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hanya folder hasil ekspor yang bisa dibagikan ke aplikasi lain. -->
+<paths>
+    <cache-path name="export" path="export/" />
+    <!-- Gambar yang dibagikan dari ruang gambar. -->
+    <cache-path name="bagikan" path="bagikan/" />
+</paths>

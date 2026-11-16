@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo WInote: huruf W tulisan tangan dan pensil sebagai huruf I, di atas garis kertas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Garis kertas -->
+    <path
+        android:pathData="M31.5,74.5L76.5,74.5"
+        android:strokeColor="#73FFF4F9"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <!-- W tulisan tangan -->
+    <path
+        android:pathData="M33.62,46L37.01,70L46.78,52L51.51,70L61.62,46"
+        android:strokeColor="#FFFFF4F9"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Pensil (huruf I): penghapus, cincin logam, badan, kayu, dan ujung grafit -->
+    <path android:fillColor="#FFE8A9C6" android:pathData="M68.88,37C69.19,34.79 71.23,33.0 73.44,33.0C75.65,33.0 77.19,34.79 76.88,37L76.6,39L68.6,39Z" />
+    <path android:fillColor="#FFD9C7D3" android:pathData="M68.6,39L76.6,39L76.18,42L68.18,42Z" />
+    <path android:fillColor="#FFFFF4F9" android:pathData="M68.18,42L76.18,42L73.24,63L65.24,63Z" />
+    <path android:fillColor="#FFF3D2B3" android:pathData="M65.24,63L73.24,63L69.33,70.2L67.13,70.2Z" />
+    <path android:fillColor="#FF3B1F33" android:pathData="M67.13,70.2L69.33,70.2L67.84,73Z" />
+</vector>

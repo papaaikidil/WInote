@@ -1,0 +1,4 @@
+wajah.json (UV dan segitiga wajah kanonik) dan peta-wajah.png diturunkan dari
+MediaPipe canonical_face_model.obj dan canonical_face_model_uv_visualization.png
+(https://github.com/google-ai-edge/mediapipe), Copyright The MediaPipe Authors,
+dilisensikan di bawah Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0).

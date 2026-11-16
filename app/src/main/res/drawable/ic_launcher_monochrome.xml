@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo WInote satu warna, untuk ikon bertema (Android 13 ke atas). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M31.5,74.5L76.5,74.5"
+        android:strokeColor="#80000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M33.62,46L37.01,70L46.78,52L51.51,70L61.62,46"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path android:fillColor="#FF000000" android:pathData="M68.88,37C69.19,34.79 71.23,33.0 73.44,33.0C75.65,33.0 77.19,34.79 76.88,37L76.6,39L68.6,39Z" />
+    <path android:fillColor="#FF000000" android:pathData="M68.18,42L76.18,42L73.24,63L65.24,63Z" />
+    <path android:fillColor="#FF000000" android:pathData="M65.24,63L73.24,63L69.33,70.2L67.13,70.2Z" />
+</vector>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WInote</string>
+    <string name="widget_recent_label">Catatan terbaru</string>
+    <string name="widget_recent_title">WInote</string>
+    <string name="widget_recent_desc">Daftar catatan terakhir yang bisa digulir, dengan tombol catatan baru</string>
+    <string name="widget_note_label">Satu catatan</string>
+    <string name="widget_note_desc">Isi catatan pilihan yang bisa digulir; daftar centang bisa dicentang langsung</string>
+    <string name="widget_note_title">Catatan</string>
+    <string name="widget_new_note">Catatan baru</string>
+    <string name="widget_empty">Belum ada catatan. Ketuk untuk membuat catatan baru.</string>
+    <string name="widget_open_note">Buka catatan</string>
+    <string name="widget_sample_task">Tugas hari ini</string>
+    <string name="widget_sample_date">Hari ini</string>
+    <string name="widget_note_pick">Ketuk untuk memilih catatan</string>
+</resources>

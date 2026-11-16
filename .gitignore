@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+# Kunci tanda tangan yang sudah dibuka (jangan pernah masuk repository).
+app/kunci/
+*.jks
+*.keystore
