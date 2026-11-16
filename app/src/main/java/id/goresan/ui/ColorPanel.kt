@@ -48,6 +48,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -564,11 +568,17 @@ private fun ColorPalette(state: AppState, panelRect: () -> Rect) {
     Column(Modifier.fillMaxWidth()) {
         // Daftar palet: ketuk untuk membuka; bintang = palet utama (tampil ringkas di tab lain).
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            val chips = rememberLazyListState()
+            // Palet yang dibuka selalu terlihat (mis. sesudah impor/palet baru di ujung daftar).
+            LaunchedEffect(state.paletteIndex, state.palettes.size) {
+                if (state.paletteIndex in state.palettes.indices) chips.animateScrollToItem(state.paletteIndex)
+            }
+            LazyRow(
+                Modifier.weight(1f),
+                state = chips,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                state.palettes.forEachIndexed { i, p ->
+                itemsIndexed(state.palettes) { i, p ->
                     val sel = i == state.paletteIndex
                     Text(
                         (if (i == state.defaultPaletteIndex) "★ " else "") + p.name,

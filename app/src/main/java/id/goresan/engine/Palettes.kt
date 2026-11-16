@@ -298,10 +298,14 @@ object Palettes {
                 centers[c][0] = acc[c][0] / size[c]; centers[c][1] = acc[c][1] / size[c]; centers[c][2] = acc[c][2] / size[c]
             }
         }
+        // Kelompok yang sangat kecil (mis. warna campuran di tepi benda) dan warna yang nyaris kembar dibuang;
+        // kelompok besar didahulukan supaya warna utama yang tersisa.
+        val minSize = max(1, (samples.size * 0.004f).toInt())
+        val order = centers.indices.filter { size[it] > 0 }.sortedByDescending { size[it] }
         val res = ArrayList<FloatArray>()
-        for (c in centers.indices) {
-            if (size[c] == 0) continue
-            if (res.any { d2(it, centers[c]) < 16f }) continue
+        for (c in order) {
+            if (size[c] < minSize && res.size >= 3) continue
+            if (res.any { d2(it, centers[c]) < 49f }) continue
             res.add(centers[c])
         }
         return res.map { fromLab(it[0], it[1], it[2]) }

@@ -238,6 +238,7 @@ shot referensi-layer
 tutup_layer
 warna
 tap_node "Palet" 2
+tap_node "★ Palet saya" 2 || true
 shot palet-tab
 read X0 Y0 < <(find_node "Warna #1E88E5")
 if [ -n "$X0" ]; then
@@ -295,6 +296,19 @@ shot palet-impor
 tap_node "Menu palet" 2 && tap_node "Simpan sebagai .swatches" 4
 tutup_warna
 adb shell ls -la /sdcard/Download/WInote > $OUT/ekspor.txt 2>&1
+# Masker tersimpan dan terbuka lagi: tunggu simpan otomatis, buka ulang karya yang sama.
+sleep 8
+ART=$(adb shell run-as $PKG ls -t files/karya | head -1 | tr -d '\r')
+adb shell run-as $PKG cat files/karya/$ART/doc.json > $OUT/doc.json 2>&1
+adb shell run-as $PKG ls -l files/karya/$ART >> $OUT/doc.json 2>&1
+adb shell am force-stop $PKG
+adb shell am start -W -n $PKG/id.goresan.DrawActivity --es open_art "$ART" > /dev/null 2>&1
+sleep 20
+depan
+buka_layer
+shot dibuka-ulang
+tap_node "Masker layer" 2
+shot masker-dipilih-ulang
 adb shell run-as $PKG cat shared_prefs/goresan.xml 2>/dev/null | grep -o '"palettes"[^<]*\|name="palettes">[^<]*' | head -c 3000 > $OUT/palet-prefs.txt
 adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
 adb logcat -d -t 3000 | grep -i "goresan\|hananote\|AndroidRuntime\|FATAL" | tail -200 > $OUT/logcat.txt

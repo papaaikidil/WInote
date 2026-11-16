@@ -2126,7 +2126,8 @@ class AppState(val app: Context) : Engine.Listener {
                 val safe = p.name.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "Palet" }
                 val f = File(app.cacheDir, "$safe.swatches")
                 f.writeBytes(id.goresan.engine.Palettes.toSwatches(pal))
-                saveDownload(f, "application/zip")
+                // octet-stream: nama berkas tetap .swatches (application/zip membuatnya jadi .swatches.zip).
+                saveDownload(f, "application/octet-stream")
                 f.delete()
                 f.name
             }
