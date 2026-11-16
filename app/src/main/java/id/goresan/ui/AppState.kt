@@ -185,6 +185,12 @@ class AppState(val app: Context) : Engine.Listener {
     var penRedo by mutableIntStateOf(0)
     /** Mode Pena sedang dipakai (Liquify dan Klon punya sapuan sendiri). */
     val adjPenActive: Boolean get() = adjPen && adjustKind >= 0 && adjustKind != Adj.LIQUIFY && adjustKind != Adj.CLONE
+    /**
+     * Ukuran (0..1, skala kuadrat sampai sepertiga sisi kanvas) dan kekuatan sapuan mode Pena. Diatur dengan penggeser
+     * samping selama mode Pena dipakai — terpisah dari ukuran kuas, karena sapuan efek biasanya jauh lebih lebar.
+     */
+    var penSizeV by mutableFloatStateOf(prefs.getInt("penSize", 450) / 1000f)
+    var penOpV by mutableFloatStateOf(prefs.getInt("penOp", 1000) / 1000f)
     var flash by mutableStateOf<String?>(null)
     var flashId by mutableIntStateOf(0)
     var busy by mutableStateOf<String?>(null)
@@ -1432,6 +1438,29 @@ class AppState(val app: Context) : Engine.Listener {
     fun persistSliders() {
         prefs.putFloatMap("sizes", sizes.toMap())
         prefs.putFloatMap("opacities", opacities.toMap())
+        prefs.putInt("penSize", (penSizeV * 1000).roundToInt())
+        prefs.putInt("penOp", (penOpV * 1000).roundToInt())
+    }
+
+    fun penSizePx(): Float = 4f + (docMax / 3f - 4f) * penSizeV * penSizeV
+
+    /** Penggeser samping: ukuran/opasitas kuas, atau ukuran/kekuatan sapuan saat mode Pena penyesuaian. */
+    fun sideSize(): Float = if (adjPenActive) penSizeV else sizeSlider()
+    fun sideOpacity(): Float = if (adjPenActive) penOpV else opacitySlider()
+
+    fun setSideSize(v: Float) {
+        if (adjPenActive) { penSizeV = v.coerceIn(0f, 1f); pushPen() } else setSizeSlider(v)
+    }
+
+    fun setSideOpacity(v: Float) {
+        if (adjPenActive) { penOpV = v.coerceIn(0.02f, 1f); pushPen() } else setOpacitySlider(v)
+    }
+
+    private fun pushPen() {
+        canvasView?.engine?.let {
+            it.penSizePx = penSizePx()
+            it.penOpacity = penOpV
+        }
     }
 
     fun sizePx(t: Int = tool): Float {
@@ -2237,6 +2266,7 @@ class AppState(val app: Context) : Engine.Listener {
         adjPenErase = false
         penUndo = 0
         penRedo = 0
+        pushPen()
         gl { it.adjustPen(on) }
         if (on) showFlash("Sapukan pena di bagian yang ingin diberi efek")
     }

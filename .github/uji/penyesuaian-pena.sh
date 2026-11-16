@@ -132,12 +132,11 @@ menu "Noise" && { slide "Jumlah" 1.0; shot noise-kuat; batal; }
 depan
 
 # ---- mode Pena ----
-# Ukuran kuas diperbesar lewat penggeser samping (seret ke atas, relatif).
 SBX=$(dp 32); SBY=$((H/2 - $(dp 150)))
-adb shell input swipe $SBX $SBY $SBX $((SBY - $(dp 120))) 800; sleep 2
-shot ukuran-kuas
 menu "Blur Gaussian" && {
   tap_node "Pena" 3; shot pena-mulai
+  # Ukuran sapuan diperbesar lewat penggeser samping (seret ke atas, relatif); ukuran kuas tidak berubah.
+  adb shell input swipe $SBX $SBY $SBX $((SBY - $(dp 40))) 800; sleep 2
   slide "Radius" 0.8; shot pena-belum-disapu
   adb shell input swipe $((W*14/100)) $((H*62/100)) $((W*60/100)) $((H*62/100)) 900; sleep 3
   shot pena-sapuan-1

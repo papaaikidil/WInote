@@ -226,6 +226,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     val liqInput = ConcurrentLinkedQueue<FloatArray>()
     /** Sapuan mode Pena penyesuaian: [x, y kanvas, tekanan, fase 0 mulai/1 gerak/2 selesai/3 batal, hapus 0/1]. */
     val penInput = ConcurrentLinkedQueue<FloatArray>()
+    /** Ukuran (px kanvas) dan kekuatan sapuan mode Pena. */
+    @Volatile var penSizePx = 80f
+    @Volatile var penOpacity = 1f
     /** Liquify: [mode, ukuran px, tekanan 0..1, distorsi 0..1]. */
     @Volatile var liqParams = floatArrayOf(0f, 150f, 0.5f, 0.5f)
     /** Posisi sumber Clone (piksel kanvas), untuk antarmuka. Null bila Clone tidak aktif. */
@@ -2802,7 +2805,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         }
         // Liquify: lingkaran ukuran sapuan di bawah pena/jari.
         if (h != null && adjOn && adjKind == Adj.LIQUIFY) ring(h[0], h[1], max(3f * density, liqParams[1] * zoom * 0.5f))
-        if (h != null && adjOn && penOn) ring(h[0], h[1], max(3f * density, (ts?.current()?.sizePx ?: penSize) * zoom * 0.5f))
+        if (h != null && adjOn && penOn) ring(h[0], h[1], max(3f * density, penSizePx * zoom * 0.5f))
         val mk = if (adjOn) marker else null
         if (mk != null) {
             val sx = v[0] * mk[0] + v[1] * mk[1] + v[2]
@@ -4714,14 +4717,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
                     gaussian(l.tex, pv, p[0] / 2.5f)
                 }
             }
-            Adj.MOTION -> multiPass(l, Adj.MOTION, p, chain(p[0], 1f))
-            Adj.PERSP -> {
-                // Jarak terjauh dari titik pusat ke sudut kanvas: di sanalah sebaran sampel paling lebar.
-                val cx = p.getOrElse(2) { W / 2f }
-                val cy = p.getOrElse(3) { H / 2f }
-                val far = max(max(hypot(cx, cy), hypot(W - cx, cy)), max(hypot(cx, H - cy), hypot(W - cx, H - cy)))
-                multiPass(l, Adj.PERSP, p, chain(p[0], far * 0.5f))
-            }
+            Adj.MOTION -> multiPass(l, Adj.MOTION, motionPasses(p))
+            Adj.PERSP -> multiPass(l, Adj.PERSP, perspPasses(p))
             Adj.SHARPEN -> {
                 val tmp = strokeBuf!!
                 gaussian(l.tex, tmp, max(0.6f, p.getOrElse(1) { 3.5f } / 2.5f))
@@ -4752,41 +4749,66 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         dirty.set(0, 0, W, H)
     }
 
+    private val passTaps: Float get() = if (softGpu) 12f else 128f
+
     /**
-     * Panjang tiap lintasan blur berlapis untuk sebaran [amount]·[reach] piksel. Satu lintasan hanya punya uTaps sampel;
-     * bila sebarannya lebih panjang, sampelnya berjarak dan muncul garis-garis bayangan. Maka dibuat lintasan pendek dulu
-     * yang panjangnya sama dengan jarak antar-sampel lintasan berikutnya — gabungannya sama dengan satu blur rapat.
-     * Hasil: dari yang terpendek ke yang terpanjang ([amount] asli di akhir).
+     * Blur Gerak panjang dalam beberapa lintasan. Satu lintasan hanya punya uTaps sampel; bila lebih panjang,
+     * sampelnya berjarak dan muncul garis-garis bayangan. Maka dibuat lintasan pendek dulu yang panjangnya sama dengan
+     * jarak antar-sampel lintasan berikutnya — gabungannya sama dengan satu blur rapat. Urutan: terpendek dulu.
      */
-    private fun chain(amount: Float, reach: Float): List<Float> {
-        val taps = if (softGpu) 12f else 128f
-        val out = ArrayList<Float>()
-        var a = amount
-        out.add(a)
-        while (a * reach > taps * 1.5f && out.size < 6) {
-            a /= taps
-            out.add(a)
+    private fun motionPasses(p: FloatArray): List<FloatArray> {
+        val out = ArrayList<FloatArray>()
+        var len = p[0]
+        out.add(p.copyOf())
+        while (len > passTaps * 1.5f && out.size < 6) {
+            len /= passTaps
+            out.add(p.copyOf().also { it[0] = len })
         }
         out.reverse()
         return out
     }
 
-    /** Jalankan filter [kind] beberapa lintasan (jumlah per lintasan = [amounts], parameter lain dari [p]) ke pratinjau. */
-    private fun multiPass(l: Layer, kind: Int, p: FloatArray, amounts: List<Float>) {
+    /**
+     * Blur Perspektif dalam beberapa lintasan, dengan cara yang sama tetapi dalam skala log: lintasan pendahulu
+     * (posisional, sangat kecil) lebarnya sama dengan jarak antar-sampel lintasan berikutnya.
+     */
+    private fun perspPasses(p: FloatArray): List<FloatArray> {
+        val cx = p.getOrElse(2) { W / 2f }
+        val cy = p.getOrElse(3) { H / 2f }
+        // Jarak terjauh dari titik pusat ke sudut kanvas: di sanalah sebaran sampel paling lebar.
+        val far = max(max(hypot(cx, cy), hypot(W - cx, cy)), max(hypot(cx, H - cy), hypot(W - cx, H - cy)))
+        val out = ArrayList<FloatArray>()
+        out.add(p.copyOf())
+        var amt = p[0]
+        var dir = p.getOrElse(1) { 0f } >= 0.5f
+        while (out.size < 6) {
+            val k0 = max(0.02f, if (dir) 1f - amt * 0.5f else 1f - amt * 0.25f)
+            val k1 = if (dir) 1f else 1f + amt * 0.25f
+            val u = kotlin.math.ln(k1 / k0)
+            if (far * k1 * u <= passTaps * 1.5f) break
+            // Posisional kecil: lebar log ≈ amt/2 → sama dengan jarak antar-sampel (u / taps).
+            amt = 2f * u / passTaps
+            dir = false
+            out.add(p.copyOf().also { it[0] = amt; it[1] = 0f })
+        }
+        out.reverse()
+        return out
+    }
+
+    /** Jalankan filter [kind] beberapa lintasan (parameter tiap lintasan = [passes]) ke pratinjau. */
+    private fun multiPass(l: Layer, kind: Int, passes: List<FloatArray>) {
         val pv = preview!!
         val sb = strokeBuf!!
         val lock = l.alphaLock
-        val total = amounts.size + (if (lock) 1 else 0)
+        val total = passes.size + (if (lock) 1 else 0)
         var src = l.tex
-        val q = p.copyOf()
-        for (i in amounts.indices) {
+        for (i in passes.indices) {
             // Tujuan berselang-seling supaya lintasan terakhir mendarat di pratinjau.
             val dst = if ((total - 1 - i) % 2 == 0) pv else sb
-            q[0] = amounts[i]
-            filterPassTex(kind, src, null, q, dst, false)
+            filterPassTex(kind, src, null, passes[i], dst, false)
             src = dst
         }
-        if (lock) filterPassTex(Adj.ALPHA_LOCK, l.tex, src, p, pv, false)
+        if (lock) filterPassTex(Adj.ALPHA_LOCK, l.tex, src, passes.last(), pv, false)
         clearRect(sb, IRect(0, 0, W, H))
     }
 
@@ -5032,11 +5054,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     private fun penBegin(x: Float, y: Float, pr: Float, erase: Boolean, box: IRect) {
         if (penDown) penEnd(box)
-        val set = tool?.current()
         penDown = true
         penErase = erase
-        penSize = max(2f, set?.sizePx ?: 40f)
-        penOp = (set?.opacity ?: 1f).coerceIn(0.02f, 1f)
+        penSize = max(2f, penSizePx)
+        penOp = penOpacity.coerceIn(0.02f, 1f)
         penBox.clear()
         penX = x; penY = y; penP = pr
         penResid = 0f

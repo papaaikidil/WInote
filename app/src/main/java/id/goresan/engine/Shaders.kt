@@ -996,20 +996,28 @@ void main() {
     }
 #elif KIND == 6
     {
-        // Perspective Blur: blur memancar dari titik pusat (posisional = dua arah, searah = menjauh dari pusat).
+        // Perspective Blur: blur memancar dari titik pusat (posisional = dua arah, searah = menuju pusat).
+        // Sampel diletakkan rata dalam skala log (diberi bobot k supaya sebarannya tetap sama dengan rata dalam k):
+        // dengan begitu beberapa lintasan bisa digabung tanpa celah (lihat Engine.perspPasses).
         float amt = uP[0];
         if (amt > 0.001) {
             vec2 c = vec2(uP[2], uP[3]);
             vec2 v = vPos - c;
-            int n = int(clamp(length(v) * amt * 0.5, 4.0, uTaps));
+            float k0 = uP[1] < 0.5 ? 1.0 - amt * 0.25 : 1.0 - amt * 0.5;
+            float k1 = uP[1] < 0.5 ? 1.0 + amt * 0.25 : 1.0;
+            k0 = max(k0, 0.02);
+            float u0 = log(k0);
+            float u1 = log(k1);
+            int n = int(clamp(length(v) * k1 * (u1 - u0), 4.0, uTaps));
             vec4 acc = vec4(0.0);
+            float ws = 0.0;
             for (int i = 0; i < 128; i++) {
                 if (i >= n) break;
-                float t = (float(i) + 0.5) / float(n);
-                float k = uP[1] < 0.5 ? 1.0 + amt * 0.5 * (t - 0.5) : 1.0 - amt * 0.5 * t;
-                acc += at(c + v * k);
+                float k = exp(mix(u0, u1, (float(i) + 0.5) / float(n)));
+                acc += at(c + v * k) * k;
+                ws += k;
             }
-            r = acc / float(n);
+            r = acc / ws;
         }
     }
 #elif KIND == 7

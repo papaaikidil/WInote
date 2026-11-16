@@ -357,8 +357,8 @@ private fun SideBar(state: AppState, modifier: Modifier, onHint: (Int) -> Unit) 
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         VerticalSlider(
-            value = state.sizeSlider(),
-            onChange = { state.setSizeSlider(it) },
+            value = state.sideSize(),
+            onChange = { state.setSideSize(it) },
             modifier = Modifier.height(180.dp),
             onStart = { onHint(1) },
             onEnd = { onHint(0); state.persistSliders() },
@@ -376,8 +376,8 @@ private fun SideBar(state: AppState, modifier: Modifier, onHint: (Int) -> Unit) 
         }
         Spacer(Modifier.height(10.dp))
         VerticalSlider(
-            value = state.opacitySlider(),
-            onChange = { state.setOpacitySlider(it) },
+            value = state.sideOpacity(),
+            onChange = { state.setSideOpacity(it) },
             modifier = Modifier.height(180.dp),
             onStart = { onHint(2) },
             onEnd = { onHint(0); state.persistSliders() },
@@ -394,15 +394,19 @@ private fun SliderHint(state: AppState, kind: Int, modifier: Modifier) {
     val density = LocalDensity.current
     Surface(color = PanelBg, shape = RoundedCornerShape(18.dp), modifier = modifier) {
         Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            val pen = state.adjPenActive
             if (kind == 1) {
-                val px = state.sizePx()
+                val px = if (pen) state.penSizePx() else state.sizePx()
                 val screenPx = (px * state.viewZoom).coerceIn(2f, 600f)
                 val d = with(density) { screenPx.toDp() }
-                Box(Modifier.size(maxOf(d, 8.dp)).clip(CircleShape).background(Color(state.color).copy(alpha = 0.9f)).border(1.dp, Color.White, CircleShape))
+                val fill = if (pen) Color(0x66FFFFFF) else Color(state.color).copy(alpha = 0.9f)
+                Box(Modifier.size(maxOf(d, 8.dp)).clip(CircleShape).background(fill).border(1.dp, Color.White, CircleShape))
                 Spacer(Modifier.height(10.dp))
-                Text("Ukuran ${(state.sizeSlider() * 100).roundToInt()}% · ${px.roundToInt()} px", color = Color.White, fontSize = 14.sp)
+                val label = if (pen) "Ukuran sapuan" else "Ukuran"
+                Text("$label ${(state.sideSize() * 100).roundToInt()}% · ${px.roundToInt()} px", color = Color.White, fontSize = 14.sp)
             } else {
-                Text("Opasitas ${(state.opacitySlider() * 100).roundToInt()}%", color = Color.White, fontSize = 14.sp)
+                val label = if (pen) "Kekuatan sapuan" else "Opasitas"
+                Text("$label ${(state.sideOpacity() * 100).roundToInt()}%", color = Color.White, fontSize = 14.sp)
             }
         }
     }

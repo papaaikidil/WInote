@@ -337,7 +337,7 @@ private fun PenModeRow(state: AppState) {
             TextButton(onClick = { state.penClear() }) { Text("Hapus semua") }
         }
     }
-    if (state.adjPen) Hint("Sapukan pena di bagian yang ingin diberi efek · ukuran dan opasitas pena dari penggeser samping")
+    if (state.adjPen) Hint("Sapukan pena di bagian yang ingin diberi efek · ukuran dan kekuatan sapuan dari penggeser samping")
 }
 
 @Composable
