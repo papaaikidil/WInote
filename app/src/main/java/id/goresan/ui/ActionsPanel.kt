@@ -127,6 +127,9 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 state.exportAnim(gif = true)
             }
             ActionRow("Ekspor animasi MP4", "Tiap layer atau grup jadi satu frame, video ke Galeri › Movies/WInote") { state.exportAnim(gif = false) }
+            ActionRow("Ekspor animasi PNG (APNG)", "Warna penuh, tepi halus, transparan bila latar disembunyikan; ke Galeri › Pictures/WInote") {
+                state.exportApng()
+            }
             if (state.is3D) {
                 ActionRow("Ekspor model 3D (GLB)", "Model + tekstur dalam satu berkas, untuk Blender dan penampil 3D. Disimpan di Download/WInote") {
                     state.exportGlb()
@@ -236,6 +239,23 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
             ToggleRow("Prediksi goresan", "Goresan terasa lebih menempel di ujung pena", state.prefs.prediction) { state.prefs.prediction = it; state.syncTool() }
             ToggleRow("Putar kanvas dengan dua jari", null, state.prefs.rotateCanvas) { state.prefs.rotateCanvas = it }
             ToggleRow("Bilah samping di kanan", "Untuk pengguna tangan kiri", state.prefs.sidebarRight) { state.prefs.sidebarRight = it }
+            SectionTitle("Gestur")
+            ToggleRow(
+                "Gosok tiga jari = bersihkan layer",
+                "Gosok tiga jari ke kiri-kanan di kanvas untuk mengosongkan layer aktif (bisa diurungkan)",
+                state.prefs.scrubClear,
+            ) { state.prefs.scrubClear = it }
+            ToggleRow(
+                "Geser tiga jari ke bawah = Salin & Tempel",
+                "Matikan bila bentrok dengan tangkapan layar tiga jari di HyperOS",
+                state.prefs.swipe3Menu,
+            ) { state.prefs.swipe3Menu = it }
+            ToggleRow(
+                "Ketuk empat jari = QuickMenu",
+                "Bila mati, ketuk empat jari menyembunyikan alat. QuickMenu juga terbuka dengan menahan tombol pipet",
+                state.prefs.fourFingerQuick,
+            ) { state.prefs.fourFingerQuick = it }
+            ActionRow("Buka QuickMenu", "Enam tombol aksi cepat; tahan tombolnya untuk mengganti isinya") { state.openQuickMenu() }
             LabeledSlider(
                 "Kepekaan tekanan pena",
                 2f - state.prefs.pressureGamma,
@@ -259,8 +279,9 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 state.showReport = true
             }
             Text(
-                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat · geser 3 jari ke bawah = salin & tempel · " +
-                    "cubit cepat = pas layar · tahan jari = pipet",
+                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat (atau QuickMenu) · " +
+                    "geser 3 jari ke bawah = salin & tempel · gosok 3 jari = bersihkan layer · cubit cepat = pas layar · " +
+                    "tahan jari = pipet · tahan tombol pipet = QuickMenu",
                 color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }

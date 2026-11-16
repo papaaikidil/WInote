@@ -195,6 +195,31 @@ fun main(args: Array<String>) {
         println("  harmoni: komplementer ${comp.joinToString { hex(it) }}, triadik ${tri.joinToString { hex(it) }} ${if (hOk) "OK" else "GAGAL"}")
         if (!hOk) fail++
     }
+    // APNG: tiga bingkai 64x40 berbeda (dengan alfa), dibaca Pillow di banding.py.
+    run {
+        val aw = 64
+        val ah = 40
+        val apng = id.goresan.engine.ApngWriter(File(out, "uji.apng.png"), aw, ah, loop = true)
+        val straight = ByteArray(3 * aw * ah * 4)
+        for (k in 0 until 3) {
+            val b = ByteBuffer.allocate(aw * ah * 4)
+            for (y in 0 until ah) for (x in 0 until aw) {
+                val a = if (x < 8 * (k + 1)) 0 else if (y < 10) 128 else 255
+                val r = (x * 4 + k * 60) % 256
+                val g = (y * 6) % 256
+                val bl = if (k == 1) 255 else 30
+                val o = ((k * ah + y) * aw + x) * 4
+                straight[o] = (if (a == 0) 0 else r).toByte(); straight[o + 1] = (if (a == 0) 0 else g).toByte()
+                straight[o + 2] = (if (a == 0) 0 else bl).toByte(); straight[o + 3] = a.toByte()
+                b.put((r * a / 255).toByte()); b.put((g * a / 255).toByte()); b.put((bl * a / 255).toByte()); b.put(a.toByte())
+            }
+            b.position(0)
+            apng.put(b, 100 * (k + 1))
+        }
+        apng.finish()
+        File(out, "apng.straight.rgba").writeBytes(straight)
+        println("APNG ditulis ${aw}x$ah, 3 bingkai")
+    }
     // TIFF: tulis dengan Tiff.write (RGBA dan RGB), dibandingkan Python/PIL di banding.py.
     val tw = 203
     val th = 77

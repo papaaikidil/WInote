@@ -71,6 +71,24 @@ class Prefs(ctx: Context) {
         get() = _rotateCanvas.value
         set(v) { _rotateCanvas.value = v; sp.edit().putBoolean("rotateCanvas", v).apply() }
 
+    private val _scrubClear = bool("scrubClear", true)
+    /** Gosok tiga jari (kiri-kanan berulang) di kanvas = bersihkan layer, seperti Procreate. */
+    var scrubClear: Boolean
+        get() = _scrubClear.value
+        set(v) { _scrubClear.value = v; sp.edit().putBoolean("scrubClear", v).apply() }
+
+    private val _swipe3Menu = bool("swipe3Menu", true)
+    /** Geser tiga jari ke bawah = menu Salin & Tempel. */
+    var swipe3Menu: Boolean
+        get() = _swipe3Menu.value
+        set(v) { _swipe3Menu.value = v; sp.edit().putBoolean("swipe3Menu", v).apply() }
+
+    private val _fourFingerQuick = bool("fourFingerQuick", false)
+    /** Ketuk empat jari membuka QuickMenu (bawaan: menyembunyikan alat). */
+    var fourFingerQuick: Boolean
+        get() = _fourFingerQuick.value
+        set(v) { _fourFingerQuick.value = v; sp.edit().putBoolean("fourFingerQuick", v).apply() }
+
     private val _sidebarRight = bool("sidebarRight", false)
     var sidebarRight: Boolean
         get() = _sidebarRight.value

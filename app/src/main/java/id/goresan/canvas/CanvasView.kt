@@ -1410,6 +1410,38 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         return s / 3f
     }
 
+    // Gosok tiga jari (kiri-kanan berulang) = bersihkan layer, seperti Procreate.
+    private var scDir = 0
+    private var scExt = 0f
+    private var scTurns = 0
+
+    /** Kanvas yang ikut tergeser selama gerakan tiga jari dikembalikan, sentuhan sisanya diabaikan. */
+    private fun endSwipe3() {
+        sw3 = false
+        mtActive = false
+        stopRepeat()
+        if (mode == Mode.NAV) {
+            view.set(navStart)
+            pushView()
+        }
+        mode = Mode.IGNORE
+    }
+
+    private fun trackScrub(e: MotionEvent) {
+        val x = avg3(e, false)
+        val amp = 28f * density
+        when (scDir) {
+            0 -> if (kotlin.math.abs(x - sw3X) > amp) { scDir = if (x > sw3X) 1 else -1; scExt = x }
+            1 -> if (x > scExt) scExt = x else if (scExt - x > amp) { scTurns++; scDir = -1; scExt = x }
+            else -> if (x < scExt) scExt = x else if (x - scExt > amp) { scTurns++; scDir = 1; scExt = x }
+        }
+        val dy = kotlin.math.abs(avg3(e, true) - sw3Y)
+        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 2000L) {
+            endSwipe3()
+            post { state.scrubClear() }
+        }
+    }
+
     private fun trackSwipe3(e: MotionEvent) {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> { sw3 = false; sw3Dy = 0f }
@@ -1422,6 +1454,8 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                     sw3X = avg3(e, false)
                     sw3Y = avg3(e, true)
                     sw3Dy = 0f
+                    scDir = 0
+                    scTurns = 0
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -1429,16 +1463,12 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 val dy = avg3(e, true) - sw3Y
                 val dx = avg3(e, false) - sw3X
                 sw3Dy = dy
-                if (dy > 70f * density && kotlin.math.abs(dx) < dy * 0.7f && e.eventTime - sw3T < 1500L) {
-                    sw3 = false
-                    mtActive = false
-                    stopRepeat()
-                    // Kanvas yang ikut tergeser selama gerakan dikembalikan.
-                    if (mode == Mode.NAV) {
-                        view.set(navStart)
-                        pushView()
-                    }
-                    mode = Mode.IGNORE
+                if (state.prefs.scrubClear) {
+                    trackScrub(e)
+                    if (!sw3) return
+                }
+                if (state.prefs.swipe3Menu && dy > 70f * density && kotlin.math.abs(dx) < dy * 0.7f && e.eventTime - sw3T < 1500L) {
+                    endSwipe3()
                     post { state.openClipMenu() }
                 }
             }
@@ -1504,7 +1534,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             MotionEvent.ACTION_CANCEL -> {
                 stopRepeat()
                 // Sistem merebut geser tiga jari (mis. tangkapan layar HyperOS) setelah jari sempat turun: tetap buka menu.
-                if (sw3 && sw3Dy > 30f * density) {
+                if (sw3 && sw3Dy > 30f * density && state.prefs.swipe3Menu) {
                     sw3 = false
                     mtActive = false
                     post { state.openClipMenu() }

@@ -127,6 +127,8 @@ fun EditorScreen(state: AppState) {
     BackHandler {
         when {
             state.tlVideo != null -> state.tlVideo = null
+            state.opacityLayer >= 0 -> state.endLayerOpacity()
+            state.quickMenu != null -> state.quickMenu = null
             state.animSettingsOpen -> state.animSettingsOpen = false
             state.cropOpen -> { state.cropOpen = false; state.cropSnap = null }
             state.textEditing -> state.cancelText()
@@ -203,6 +205,39 @@ fun EditorScreen(state: AppState) {
             // Ketuk di luar menu untuk menutup.
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { state.clipMenu = false } })
             ClipMenu(state, Modifier.align(Alignment.TopCenter).padding(top = 64.dp + top))
+        }
+        if (state.quickMenu != null) QuickMenu(state)
+        if (state.opacityLayer >= 0) {
+            // Opasitas layer (ketuk dua jari di layer): geser jari ke kiri/kanan di mana saja; ketuk untuk selesai.
+            val l = state.layers.firstOrNull { it.id == state.opacityLayer }
+            if (l == null) {
+                androidx.compose.runtime.LaunchedEffect(Unit) { state.endLayerOpacity() }
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                val startOp = state.layers.firstOrNull { it.id == state.opacityLayer }?.opacity ?: return@awaitEachGesture
+                                var moved = false
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                                    val dx = ch.position.x - down.position.x
+                                    if (kotlin.math.abs(dx) > viewConfiguration.touchSlop) moved = true
+                                    if (moved) {
+                                        ch.consume()
+                                        state.setLayerOpacityLive(startOp + dx / (size.width * 0.7f))
+                                    }
+                                    if (!ch.pressed) break
+                                }
+                                if (!moved) state.endLayerOpacity()
+                            }
+                        },
+                )
+                OpacityBar(state, l, Modifier.align(Alignment.TopCenter).padding(top = 58.dp + top))
+            }
         }
         if (state.pickArmed && state.loupe == null) {
             Hint("Sentuh kanvas untuk mengambil warna", Modifier.align(Alignment.TopCenter).padding(top = 64.dp + top))
@@ -408,7 +443,8 @@ private fun SideBar(state: AppState, modifier: Modifier, onHint: (Int) -> Unit) 
                 .size(34.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(if (state.pickArmed) Accent else Color(0x33FFFFFF))
-                .clickable { state.armPick() },
+                // Ketuk = pipet; tahan = QuickMenu (seperti tombol kotak di Procreate).
+                .pointerInput(Unit) { detectTapGestures(onTap = { state.armPick() }, onLongPress = { state.openQuickMenu() }) },
             contentAlignment = Alignment.Center,
         ) {
             androidx.compose.material3.Icon(Icons.Filled.Colorize, "Pipet", tint = Color.White, modifier = Modifier.size(20.dp))
@@ -511,6 +547,28 @@ private fun FlashOverlay(state: AppState, modifier: Modifier) {
 private fun BarSurface(modifier: Modifier, content: @Composable () -> Unit) {
     Surface(color = PanelBg, shape = RoundedCornerShape(18.dp), modifier = modifier, shadowElevation = 6.dp) {
         content()
+    }
+}
+
+@Composable
+private fun OpacityBar(state: AppState, l: id.goresan.engine.LayerInfo, modifier: Modifier) {
+    BarSurface(modifier.width(560.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Opasitas", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(10.dp))
+                Text(l.name, color = Muted, fontSize = 13.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Text("${(l.opacity * 100).roundToInt()}%", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = { state.endLayerOpacity() }) { Text("Selesai", fontWeight = FontWeight.SemiBold) }
+            }
+            Slider(
+                value = l.opacity,
+                onValueChange = { state.setLayerOpacityLive(it) },
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Accent),
+            )
+            Text("Geser jari ke kiri/kanan di kanvas untuk mengatur · ketuk kanvas untuk selesai", color = Muted, fontSize = 12.sp)
+        }
     }
 }
 

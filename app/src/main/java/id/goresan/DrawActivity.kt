@@ -80,6 +80,10 @@ class DrawActivity : ComponentActivity() {
                     intent.getStringExtra("uji_palet_foto")?.let { f ->
                         state.paletteFromUri(android.net.Uri.fromFile(java.io.File(filesDir, f)))
                     }
+                    // Uji impor font (TTF/OTF dari folder data aplikasi).
+                    intent.getStringExtra("uji_font")?.let { f ->
+                        state.importFont(android.net.Uri.fromFile(java.io.File(filesDir, f)))
+                    }
                 }
                 intent.getBooleanExtra(EXTRA_NEW, false) -> {
                     state.exitOnClose = true

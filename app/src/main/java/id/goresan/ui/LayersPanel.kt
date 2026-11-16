@@ -219,6 +219,8 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
             var twoStart = 0L
             var twoMoved = false
             var pinching = false
+            var p1Last = Offset.Zero
+            var p2Last = Offset.Zero
             var r1 = -1
             var r2 = -1
             while (true) {
@@ -232,6 +234,8 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                         p2Id = other.id
                         p1Start = c1.position
                         p2Start = other.position
+                        p1Last = p1Start
+                        p2Last = p2Start
                         startDist = (p1Start - p2Start).getDistance()
                         twoStart = ev.changes.maxOf { it.uptimeMillis }
                         r1 = itemAt(p1Start.y)?.index ?: -1
@@ -286,6 +290,8 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                         val a = ev.changes.firstOrNull { it.id == down.id }
                         val b = ev.changes.firstOrNull { it.id == p2Id }
                         if (a != null && b != null && a.pressed && b.pressed) {
+                            p1Last = a.position
+                            p2Last = b.position
                             if ((a.position - p1Start).getDistance() > slop || (b.position - p2Start).getDistance() > slop) twoMoved = true
                             val dist = (a.position - b.position).getDistance()
                             val wasPinching = pinching
@@ -301,13 +307,18 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                                 val rs = rowsRef.value
                                 val ids = range.flatMap { i -> rs.getOrNull(i)?.let { idsOfRow(it) } ?: emptyList() }.distinct()
                                 if (ids.size >= 2) state.layerCmd { it.mergeLayers(ids) }
-                            } else if (!twoMoved && dur < 450) {
-                                // Ketuk dua jari: Alpha Lock layer di bawah jari pertama.
+                            } else {
+                                val dx = ((p1Last.x - p1Start.x) + (p2Last.x - p2Start.x)) / 2f
+                                val dy = ((p1Last.y - p1Start.y) + (p2Last.y - p2Start.y)) / 2f
                                 val r = rowsRef.value.getOrNull(r1)
-                                if (r is PanelRow.Lay) {
+                                if (r is PanelRow.Lay && dx > swipeAct && kotlin.math.abs(dy) < dx * 0.6f) {
+                                    // Geser dua jari ke kanan: Alpha Lock (seperti Procreate).
                                     val l = r.info
                                     state.setLayerProps(l.id, state.propsOf(l).copy(alphaLock = !l.alphaLock))
                                     state.showFlash(if (l.alphaLock) "Alpha Lock mati: ${l.name}" else "Alpha Lock aktif: ${l.name}")
+                                } else if (r is PanelRow.Lay && !twoMoved && dur < 450) {
+                                    // Ketuk dua jari: atur opasitas layer dengan menggeser jari di kanvas.
+                                    state.startLayerOpacity(r.info.id)
                                 }
                             }
                             break
@@ -436,7 +447,7 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
             Text(
                 if (selecting) "Ketuk/geser kanan layer untuk memilih · tahan & seret untuk memindah semuanya"
                 else "Ketuk layer aktif untuk pilihan · tahan & seret untuk memindah · geser kiri: kunci/duplikat/hapus · " +
-                    "geser kanan: pilih · ketuk dua jari: Alpha Lock · cubit beberapa layer: gabung",
+                    "geser kanan: pilih · ketuk dua jari: opasitas · geser dua jari ke kanan: Alpha Lock · cubit beberapa layer: gabung",
                 color = Muted, fontSize = 12.sp,
             )
             Spacer(Modifier.height(6.dp))
@@ -1162,6 +1173,18 @@ private fun LayerMenu(state: AppState, l: LayerInfo, dismiss: () -> Unit, onRena
     DropdownMenuItem(text = { Text("Pilih beberapa layer…") }, onClick = onSelectMany)
     HorizontalDivider()
     DropdownMenuItem(text = { Text("Gabung ke bawah") }, onClick = { act { state.layerCmd { it.mergeDown(l.id) } } })
+    val below = state.layers.getOrNull(idx - 1)
+    DropdownMenuItem(
+        text = { Text("Satukan ke grup dengan layer bawah") },
+        leadingIcon = { Icon(Icons.Filled.Folder, null) },
+        enabled = below != null,
+        onClick = { act { if (below != null) state.layerCmd { it.groupWith(l.id, below.id) } } },
+    )
+    DropdownMenuItem(
+        text = { Text("Salin layer") },
+        leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
+        onClick = { act { state.copyLayer(l.id) } },
+    )
     DropdownMenuItem(
         text = { Text("Duplikat") },
         leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },

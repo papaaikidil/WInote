@@ -950,6 +950,56 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
+    /**
+     * Ekspor animasi PNG (APNG, sisi terpanjang 1080): warna penuh dan tepi halus; bila latar kanvas disembunyikan,
+     * animasinya transparan. Disimpan di Galeri › Pictures/WInote.
+     */
+    fun exportApng() {
+        if (docW <= 0 || modalActive()) return
+        panel = Panel.NONE
+        animPlay(false)
+        busy = "Mengekspor animasi PNG…"
+        val bgc: Int? = if (bgVisible) bgColor else null
+        val st = animSet
+        gl { e ->
+            val tmp = java.io.File(app.cacheDir, "animasi.png")
+            var aw: id.goresan.engine.ApngWriter? = null
+            val ok = runCatching {
+                val done = e.animExport(1080, bgc, 2) { buf, ow, oh, ms ->
+                    val a = aw ?: id.goresan.engine.ApngWriter(tmp, ow, oh, st.mode != 2).also { aw = it }
+                    a.put(buf, ms)
+                }
+                aw?.finish()
+                done && aw != null
+            }.getOrElse { aw?.abort(); false }
+            if (!ok) {
+                main.post { busy = null; showFlash("Animasi PNG gagal diekspor") }
+                return@gl
+            }
+            bg.execute {
+                val saved = runCatching {
+                    val values = ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, "${safeName()}-animasi-${stamp()}.png")
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/WInote")
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    }
+                    val resolver = app.contentResolver
+                    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: error("Galeri menolak")
+                    resolver.openOutputStream(uri)?.use { out -> tmp.inputStream().use { it.copyTo(out) } }
+                    values.clear()
+                    values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(uri, values, null, null)
+                }.isSuccess
+                tmp.delete()
+                main.post {
+                    busy = null
+                    showFlash(if (saved) "Animasi PNG tersimpan di Galeri › Pictures/WInote" else "Gagal menyimpan animasi PNG")
+                }
+            }
+        }
+    }
+
     /** Page Assist: semua halaman jadi satu PDF di Download/WInote. */
     fun exportPagesPdf() {
         if (docW <= 0 || modalActive()) return
@@ -1189,6 +1239,7 @@ class AppState(val app: Context) : Engine.Listener {
         val c = prefs.getInt("color", Color.rgb(28, 32, 48))
         setColorQuiet(c)
         loadPalettes()
+        id.goresan.engine.Fonts.refresh(app)
         if (Diag.takeCrashFlag()) {
             showFlash("Ruang gambar sempat tertutup sendiri. Catatannya ada di Aksi › Laporan teknis")
         }
@@ -2135,6 +2186,35 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
+    // ================= font impor =================
+
+    /** Naik tiap daftar font impor berubah (supaya panel teks menggambar ulang). */
+    var fontsVersion by mutableIntStateOf(0)
+
+    fun importFont(uri: Uri) {
+        bg.execute {
+            val r = runCatching {
+                val name = runCatching { nameOf(uri) }.getOrNull() ?: "Font.ttf"
+                val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Berkas tidak bisa dibaca")
+                if (bytes.size > 40 shl 20) error("Berkas font terlalu besar")
+                id.goresan.engine.Fonts.importFont(app, name, bytes)
+            }
+            main.post {
+                fontsVersion++
+                r.onSuccess { d ->
+                    if (textEditing) updateText(textSpec.copy(font = d.id))
+                    showFlash("Font \"${d.name}\" ditambahkan")
+                }.onFailure { showFlash(it.message ?: "Font tidak bisa diimpor") }
+            }
+        }
+    }
+
+    fun deleteFont(id: String) {
+        id.goresan.engine.Fonts.delete(app, id)
+        fontsVersion++
+        if (textEditing && textSpec.font == id) updateText(textSpec.copy(font = "sans"))
+    }
+
     /** SwatchDrop: warna palet diseret ke kanvas = ColorDrop dengan warna itu. */
     fun dropSwatch(c: Int, x: Float, y: Float) {
         setColor(c)
@@ -2181,8 +2261,46 @@ class AppState(val app: Context) : Engine.Listener {
         when (n) {
             2 -> undo()
             3 -> redo()
-            4 -> uiHidden = !uiHidden
+            4 -> if (prefs.fourFingerQuick) openQuickMenu() else uiHidden = !uiHidden
         }
+    }
+
+    // ================= QuickMenu =================
+
+    /** QuickMenu sedang terbuka (nilai tidak dipakai untuk posisi; menu selalu di tengah layar). */
+    var quickMenu by mutableStateOf<Offset?>(null)
+    val quickSlots = mutableStateListOf<Int>().apply {
+        val saved = prefs.getIntList("quickMenu")
+        addAll(if (saved.size == 6) saved else DefaultQuickSlots)
+    }
+
+    fun openQuickMenu() {
+        if (docW <= 0 || textEditing || guideEditing || paperEditing || xfActive) return
+        panel = Panel.NONE
+        quickMenu = Offset.Zero
+    }
+
+    fun setQuickSlot(k: Int, action: Int) {
+        if (k !in 0 until 6) return
+        quickSlots[k] = action
+        prefs.putIntList("quickMenu", quickSlots.toList())
+    }
+
+    fun resetQuickSlots() {
+        quickSlots.clear()
+        quickSlots.addAll(DefaultQuickSlots)
+        prefs.putIntList("quickMenu", quickSlots.toList())
+    }
+
+    /** Gosok tiga jari di kanvas: bersihkan layer aktif (bisa diurungkan). */
+    fun scrubClear() {
+        if (modalActive() || !prefs.scrubClear) return
+        val owner = layers.firstOrNull { it.mask?.id == activeLayerId }
+        val l = layers.firstOrNull { it.id == activeLayerId } ?: owner
+        val id = activeLayerId
+        // Masker yang digosok kembali putih (semua tampil), layer biasa jadi kosong.
+        if (owner != null) gl { it.fillWholeLayer(id, Color.WHITE) } else gl { it.clearLayer(id) }
+        showFlash("Layer dibersihkan" + (l?.let { ": ${it.name}" } ?: "") + " · ketuk dua jari untuk mengurungkan")
     }
 
     fun closePanelsFromCanvas(): Boolean {
@@ -2240,6 +2358,39 @@ class AppState(val app: Context) : Engine.Listener {
     }
 
     fun propsOf(l: LayerInfo) = LayerProps(l.name, l.visible, l.opacity, l.blend, l.alphaLock, l.clip, l.locked, l.group, l.assist, l.text, l.reference)
+
+    // ---- opasitas layer lewat ketuk dua jari (geser jari di kanvas) ----
+    var opacityLayer by mutableIntStateOf(-1)
+    private var opacityStart: LayerProps? = null
+
+    fun startLayerOpacity(id: Int) {
+        if (modalActive()) return
+        val l = layers.firstOrNull { it.id == id } ?: return
+        if (opacityLayer >= 0) endLayerOpacity()
+        panel = Panel.NONE
+        opacityStart = propsOf(l)
+        opacityLayer = id
+    }
+
+    fun setLayerOpacityLive(v: Float) {
+        val l = layers.firstOrNull { it.id == opacityLayer } ?: return
+        setLayerProps(l.id, propsOf(l).copy(opacity = v.coerceIn(0f, 1f)), undoable = false)
+    }
+
+    fun endLayerOpacity() {
+        val id = opacityLayer
+        val s = opacityStart
+        opacityLayer = -1
+        opacityStart = null
+        if (id >= 0 && s != null) gl { it.commitProps(id, s); it.postLayers() }
+    }
+
+    /** Salin seluruh isi layer [id] ke papan klip (pilihan diabaikan bila tidak ada). */
+    fun copyLayer(id: Int) {
+        if (modalActive()) return
+        gl { it.selectLayer(id) }
+        clipCopy()
+    }
 
     /** Layer referensi sekarang (untuk keterangan ColorDrop), bila ada. */
     val referenceLayer: LayerInfo? get() = layers.firstOrNull { it.reference }

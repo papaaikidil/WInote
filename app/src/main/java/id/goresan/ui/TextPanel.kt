@@ -209,10 +209,25 @@ private fun FontTab(state: AppState, s: TextSpec) {
     val ctx = LocalContext.current
     var cat by remember { mutableStateOf(Fonts.def(s.font).category) }
     val families = remember { HashMap<String, FontFamily>() }
+    var deleting by remember { mutableStateOf<Fonts.Def?>(null) }
+    val pickFont = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) { cat = Fonts.USER; state.importFont(uri) } }
+    @Suppress("UNUSED_VARIABLE") val ver = state.fontsVersion
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (c in Fonts.categories) Chip(c, cat == c) { cat = c }
     }
     Spacer(Modifier.height(8.dp))
+    if (cat == Fonts.USER) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Font TTF/OTF dari perangkat · tahan nama font untuk menghapus",
+                color = Color(0xFF9A9AA6), fontSize = 12.sp, modifier = Modifier.weight(1f),
+            )
+            Chip("+ Impor font", false) { runCatching { pickFont.launch(arrayOf("*/*")) } }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (f in Fonts.all.filter { it.category == cat }) {
             val fam = families.getOrPut(f.id) {
@@ -224,12 +239,28 @@ private fun FontTab(state: AppState, s: TextSpec) {
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color(0x18FFFFFF))
                     .border(if (on) 2.dp else 1.dp, if (on) Accent else Color(0x33FFFFFF), RoundedCornerShape(10.dp))
-                    .clickable { state.updateText(state.textSpec.copy(font = f.id)) }
+                    .pointerInput(f.id) {
+                        detectTapGestures(
+                            onTap = { state.updateText(state.textSpec.copy(font = f.id)) },
+                            onLongPress = { if (f.path != null) deleting = f },
+                        )
+                    }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 Text(f.name, color = Color.White, fontSize = 20.sp, fontFamily = fam, maxLines = 1)
             }
         }
+    }
+    deleting?.let { f ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Hapus font \"${f.name}\"?") },
+            text = { Text("Teks yang memakai font ini akan beralih ke Sans saat diedit lagi.") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { state.deleteFont(f.id); families.remove(f.id); deleting = null }) { Text("Hapus") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { deleting = null }) { Text("Batal") } },
+        )
     }
 }
 

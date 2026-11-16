@@ -9,6 +9,8 @@ Pemakaian: gerak.py <perangkat> <maxX> <maxY> <W> <H> <dens> <perintah> [argumen
   seret x0 y0 x1 y1 ms      — satu jari (piksel) ditahan ms lalu digeser (SwatchDrop)
   cubit x1 y1 x2 y2 sisa    — dua jari (piksel) saling mendekat sampai jaraknya tinggal sisa %
   ketuk2xy x y              — ketukan dua jari di (x, y) piksel
+  geser2xy x y dx           — dua jari di (x, y) piksel bergeser ke kanan sejauh dx piksel
+  gosok3                    — tiga jari menggosok kiri-kanan (bersihkan layer)
 Hasilnya: folder g/ berisi bingkai biner struct input_event (satu berkas per bingkai, ditulis sekaligus dengan cat
 supaya jari-jari mendarat hampir bersamaan) dan run.sh untuk dijalankan di perangkat.
 """
@@ -172,6 +174,50 @@ elif cmd == "ketuk2xy":
     up(1)
     ev(1, 330, 0)
     syn()
+elif cmd == "geser2xy":
+    # Dua jari di sekitar (x, y) piksel bergeser ke kanan sejauh dx piksel.
+    x, y, dxx = map(float, a[:3])
+    gap = 30 * dp
+    down(0, 830, x - gap, y)
+    ev(1, 330, 1)
+    syn()
+    down(1, 831, x + gap, y)
+    syn()
+    out.append("usleep 40000")
+    steps = 20
+    for i in range(1, steps + 1):
+        move(0, x - gap + dxx * i / steps, y)
+        move(1, x + gap + dxx * i / steps, y)
+        syn()
+        out.append("usleep 12000")
+    up(0)
+    syn()
+    up(1)
+    ev(1, 330, 0)
+    syn()
+elif cmd == "gosok3":
+    # Tiga jari menggosok kiri-kanan (4 kali bolak-balik) di tengah kanvas.
+    cx, cy = W * 0.55, H * 0.5
+    gap = 70 * dp
+    fingers = [(cx + (k - 1) * gap, cy + (k % 2) * 15 * dp) for k in range(3)]
+    for k, (x, y) in enumerate(fingers):
+        down(k, 840 + k, x, y)
+        if k == 0:
+            ev(1, 330, 1)
+        syn()
+    amp = 80 * dp
+    for rep in range(8):
+        for i in range(1, 9):
+            off = amp * i / 8 if rep % 2 == 0 else amp - amp * i / 8
+            for k, (x, y) in enumerate(fingers):
+                move(k, x + off, y)
+            syn()
+            out.append("usleep 12000")
+    for k in range(3):
+        up(k)
+        if k == 2:
+            ev(1, 330, 0)
+        syn()
 elif cmd == "angkat":
     up(0)
     ev(1, 330, 0)

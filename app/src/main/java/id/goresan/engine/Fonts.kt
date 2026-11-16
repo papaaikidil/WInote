@@ -20,11 +20,21 @@ object Fonts {
         /** Font variabel dengan sumbu bobot (wght). */
         val variable: Boolean = false,
         val system: String? = null,
+        /** Font impor pengguna: berkas di folder data aplikasi. */
+        val path: String? = null,
     )
 
-    val categories = listOf("Komik", "Artistik", "Eksklusif", "Dasar")
+    const val USER = "Font saya"
 
-    val all = listOf(
+    val categories = listOf("Komik", "Artistik", "Eksklusif", "Dasar", USER)
+
+    /** Font yang diimpor pengguna (TTF/OTF/TTC di files/fonts). */
+    @Volatile
+    private var user: List<Def> = emptyList()
+
+    val all: List<Def> get() = builtins + user
+
+    private val builtins = listOf(
         Def("bangers", "Bangers", "Komik", "bangers.ttf"),
         Def("luckiestguy", "Luckiest Guy", "Komik", "luckiestguy.ttf"),
         Def("comicneue", "Comic Neue", "Komik", "comicneue.ttf", boldFile = "comicneue-bold.ttf"),
@@ -61,7 +71,51 @@ object Fonts {
         Def("mono", "Mono", "Dasar", system = "monospace"),
     )
 
-    fun def(id: String): Def = all.firstOrNull { it.id == id } ?: all.first { it.id == "sans" }
+    fun def(id: String): Def = all.firstOrNull { it.id == id } ?: builtins.first { it.id == "sans" }
+
+    private fun dir(ctx: Context) = java.io.File(ctx.filesDir, "fonts")
+
+    /** Baca ulang daftar font impor. */
+    fun refresh(ctx: Context) {
+        val files = dir(ctx).listFiles()?.filter { it.isFile && it.extension.lowercase() in setOf("ttf", "otf", "ttc") }.orEmpty()
+        user = files.sortedBy { it.name.lowercase() }.map { f ->
+            Def("user:" + f.name, f.nameWithoutExtension.replace('_', ' '), USER, path = f.absolutePath)
+        }
+    }
+
+    /**
+     * Simpan font impor [bytes] bernama [name] (TTF/OTF/TTC). Mengembalikan font itu, atau melempar galat bila
+     * berkasnya bukan font yang bisa dibaca Android.
+     */
+    fun importFont(ctx: Context, name: String, bytes: ByteArray): Def {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        val sig = if (bytes.size >= 4) String(bytes, 0, 4, Charsets.ISO_8859_1) else ""
+        val okSig = sig == "OTTO" || sig == "true" || sig == "ttcf" || (bytes.size >= 4 && bytes[0].toInt() == 0 && bytes[1].toInt() == 1 && bytes[2].toInt() == 0 && bytes[3].toInt() == 0)
+        if (!okSig) error("Bukan berkas font TTF/OTF")
+        val e = if (ext in setOf("ttf", "otf", "ttc")) ext else if (sig == "OTTO") "otf" else if (sig == "ttcf") "ttc" else "ttf"
+        val base = name.substringBeforeLast('.').replace(Regex("[^A-Za-z0-9 _-]"), "_").trim().ifBlank { "Font" }
+        val d = dir(ctx).apply { mkdirs() }
+        var f = java.io.File(d, "$base.$e")
+        var k = 2
+        while (f.exists()) f = java.io.File(d, "$base $k.$e").also { k++ }
+        f.writeBytes(bytes)
+        val tf = runCatching { Typeface.Builder(f).build() }.getOrNull()
+        if (tf == null) {
+            f.delete()
+            error("Font ini tidak bisa dibaca")
+        }
+        refresh(ctx)
+        synchronized(cache) { cache.keys.removeAll { it.startsWith("user:") } }
+        return def("user:" + f.name)
+    }
+
+    /** Hapus font impor [id]. Teks yang memakainya beralih ke Sans saat digambar ulang. */
+    fun delete(ctx: Context, id: String) {
+        val d = user.firstOrNull { it.id == id } ?: return
+        d.path?.let { java.io.File(it).delete() }
+        refresh(ctx)
+        synchronized(cache) { cache.keys.removeAll { it.startsWith("$id:") } }
+    }
 
     private val cache = HashMap<String, Typeface>()
 
@@ -74,6 +128,12 @@ object Fonts {
     private fun load(ctx: Context, d: Def, bold: Boolean, italic: Boolean): Typeface {
         val style = (if (bold) Typeface.BOLD else 0) or (if (italic) Typeface.ITALIC else 0)
         if (d.system != null) return Typeface.create(d.system, style)
+        if (d.path != null) {
+            return runCatching {
+                val base = Typeface.Builder(java.io.File(d.path)).build() ?: error("font rusak")
+                if (style != 0) Typeface.create(base, style) else base
+            }.getOrElse { Typeface.create(Typeface.SANS_SERIF, style) }
+        }
         return runCatching {
             val am = ctx.assets
             var file = d.file!!

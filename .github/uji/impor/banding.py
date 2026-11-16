@@ -55,4 +55,27 @@ try:
 except Exception as e:
     print("GAGAL TIFF:", e)
     fail += 1
+# APNG dari ApngWriter
+try:
+    from PIL import Image
+    im = Image.open(os.path.join(out, "uji.apng.png"))
+    aw, ah = 64, 40
+    st = np.fromfile(os.path.join(out, "apng.straight.rgba"), np.uint8).reshape(3, ah, aw, 4).astype(int)
+    print("APNG:", im.format, im.size, "bingkai", getattr(im, "n_frames", 1), "animasi", getattr(im, "is_animated", False))
+    ok = getattr(im, "n_frames", 1) == 3 and im.size == (aw, ah)
+    worst = 0
+    durs = []
+    for k in range(min(3, getattr(im, "n_frames", 1))):
+        im.seek(k)
+        durs.append(im.info.get("duration"))
+        g = np.array(im.convert("RGBA")).astype(int)
+        vis = st[k][..., 3] > 0
+        d = max(np.abs(g - st[k])[vis].max(), np.abs(g[..., 3] - st[k][..., 3]).max())
+        worst = max(worst, d)
+    ok = ok and worst <= 3 and [int(round(x)) for x in durs] == [100, 200, 300]
+    print(("ok" if ok else "GAGAL") + f" APNG: selisih maks {worst}, jeda {durs}")
+    fail += 0 if ok else 1
+except Exception as e:
+    print("GAGAL APNG:", e)
+    fail += 1
 print("SEMUA LULUS (banding)" if fail == 0 else f"ADA {fail} KEGAGALAN (banding)")
