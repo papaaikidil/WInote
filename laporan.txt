@@ -1,0 +1,64 @@
+im-16: 320x240 dpi=0 layer=3 latar=ffffffff latarTampil=false p3=false nama=null
+  [0] 'Latar' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Bergeser' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [2] 'Keluar tepi' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+im-rle: 320x240 dpi=0 layer=3 latar=ffffffff latarTampil=false p3=false nama=null
+  [0] 'Latar' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Bergeser' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [2] 'Keluar tepi' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+im-zip: 320x240 dpi=0 layer=3 latar=ffffffff latarTampil=false p3=false nama=null
+  [0] 'Latar' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Bergeser' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [2] 'Keluar tepi' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+uji-procreate: 600x400 dpi=264 layer=4 latar=ff336699 latarTampil=true p3=false nama=Uji Procreate
+  [0] 'Dasar' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Tengah bermasker' opasitas=0.375 campur=1 tampil=true klip=false kunciAlfa=false kunci=false grup=1
+  [2] 'Tengah tersembunyi' opasitas=0.500 campur=0 tampil=false klip=false kunciAlfa=true kunci=false grup=1
+  [3] 'Atas LZ4' opasitas=1.000 campur=11 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  grup 1: 'Grup A' tampil=true lipat=true
+pulang-pergi: 97x61 dpi=300 layer=3 latar=ffffffff latarTampil=false p3=false nama=null
+  [0] 'Bawah' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Dalam grup' opasitas=0.502 campur=1 tampil=false klip=false kunciAlfa=true kunci=false grup=1
+  [2] 'Atas klip' opasitas=1.000 campur=11 tampil=true klip=true kunciAlfa=false kunci=false grup=0
+  grup 1: 'Grup Satu' tampil=false lipat=true
+  pulang-pergi layer 0: selisih maks 0
+  pulang-pergi layer 1: selisih maks 0
+  pulang-pergi layer 2: selisih maks 0
+masker-pisah: 97x61 dpi=72 layer=2 latar=ffffffff latarTampil=false p3=false nama=null
+  [0] 'Bermasker' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  [1] 'Masker mati' opasitas=1.000 campur=0 tampil=true klip=false kunciAlfa=false kunci=false grup=0
+  masker PSD dipisah: sama persis
+  masker-pisah layer 0 (tanpa masker): selisih maks 0
+masker-terap: 97x61 dpi=72 layer=2 latar=ffffffff latarTampil=false p3=false nama=null
+  masker-terap layer 0: selisih maks 1
+procreate-pisah: 600x400 dpi=264 layer=4 latar=ff336699 latarTampil=true p3=false nama=Uji Procreate
+  .procreate masker dipisah: sama persis
+  palet uji.ase 'uji': 336699 OK
+  palet uji.ase 'Grup A': FF0000,FF0000,808080 OK
+  palet uji.aco 'uji': FF8000,00AAFF,FF00FF OK
+  palet uji.swatches 'Dari Procreate': FF0000,408080 OK
+  palet uji.gpl 'Gimp Uji': FF0000,0080FF OK
+  palet uji.txt 'uji': 112233,AABBCC OK
+  .swatches pulang-pergi: FF0000,123456,FFFFFF,000000,7F3FBF OK
+  palet dari foto: E53935,FDD835,2E7D32,1E88E5 OK
+  harmoni: komplementer 00FFFF, triadik 00FF00, 0000FF OK
+TIFF ditulis 203x77
+SEMUA LULUS (Kotlin)
+ok im-16 layer 0 'Latar': selisih maks 0, piksel beda 0
+ok im-16 layer 1 'Bergeser': selisih maks 0, piksel beda 0
+ok im-16 layer 2 'Keluar tepi': selisih maks 0, piksel beda 0
+ok im-rle layer 0 'Latar': selisih maks 0, piksel beda 0
+ok im-rle layer 1 'Bergeser': selisih maks 0, piksel beda 0
+ok im-rle layer 2 'Keluar tepi': selisih maks 0, piksel beda 0
+ok im-zip layer 0 'Latar': selisih maks 0, piksel beda 0
+ok im-zip layer 1 'Bergeser': selisih maks 0, piksel beda 0
+ok im-zip layer 2 'Keluar tepi': selisih maks 0, piksel beda 0
+ok uji-procreate layer 0 'Dasar': selisih maks 0, piksel beda 0
+ok uji-procreate layer 1 'Tengah bermasker': selisih maks 0, piksel beda 0
+ok uji-procreate layer 2 'Tengah tersembunyi': selisih maks 0, piksel beda 0
+ok uji-procreate layer 3 'Atas LZ4': selisih maks 0, piksel beda 0
+TIFF RGBA: RGBA (203, 77) (150.0, 150.0) packbits
+ok TIFF RGBA: selisih warna maks 2, alfa 0
+TIFF RGB: RGB (203, 77) (150.0, 150.0)
+ok TIFF RGB: selisih maks 0
+SEMUA LULUS (banding)
