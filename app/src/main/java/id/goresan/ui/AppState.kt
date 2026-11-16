@@ -2268,7 +2268,32 @@ class AppState(val app: Context) : Engine.Listener {
         penRedo = 0
         pushPen()
         gl { it.adjustPen(on) }
-        if (on) showFlash("Sapukan pena di bagian yang ingin diberi efek")
+        if (on) {
+            penPreset()
+            showFlash("Sapukan pena di bagian yang ingin diberi efek")
+        }
+    }
+
+    /**
+     * Mode Pena dipilih saat efek masih 0: beri kekuatan sedang dulu, supaya sapuan pertama langsung terlihat hasilnya
+     * (penggeser tetap bisa diubah sesudahnya).
+     */
+    private fun penPreset() {
+        val i = when (adjustKind) {
+            Adj.GAUSS, Adj.MOTION, Adj.PERSP, Adj.NOISE, Adj.SHARPEN, Adj.BLOOM, Adj.GLITCH, Adj.HALFTONE, Adj.CHROMA -> 0
+            else -> return
+        }
+        if (i !in adjV.indices || adjV[i] != 0f) return
+        val blurMax = max(300f, docMax / 3f)
+        adjV[i] = when (adjustKind) {
+            Adj.GAUSS -> blurMax * 0.06f
+            Adj.MOTION -> blurMax * 0.1f
+            Adj.PERSP -> 0.6f
+            Adj.SHARPEN -> 0.8f
+            Adj.HALFTONE, Adj.CHROMA -> 0.3f
+            else -> 0.6f
+        }
+        adjustChanged()
     }
 
     /** Hapus semua sapuan mode Pena. */

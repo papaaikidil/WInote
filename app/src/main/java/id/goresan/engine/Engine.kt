@@ -523,7 +523,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private val penBox = IRect()
     private var penDabBuf = FloatArray(384)
     private var penDabN = 0
-    private class PenStep(val r: IRect, val data: ByteArray)
+    /** Satu langkah urungkan mode Pena: salinan masker di kotak [r], disimpan di GPU (tanpa membaca balik ke CPU). */
+    private class PenStep(val r: IRect, val tex: Tex)
     private val penUndo = ArrayDeque<PenStep>()
     private val penRedo = ArrayDeque<PenStep>()
 
@@ -622,6 +623,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             fillOn = false; adjOn = false; xfOn = false
             liqD = null; liqTexId = 0; liqA = null; liqB = null; cloneOn = false; cloneMarker = null
             pyr.fill(null); pyrTmp = null; adjFull = null; penMask = null; penStroke = null; penOn = false
+            penUndo.clear(); penRedo.clear()
             selTex = null; selOn = false; xfFloat = null; xfRest = null; xfSel = false
             // Jangan memuat di sini: thread antarmuka sedang menunggu frame pertama selesai.
             // Tampilkan frame kosong dulu, baru muat ulang di frame berikutnya.
@@ -5009,8 +5011,13 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         penMask?.delete(); penMask = null
         penStroke?.delete(); penStroke = null
         penInput.clear()
-        penUndo.clear()
-        penRedo.clear()
+        penDrop(penUndo)
+        penDrop(penRedo)
+    }
+
+    private fun penDrop(stack: ArrayDeque<PenStep>) {
+        if (glReady) stack.forEach { it.tex.delete() }
+        stack.clear()
     }
 
     private fun penHistory() {
@@ -5044,7 +5051,23 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         drawRect(pPen, c)
     }
 
+    private var penStatN = 0
+    private var penStatSum = 0L
+    private var penStatMax = 0L
+
     private fun penDrain() {
+        if (penInput.isEmpty()) return
+        val t0 = System.nanoTime()
+        penDrainInner()
+        val dt = System.nanoTime() - t0
+        penStatN++; penStatSum += dt; penStatMax = max(penStatMax, dt)
+        if (!penDown) {
+            Diag.log("Pena: ${penStatN} frame, rata-rata ${"%.1f".format(penStatSum / 1e6 / penStatN)} ms, maks ${"%.1f".format(penStatMax / 1e6)} ms")
+            penStatN = 0; penStatSum = 0L; penStatMax = 0L
+        }
+    }
+
+    private fun penDrainInner() {
         val box = IRect()
         while (true) {
             val e = penInput.poll() ?: break
@@ -5121,7 +5144,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             val rr = IRect(floor(x - r).toInt() - 1, floor(y - r).toInt() - 1, ceil(x + r).toInt() + 1, ceil(y + r).toInt() + 1).clampTo(W, H)
             if (rr.isEmpty) continue
             pPen.f3("uDab", x, y, r)
-            pPen.f("uAmt", pr.pow(0.6f))
+            // Tekanan ringan pun sudah memberi efek penuh (tekanan pena tablet biasanya kecil); hanya sentuhan sangat
+            // ringan yang memberi efek sebagian.
+            pPen.f("uAmt", sqrt(min(1f, pr / 0.35f)))
             drawRect(pPen, rr)
             box.union(rr)
             penBox.union(rr)
@@ -5141,7 +5166,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val r = penBox.copy().clampTo(W, H)
         if (pm == null || ps == null || r.isEmpty) { penDown = false; return }
         penPush(penUndo, r)
-        penRedo.clear()
+        penDrop(penRedo)
         G.glBindFramebuffer(G.GL_FRAMEBUFFER, pm.fb)
         G.glViewport(0, 0, W, H)
         G.glEnable(G.GL_BLEND)
@@ -5172,28 +5197,23 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         box.union(r)
     }
 
-    private fun readMask(r: IRect): ByteArray {
-        val buf = readRegion(penMask!!.fb, r)
-        val out = ByteArray(r.w * r.h)
-        for (i in out.indices) out[i] = buf.get(i * 4)
-        return out
-    }
-
-    private fun writeMask(r: IRect, data: ByteArray) {
-        val bb = Buffers.direct(data.size)
-        bb.put(data)
-        bb.position(0)
-        G.glBindTexture(G.GL_TEXTURE_2D, penMask!!.id)
-        G.glPixelStorei(G.GL_UNPACK_ALIGNMENT, 1)
-        G.glTexSubImage2D(G.GL_TEXTURE_2D, 0, r.x0, r.y0, r.w, r.h, G.GL_RED, G.GL_UNSIGNED_BYTE, bb)
-    }
-
-    /** Simpan isi masker di [r] ke [stack]; langkah tertua dibuang bila terlalu banyak/besar. */
+    /** Simpan salinan masker di [r] ke [stack] (salin GPU→GPU); langkah tertua dibuang bila terlalu banyak/besar. */
     private fun penPush(stack: ArrayDeque<PenStep>, r: IRect) {
-        stack.addLast(PenStep(r.copy(), readMask(r)))
-        var bytes = penUndo.sumOf { it.data.size.toLong() } + penRedo.sumOf { it.data.size.toLong() }
-        while (stack.size > 1 && (stack.size > 40 || bytes > 160L * 1024 * 1024)) {
-            bytes -= stack.removeFirst().data.size
+        val pm = penMask ?: return
+        val t = try {
+            Tex(r.w, r.h, single = true)
+        } catch (e: OutOfMemoryError) {
+            penDrop(penRedo)
+            if (penUndo.isNotEmpty()) penUndo.removeFirst().tex.delete()
+            return
+        }
+        blit(pm.fb, r.x0, r.y0, r.x1, r.y1, t.fb, 0, 0, r.w, r.h, false)
+        stack.addLast(PenStep(r.copy(), t))
+        var bytes = penUndo.sumOf { it.tex.bytes } + penRedo.sumOf { it.tex.bytes }
+        while (stack.size > 1 && (stack.size > 40 || bytes > 96L * 1024 * 1024)) {
+            val old = stack.removeFirst()
+            bytes -= old.tex.bytes
+            old.tex.delete()
         }
     }
 
@@ -5204,7 +5224,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val to = if (redo) penUndo else penRedo
         val s = from.removeLastOrNull() ?: return
         penPush(to, s.r)
-        writeMask(s.r, s.data)
+        blit(s.tex.fb, 0, 0, s.r.w, s.r.h, penMask!!.fb, s.r.x0, s.r.y0, s.r.x1, s.r.y1, false)
+        s.tex.delete()
         penComposite(s.r)
         dirty.union(s.r)
         penHistory()
@@ -5216,7 +5237,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         if (!penOn || penDown) return
         val full = IRect(0, 0, W, H)
         penPush(penUndo, full)
-        penRedo.clear()
+        penDrop(penRedo)
         clearRect(pm, full)
         penComposite(full)
         dirty.set(0, 0, W, H)

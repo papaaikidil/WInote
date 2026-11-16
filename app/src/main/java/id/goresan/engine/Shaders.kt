@@ -854,7 +854,7 @@ out vec4 o;
 void main() {
     if (uMode == 0) {
         float d = length(vPos - uDab.xy) / uDab.z;
-        float a = (1.0 - smoothstep(0.35, 1.0, d)) * uAmt;
+        float a = (1.0 - smoothstep(0.6, 1.0, d)) * uAmt;
         o = vec4(a, 0.0, 0.0, a);
         return;
     }
