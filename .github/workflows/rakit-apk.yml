@@ -34,8 +34,17 @@ jobs:
             echo "::error::Rahasia KUNCI_RAKIT belum diisi (Settings › Secrets and variables › Actions)."
             exit 1
           fi
+          # Spasi/baris baru yang ikut tertempel dibuang.
+          KUNCI=$(printf '%s' "$KUNCI" | tr -d '[:space:]')
+          export KUNCI
           mkdir -p app/kunci
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:KUNCI -in app/kunci.enc | tar -x -C app/kunci
+          if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:KUNCI -in app/kunci.enc -out /tmp/kunci.tar; then
+            # Ciri kata sandi (bukan isinya) untuk dicocokkan: panjang dan 8 huruf awal SHA-256.
+            echo "::error::KUNCI_RAKIT tidak cocok (panjang ${#KUNCI}, ciri $(printf '%s' "$KUNCI" | sha256sum | cut -c1-8)). Isi ulang rahasianya."
+            exit 1
+          fi
+          tar -xf /tmp/kunci.tar -C app/kunci
+          rm -f /tmp/kunci.tar
 
       # Nomor versi melanjutkan rilis lama (0.1.110 terakhir dari repository pribadi).
       - name: Nomor versi
