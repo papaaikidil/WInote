@@ -1,0 +1,54 @@
+name: Uji pengurai (JVM)
+
+# Menguji kode murni Kotlin (impor PSD/.procreate) tanpa emulator: berkas uji dibuat Python + ImageMagick,
+# lalu dibaca pengurai yang sama dengan aplikasi.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, "uji-*"]
+    paths:
+      - "app/src/main/java/id/goresan/engine/LayeredImport.kt"
+      - "app/src/main/java/id/goresan/engine/Psd.kt"
+      - ".github/uji/impor/**"
+      - ".github/workflows/uji-jvm.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  uji:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Alat
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick liblzo2-dev > /dev/null
+          pip install -q python-lzo lz4 pillow numpy
+          if ! command -v kotlinc >/dev/null; then
+            curl -sSL -o k.zip https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+            unzip -q k.zip -d $HOME && echo "$HOME/kotlinc/bin" >> $GITHUB_PATH
+          fi
+      - name: Buat berkas uji
+        run: python3 .github/uji/impor/buat.py uji-hasil/fixtures
+      - name: Rakit dan jalankan pengurai
+        run: |
+          kotlinc -version
+          kotlinc app/src/main/java/id/goresan/engine/LayeredImport.kt app/src/main/java/id/goresan/engine/Psd.kt \
+            .github/uji/impor/ImporTest.kt -include-runtime -d t.jar 2>&1 | grep -v "^warning" || true
+          mkdir -p uji-hasil/keluar
+          java -jar t.jar uji-hasil/fixtures uji-hasil/keluar 2>&1 | tee uji-hasil/laporan.txt
+          python3 .github/uji/impor/banding.py uji-hasil/fixtures uji-hasil/keluar 2>&1 | tee -a uji-hasil/laporan.txt
+      - name: Simpan hasil
+        if: always()
+        run: |
+          cd uji-hasil
+          git init -q
+          git checkout -q -b uji-hasil
+          git add -A
+          git -c user.name="WInote" -c user.email="ci@winote.local" commit -q -m "Hasil uji pengurai" || true
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" uji-hasil uji-hasil:uji-jvm-${{ github.ref_name }}
