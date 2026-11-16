@@ -104,6 +104,97 @@ fun main(args: Array<String>) {
         println("GAGAL pulang-pergi: sifat layer/grup tidak sesuai")
         fail++
     }
+    // Masker layer: PSD pulang-pergi dengan masker; dibaca dengan masker dipisah dan dengan masker diterapkan.
+    val maskBuf = ByteBuffer.allocate(w * h * 4)
+    val maskVal = ByteArray(w * h)
+    for (y in 0 until h) for (x in 0 until w) {
+        val v = if (x < w / 3) 0 else if (x < 2 * w / 3) (y * 255 / (h - 1)) else 255
+        maskVal[y * w + x] = v.toByte()
+        maskBuf.put(v.toByte()); maskBuf.put(v.toByte()); maskBuf.put(v.toByte()); maskBuf.put(255.toByte())
+    }
+    maskBuf.position(0)
+    val mf = File(out, "masker.psd")
+    Psd.write(mf, w, h, listOf(
+        Psd.LayerOut("Bermasker", 1f, 0, true, false, false, mask = { maskBuf.position(0); maskBuf }) { srcs[0].position(0); srcs[0] },
+        Psd.LayerOut("Masker mati", 1f, 0, true, false, false, mask = { maskBuf.position(0); maskBuf }, maskEnabled = false) { srcs[1].position(0); srcs[1] },
+    ), srcs[0], 72)
+    val keep = Collect(out, "masker-pisah")
+    PsdReader.read(mf, keep, keepMasks = true)
+    keep.report()
+    val m0 = keep.infos.getOrNull(0)?.mask
+    val m1 = keep.infos.getOrNull(1)
+    if (m0 == null || !m0.contentEquals(maskVal) || m1?.mask == null || m1.maskVisible || keep.infos[0].maskVisible != true) {
+        println("GAGAL masker PSD dipisah: masker=${m0 != null} sama=${m0?.contentEquals(maskVal)} mati=${m1?.maskVisible}")
+        fail++
+    } else println("  masker PSD dipisah: sama persis")
+    val p0 = File(out, "masker-pisah.0.rgba").readBytes()
+    var md0 = 0
+    for (k in p0.indices) md0 = maxOf(md0, kotlin.math.abs((p0[k].toInt() and 0xFF) - (srcs[0].get(k).toInt() and 0xFF)))
+    println("  masker-pisah layer 0 (tanpa masker): selisih maks $md0")
+    if (md0 > 2) fail++
+    val baked = Collect(out, "masker-terap")
+    PsdReader.read(mf, baked)
+    val b0 = File(out, "masker-terap.0.rgba").readBytes()
+    var mdb = 0
+    for (k in b0.indices) {
+        val want = ((srcs[0].get(k).toInt() and 0xFF) * (maskVal[k / 4].toInt() and 0xFF) + 127) / 255
+        mdb = maxOf(mdb, kotlin.math.abs((b0[k].toInt() and 0xFF) - want))
+    }
+    println("  masker-terap layer 0: selisih maks $mdb")
+    if (mdb > 4) fail++
+    // .procreate dengan masker dipisah.
+    val pf2 = File(fx, "uji-procreate.procreate")
+    if (pf2.exists()) {
+        val pc = Collect(out, "procreate-pisah")
+        ProcreateReader.read(pf2, pc, keepMasks = true)
+        val wantPx = File(fx, "uji-procreate.1u.rgba").readBytes()
+        val wantMask = File(fx, "uji-procreate.mask.gray").readBytes()
+        val gotPx = File(out, "procreate-pisah.1.rgba").readBytes()
+        val gm = pc.infos.getOrNull(1)?.mask
+        if (gm == null || !gm.contentEquals(wantMask) || !gotPx.contentEquals(wantPx)) {
+            println("GAGAL .procreate masker dipisah: masker=${gm != null} samaMasker=${gm?.contentEquals(wantMask)} samaPiksel=${gotPx.contentEquals(wantPx)}")
+            fail++
+        } else println("  .procreate masker dipisah: sama persis")
+    }
+    // Palet: ASE, ACO, .swatches, GPL, hex.
+    val palDir = File(fx, "palet")
+    val harapan = File(palDir, "harapan.txt")
+    if (harapan.exists()) {
+        fun hex(c: Int) = String.format("%06X", c and 0xFFFFFF)
+        fun near(a: Int, b: Int) = (0..2).all { s2 -> kotlin.math.abs(((a shr (s2 * 8)) and 0xFF) - ((b shr (s2 * 8)) and 0xFF)) <= 2 }
+        val parsed = HashMap<String, List<id.goresan.engine.Palette>>()
+        for (line in harapan.readLines().filter { it.isNotBlank() }) {
+            val (fn, pname, cols) = line.split("|")
+            val list = parsed.getOrPut(fn) { id.goresan.engine.Palettes.parse(File(palDir, fn).readBytes(), fn) }
+            val pl = list.firstOrNull { it.name == pname }
+            val want = cols.split(",").map { it.toInt(16) or 0xFF000000.toInt() }
+            val got = pl?.colors ?: emptyList()
+            val ok = pl != null && got.size == want.size && got.indices.all { near(got[it], want[it]) }
+            println("  palet $fn '$pname': ${got.joinToString(",") { hex(it) }} ${if (ok) "OK" else "GAGAL (harapan ${want.joinToString(",") { hex(it) }})"}")
+            if (!ok) fail++
+        }
+        // Ekspor .swatches lalu baca lagi.
+        val orig = id.goresan.engine.Palette("Pulang Pergi", mutableListOf(0xFFFF0000.toInt(), 0xFF123456.toInt(), 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFF7F3FBF.toInt()))
+        val bytes = id.goresan.engine.Palettes.toSwatches(orig)
+        File(out, "pulang-pergi.swatches").writeBytes(bytes)
+        val back = id.goresan.engine.Palettes.parse(bytes, "x.swatches").firstOrNull()
+        val rtOk = back != null && back.name == orig.name && back.colors.size == orig.colors.size && back.colors.indices.all { near(back.colors[it], orig.colors[it]) }
+        println("  .swatches pulang-pergi: ${back?.colors?.joinToString(",") { hex(it) }} ${if (rtOk) "OK" else "GAGAL"}")
+        if (!rtOk) fail++
+        // Palet dari foto: 4 blok warna → 4 warna utama.
+        val blocks = intArrayOf(0xFFE53935.toInt(), 0xFF1E88E5.toInt(), 0xFFFDD835.toInt(), 0xFF2E7D32.toInt())
+        val img = IntArray(80 * 80) { i -> blocks[((i % 80) / 40) + 2 * ((i / 80) / 40)] }
+        val got = id.goresan.engine.Palettes.fromImage(img, 30)
+        val fOk = got.size == 4 && blocks.all { b -> got.any { near(it, b) } }
+        println("  palet dari foto: ${got.joinToString(",") { hex(it) }} ${if (fOk) "OK" else "GAGAL"}")
+        if (!fOk) fail++
+        // Harmoni: komplementer merah = sian.
+        val comp = id.goresan.engine.Palettes.harmony(id.goresan.engine.Palettes.COMPLEMENTARY, 0f, 1f, 1f)
+        val tri = id.goresan.engine.Palettes.harmony(id.goresan.engine.Palettes.TRIADIC, 0f, 1f, 1f)
+        val hOk = comp.size == 1 && near(comp[0], 0xFF00FFFF.toInt()) && tri.size == 2 && near(tri[0], 0xFF00FF00.toInt()) && near(tri[1], 0xFF0000FF.toInt())
+        println("  harmoni: komplementer ${comp.joinToString { hex(it) }}, triadik ${tri.joinToString { hex(it) }} ${if (hOk) "OK" else "GAGAL"}")
+        if (!hOk) fail++
+    }
     // TIFF: tulis dengan Tiff.write (RGBA dan RGB), dibandingkan Python/PIL di banding.py.
     val tw = 203
     val th = 77

@@ -91,6 +91,11 @@ data class LayerInfo(
     val alphaLock: Boolean, val clip: Boolean, val locked: Boolean, val group: Int = 0,
     val assist: Boolean = false,
     val text: String? = null,
+    val reference: Boolean = false,
+    /** Masker layer milik layer ini (null = tanpa masker). */
+    val mask: LayerInfo? = null,
+    /** Bila ini sebuah masker: id layer pemiliknya (0 = layer biasa). */
+    val maskOf: Int = 0,
 )
 
 data class LayersSnapshot(
@@ -110,15 +115,26 @@ class Layer(val id: Int, var tex: Tex) {
     var group = 0
     var assist = false
     var text: String? = null
+    var reference = false
     var saveDirty = true
     var thumbDirty = true
+    /**
+     * Masker layer (tidak merusak gambar): layer abu-abu yang ikut ke mana pun layer ini pergi. Putih = tampil,
+     * hitam/transparan = tersembunyi. Bisa dipilih dan digambari seperti layer biasa.
+     */
+    var mask: Layer? = null
+    /** Bila layer ini sebuah masker: id layer pemiliknya. */
+    var maskOf = 0
 
-    fun props() = LayerProps(name, visible, opacity, blend, alphaLock, clip, locked, group, assist, text)
+    fun props() = LayerProps(name, visible, opacity, blend, alphaLock, clip, locked, group, assist, text, reference)
     fun apply(p: LayerProps) {
         name = p.name; visible = p.visible; opacity = p.opacity; blend = p.blend
         alphaLock = p.alphaLock; clip = p.clip; locked = p.locked; group = p.group; assist = p.assist; text = p.text
+        reference = p.reference
     }
-    fun info() = LayerInfo(id, name, visible, opacity, blend, alphaLock, clip, locked, group, assist, text)
+    fun info(): LayerInfo = LayerInfo(id, name, visible, opacity, blend, alphaLock, clip, locked, group, assist, text, reference, mask?.info(), maskOf)
+    /** Masker yang sedang berlaku (ada dan tidak disembunyikan). */
+    fun activeMask(): Layer? = mask?.takeIf { it.visible }
 }
 
 /** Ringkasan karya untuk panel Info kanvas. */
@@ -158,9 +174,24 @@ class Doc(val id: String, var name: String, val w: Int, val h: Int) {
     val holds = HashMap<Int, Int>()
     /** Grup layer (urutan tidak penting; letak grup mengikuti letak anggotanya). */
     val groups = LinkedHashMap<Int, GroupData>()
-    fun find(id: Int) = layers.firstOrNull { it.id == id }
+    /** Layer dengan id itu, termasuk masker layer. */
+    fun find(id: Int): Layer? {
+        for (l in layers) {
+            if (l.id == id) return l
+            val m = l.mask
+            if (m != null && m.id == id) return m
+        }
+        return null
+    }
     fun activeLayer() = find(active)
+    /** Posisi di daftar layer (masker: -1; pakai [owner] untuk layer pemiliknya). */
     fun indexOf(id: Int) = layers.indexOfFirst { it.id == id }
+    /** Layer pemilik bila [l] masker, atau [l] sendiri. */
+    fun owner(l: Layer): Layer = if (l.maskOf != 0) layers.firstOrNull { it.id == l.maskOf } ?: l else l
+    /** Semua layer beserta maskernya. */
+    fun allLayers(): List<Layer> = layers.flatMap { l -> listOfNotNull(l, l.mask) }
+    /** Layer referensi (untuk ColorDrop/pilihan otomatis), bila ada. */
+    fun referenceLayer(): Layer? = layers.firstOrNull { it.reference }
     fun groupVisible(g: Int) = g == 0 || groups[g]?.visible != false
     /** Layer benar-benar tampil: dirinya dan grupnya sama-sama terlihat. */
     fun shown(l: Layer) = l.visible && groupVisible(l.group)
@@ -253,6 +284,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     // Program shader
     private lateinit var pBg: Program
     private lateinit var pComposite: Program
+    private lateinit var pUtil: Program
     private lateinit var pPreview: Program
     private lateinit var pDab: Program
     private lateinit var pSmudge: Program
@@ -645,6 +677,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private fun initGl() {
         pBg = Program(Shaders.RECT_VS, Shaders.BG_FS)
         pComposite = Program(Shaders.RECT_VS, Shaders.COMPOSITE_FS)
+        pUtil = Program(Shaders.RECT_VS, Shaders.UTIL_FS)
         pPreview = Program(Shaders.RECT_VS, Shaders.PREVIEW_FS)
         pDab = Program(Shaders.DAB_VS, Shaders.DAB_FS)
         pSmudge = Program(Shaders.DAB_VS, Shaders.SMUDGE_FS)
@@ -940,7 +973,20 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             layer.saveDirty = false
             d.layers.add(layer)
             if (lid >= d.nextId) d.nextId = lid + 1
+            o.optJSONObject("mask")?.let { mo ->
+                val mid = mo.optInt("id", d.nextId++)
+                val m = Layer(mid, Tex(w, h))
+                m.apply(Storage.propsFrom(mo))
+                m.maskOf = lid
+                val mb = Storage.io.submit(Callable<ByteBuffer?> { Storage.readLayer(dir, mid, w, h) }).get()
+                if (mb != null) writeRegion(m.tex, IRect(0, 0, w, h), mb) else fillTex(m.tex, Color.WHITE)
+                m.saveDirty = mb == null
+                layer.mask = m
+                if (mid >= d.nextId) d.nextId = mid + 1
+            }
         }
+        // Hanya satu layer referensi.
+        d.layers.filter { it.reference }.drop(1).forEach { it.reference = false }
         if (d.layers.isEmpty()) {
             val layer = Layer(d.nextId++, Tex(w, h))
             layer.name = "Layer 1"
@@ -990,7 +1036,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         tl = null
         tlTex?.delete(); tlTex = null
         tlFit?.delete(); tlFit = null
-        for (l in d.layers) l.tex.delete()
+        for (l in d.allLayers()) l.tex.delete()
         listOf(comp, scratch, strokeBuf, predBuf, preview, backup, maskTex, smT, smCarry, prevTex, prevTex2, dualBuf, dualPred).forEach { it?.delete() }
         comp = null; scratch = null; strokeBuf = null; predBuf = null; preview = null; dualBuf = null; dualPred = null
         backup = null; maskTex = null; smT = null; smCarry = null; prevTex = null; prevTex2 = null
@@ -1040,7 +1086,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val dir = Storage.dir(ctx, d.id)
         val w = W
         val h = H
-        for (l in d.layers) {
+        for (l in d.allLayers()) {
             if (!l.saveDirty) continue
             while (pending.sumOf { it.second } > (160L shl 20) && pending.isNotEmpty()) {
                 runCatching { pending.removeFirst().first.get() }
@@ -1057,7 +1103,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val thumb = downscale(comp!!.fb, W, H, 512)
         Diag.log("Simpan: $n layer dibaca dari GPU (${android.os.SystemClock.uptimeMillis() - t0} ms)")
         val meta = metaJson(d)
-        val keep = d.layers.map { it.id }.toSet()
+        val keep = d.allLayers().map { it.id }.toSet()
         Storage.io.execute {
             runCatching { Storage.writeThumb(dir, thumb) }
             Storage.writeMeta(dir, meta)
@@ -1081,7 +1127,11 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         put("anim", d.anim.toJson())
         put("holds", JSONObject().apply { for ((k, v) in d.holds) if (v > 0) put(k.toString(), v) })
         val arr = JSONArray()
-        for (l in d.layers) arr.put(Storage.layerJson(l.id, l.props()))
+        for (l in d.layers) {
+            val o = Storage.layerJson(l.id, l.props())
+            l.mask?.let { m -> o.put("mask", Storage.layerJson(m.id, m.props())) }
+            arr.put(o)
+        }
         put("layers", arr)
         val ga = JSONArray()
         for ((gid, g) in d.groups) {
@@ -2430,7 +2480,19 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val tex: Tex, val layer: Layer, val clipTex: Tex?, val clipBase: Layer? = null, val float: Boolean? = null,
         /** Animation Assist: 0 latar, 1 onion skin, 2 frame utama/biasa, 3 latar depan. */
         val bucket: Int = 2, val mul: Float = 1f, val tint: Int = 0,
+        /** Masker layer ini dan masker layer dasar clipping-nya. */
+        val maskTex: Tex? = null, val clipMaskTex: Tex? = null,
     )
+
+    /** Tekstur yang tampil untuk masker [m] (pratinjau goresan/isian di masker ikut terlihat). */
+    private fun maskTexOf(d: Doc, l: Layer?): Tex? {
+        val m = l?.activeMask() ?: return null
+        return when {
+            xfOn && xfSel && m.id == xfSelId && d === doc -> xfRest
+            substitute != null && m.id == substituteFor -> substitute
+            else -> m.tex
+        }
+    }
 
     /**
      * [frameView]: -2 = ikuti Animation/Page Assist karya (frame aktif + onion skin), -1 = semua layer,
@@ -2440,6 +2502,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         var items = ArrayList<Item>()
         var base: Layer? = null
         var baseTex: Tex? = null
+        var baseMask: Tex? = null
         // Animation/Page Assist: peran tiap layer menurut frame-nya.
         val assistOn = d.assist != 0 && frameView != -1
         var fidx: HashMap<Int, Int>? = null
@@ -2484,18 +2547,20 @@ class Engine(private val ctx: Context, private val listener: Listener) {
                 substitute != null && l.id == substituteFor -> substitute!!
                 else -> l.tex
             }
+            val mt = maskTexOf(d, l)
             if (!l.clip) {
                 base = l
                 baseTex = tex
+                baseMask = mt
                 if (d.shown(l) && l.opacity > 0f) {
-                    items.add(Item(tex, l, null, float = if (selXf) false else null, bucket = bucket, mul = mul, tint = tint))
-                    if (selXf) items.add(Item(if (xfWarp) preview!! else xfFloat!!, l, null, float = !xfWarp, bucket = bucket, mul = mul, tint = tint))
+                    items.add(Item(tex, l, null, float = if (selXf) false else null, bucket = bucket, mul = mul, tint = tint, maskTex = mt))
+                    if (selXf) items.add(Item(if (xfWarp) preview!! else xfFloat!!, l, null, float = !xfWarp, bucket = bucket, mul = mul, tint = tint, maskTex = mt))
                 }
             } else {
                 val b = base
                 if (b == null || !d.shown(b) || !d.shown(l) || l.opacity <= 0f) continue
-                items.add(Item(tex, l, baseTex, b, float = if (selXf) false else null, bucket = bucket, mul = mul, tint = tint))
-                if (selXf) items.add(Item(if (xfWarp) preview!! else xfFloat!!, l, baseTex, b, float = !xfWarp, bucket = bucket, mul = mul, tint = tint))
+                items.add(Item(tex, l, baseTex, b, float = if (selXf) false else null, bucket = bucket, mul = mul, tint = tint, maskTex = mt, clipMaskTex = baseMask))
+                if (selXf) items.add(Item(if (xfWarp) preview!! else xfFloat!!, l, baseTex, b, float = !xfWarp, bucket = bucket, mul = mul, tint = tint, maskTex = mt, clipMaskTex = baseMask))
             }
             if (textOn && textFor < 0 && l.id == textAbove && d === doc) textDummy?.let { items.add(Item(strokeBuf!!, it, null)) }
         }
@@ -2536,6 +2601,14 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             }
             pComposite.i("uMode", it.layer.blend)
             pComposite.i("uUseClip", if (it.clipTex != null) 1 else 0)
+            val mk = it.layer.mask
+            pComposite.tex("uMask", 3, (it.maskTex ?: it.tex).id)
+            pComposite.i("uUseMask", if (it.maskTex != null) 1 else 0)
+            pComposite.i("uMaskXf", if (xf && mk != null && mk.id in xfIds) 1 else 0)
+            val cm = it.clipBase?.mask
+            pComposite.tex("uClipMask", 4, (it.clipMaskTex ?: it.tex).id)
+            pComposite.i("uUseClipMask", if (it.clipMaskTex != null) 1 else 0)
+            pComposite.i("uClipMaskXf", if (xf && cm != null && cm.id in xfIds) 1 else 0)
             drawRect(pComposite, r)
             t = read; read = write; write = t
         }
@@ -2562,7 +2635,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         clearRect(sb, IRect(0, 0, W, H))
         textRect.clear()
         textFor = if (layerId >= 0 && d.find(layerId) != null) layerId else -1
-        textAbove = d.active
+        textAbove = d.activeLayer()?.let { d.owner(it).id } ?: d.active
         textDummy = Layer(-77, sb)
         textOn = true
         dirty.set(0, 0, W, H)
@@ -2982,6 +3055,32 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         G.glDisable(G.GL_SCISSOR_TEST)
     }
 
+    /** Isi seluruh tekstur dengan warna opak (mis. masker baru = putih). */
+    private fun fillTex(t: Tex, color: Int) {
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, t.fb)
+        G.glViewport(0, 0, t.w, t.h)
+        G.glDisable(G.GL_SCISSOR_TEST)
+        G.glClearColor(Color.red(color) / 255f, Color.green(color) / 255f, Color.blue(color) / 255f, 1f)
+        G.glClear(G.GL_COLOR_BUFFER_BIT)
+        G.glClearColor(0f, 0f, 0f, 0f)
+    }
+
+    /**
+     * Operasi piksel sederhana dari [src] ke [dst] (seluruh kanvas): 0 = balik warna (alfa tetap), 1 = balik nilai
+     * masker (hasil abu-abu opak), 2 = [src] dikali nilai masker [mask], 3 = salin.
+     */
+    private fun utilPass(mode: Int, src: Tex, dst: Tex, mask: Tex? = null) {
+        G.glBindFramebuffer(G.GL_FRAMEBUFFER, dst.fb)
+        G.glViewport(0, 0, W, H)
+        G.glDisable(G.GL_BLEND)
+        pUtil.use()
+        pUtil.tex("uSrc", 0, src.id)
+        pUtil.tex("uMask", 1, (mask ?: src).id)
+        pUtil.f2("uSize", W.toFloat(), H.toFloat())
+        pUtil.i("uMode", mode)
+        drawRect(pUtil, IRect(0, 0, W, H))
+    }
+
     private fun readRegion(fb: Int, r: IRect): ByteBuffer {
         val buf = Buffers.direct(r.w * r.h * 4)
         G.glBindFramebuffer(G.GL_READ_FRAMEBUFFER, fb)
@@ -3197,6 +3296,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
                 e.props = cur
             }
             is Edit.Exist -> swapExist(e)
+            is Edit.MaskExist -> swapMask(e)
             is Edit.Move -> {
                 val idx = d.indexOf(e.layerId)
                 if (idx < 0) return
@@ -3233,6 +3333,32 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         }
     }
 
+    /** Pasang atau lepas masker layer sesuai keadaan sekarang (lihat [Edit.MaskExist]). */
+    private fun swapMask(e: Edit.MaskExist) {
+        val d = doc ?: return
+        val p = d.layers.firstOrNull { it.id == e.parentId } ?: return
+        val m = p.mask
+        if (m != null) {
+            e.snapshot = LayerSnapshot(m.props(), RegionData(W, H, readRegion(m.tex.fb, IRect(0, 0, W, H))))
+            m.tex.delete()
+            p.mask = null
+            if (d.active == m.id) d.active = p.id
+        } else {
+            val snap = e.snapshot ?: return
+            val nm = Layer(e.maskId, Tex(W, H))
+            nm.apply(snap.props)
+            nm.maskOf = p.id
+            writeRegion(nm.tex, IRect(0, 0, W, H), snap.data.take())
+            p.mask = nm
+            d.active = nm.id
+            e.snapshot = null
+            nm.saveDirty = true
+            nm.thumbDirty = true
+        }
+        p.thumbDirty = true
+        dirty.set(0, 0, W, H)
+    }
+
     /** Tambah atau hapus layer sesuai keadaan sekarang (lihat [Edit.Exist]). */
     private fun swapExist(e: Edit.Exist) {
         val d = doc ?: return
@@ -3240,16 +3366,27 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         if (l != null) {
             val idx = d.indexOf(l.id)
             val buf = readRegion(l.tex.fb, IRect(0, 0, W, H))
-            e.snapshot = LayerSnapshot(l.props(), RegionData(W, H, buf))
+            val m = l.mask
+            val ms = if (m != null) LayerSnapshot(m.props(), RegionData(W, H, readRegion(m.tex.fb, IRect(0, 0, W, H)))) else null
+            e.snapshot = LayerSnapshot(l.props(), RegionData(W, H, buf), m?.id ?: 0, ms)
             e.index = idx
             d.layers.removeAt(idx)
             l.tex.delete()
-            if (d.active == l.id && d.layers.isNotEmpty()) d.active = d.layers[(idx - 1).coerceIn(0, d.layers.size - 1)].id
+            m?.tex?.delete()
+            l.mask = null
+            if ((d.active == l.id || (m != null && d.active == m.id)) && d.layers.isNotEmpty()) d.active = d.layers[(idx - 1).coerceIn(0, d.layers.size - 1)].id
         } else {
             val snap = e.snapshot ?: return
             val nl = Layer(e.layerId, Tex(W, H))
             nl.apply(snap.props)
             writeRegion(nl.tex, IRect(0, 0, W, H), snap.data.take())
+            snap.mask?.let { ms ->
+                val m = Layer(snap.maskId, Tex(W, H))
+                m.apply(ms.props)
+                m.maskOf = nl.id
+                writeRegion(m.tex, IRect(0, 0, W, H), ms.data.take())
+                nl.mask = m
+            }
             d.layers.add(e.index.coerceIn(0, d.layers.size), nl)
             d.active = nl.id
             e.snapshot = null
@@ -3291,8 +3428,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     private fun newLayerTex(): Tex? {
         val d = doc ?: return null
-        if (d.layers.size >= layerLimit) {
-            post { listener.onMessage("Batas layer tercapai ($layerLimit layer untuk ukuran kanvas ini)") }
+        if (d.layers.size + d.layers.count { it.mask != null } >= layerLimit) {
+            post { listener.onMessage("Batas layer tercapai ($layerLimit layer untuk ukuran kanvas ini, termasuk masker)") }
             return null
         }
         return try {
@@ -3320,8 +3457,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val tex = newLayerTex() ?: return null
         val l = Layer(d.nextId++, tex)
         l.name = name ?: nextName(d.layers.map { it.name }, "Layer")
-        l.group = d.activeLayer()?.group ?: 0
-        val idx = (d.indexOf(d.active) + 1).coerceIn(0, d.layers.size)
+        val cur = d.activeLayer()?.let { d.owner(it) }
+        l.group = cur?.group ?: 0
+        val idx = ((cur?.let { d.indexOf(it.id) } ?: -1) + 1).coerceIn(0, d.layers.size)
         d.layers.add(idx, l)
         d.active = l.id
         pushEdit(Edit.Exist(l.id, idx, null))
@@ -3340,14 +3478,16 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     fun duplicateLayer(id: Int) {
         val d = doc ?: return
         if (modal || strokeActive) return
-        val src = d.find(id) ?: return
+        val src = d.find(id)?.let { d.owner(it) } ?: return
         val tex = newLayerTex() ?: return
         val l = Layer(d.nextId++, tex)
         l.apply(src.props())
         l.name = src.name + " salinan"
         l.locked = false
+        l.reference = false
         blit(src.tex.fb, 0, 0, W, H, tex.fb, 0, 0, W, H, false)
-        val idx = d.indexOf(id) + 1
+        copyMask(d, src, l)
+        val idx = d.indexOf(src.id) + 1
         d.layers.add(idx, l)
         d.active = l.id
         pushEdit(Edit.Exist(l.id, idx, null))
@@ -3358,6 +3498,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     fun deleteLayer(id: Int) {
         val d = doc ?: return
         if (modal || strokeActive) return
+        val target = d.find(id)
+        if (target != null && target.maskOf != 0) { deleteMask(target.maskOf); return }
         if (d.layers.size <= 1) {
             post { listener.onMessage("Kanvas perlu minimal satu layer") }
             return
@@ -3375,6 +3517,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     fun mergeDown(id: Int) {
         val d = doc ?: return
         if (modal || strokeActive) return
+        val target = d.find(id)
+        if (target != null && target.maskOf != 0) { applyMask(target.maskOf); return }
         val idx = d.indexOf(id)
         if (idx <= 0) {
             post { listener.onMessage("Tidak ada layer di bawahnya") }
@@ -3387,6 +3531,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             return
         }
         val full = IRect(0, 0, W, H)
+        // Masker layer bawah diterapkan dulu (isi layer atas tidak ikut tertutup maskernya).
+        val pre = ArrayList<Edit>()
+        bakeMask(lower, pre)
         val before = readRegion(lower.tex.fb, full)
         val sc = scratch!!
         blit(lower.tex.fb, 0, 0, W, H, sc.fb, 0, 0, W, H, false)
@@ -3402,12 +3549,23 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pComposite.f4("uTint", 0f, 0f, 0f, 0f)
         pComposite.i("uMode", upper.blend)
         pComposite.i("uUseClip", if (upper.clip) 1 else 0)
+        val um = upper.activeMask()
+        pComposite.tex("uMask", 3, (um ?: upper).tex.id)
+        pComposite.i("uUseMask", if (um != null) 1 else 0)
+        pComposite.i("uMaskXf", 0)
+        pComposite.tex("uClipMask", 4, sc.id)
+        pComposite.i("uUseClipMask", 0)
+        pComposite.i("uClipMaskXf", 0)
+        pComposite.i("uXf", 0)
+        pComposite.i("uClipXf", 0)
         drawRect(pComposite, full)
         val ex = Edit.Exist(upper.id, idx, null)
         swapExist(ex)
         d.active = lower.id
         layerChanged(lower)
-        val edits = arrayListOf<Edit>(Edit.Pixels(lower.id, full, RegionData(W, H, before)), ex)
+        val edits = ArrayList<Edit>(pre)
+        edits.add(Edit.Pixels(lower.id, full, RegionData(W, H, before)))
+        edits.add(ex)
         if (lower.text != null) {
             // Hasil gabungan bukan teks murni lagi: jadi layer gambar biasa.
             edits.add(Edit.Props(lower.id, lower.props()))
@@ -3447,6 +3605,199 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         layerChanged(l)
         dirty.set(0, 0, W, H)
         makeThumbs()
+    }
+
+    // ================= masker layer, referensi, balik warna, pilih isi, gabung =================
+
+    /** Salin masker [src] (bila ada) ke layer baru [dst] (dipanggil sebelum [dst] masuk riwayat). */
+    private fun copyMask(d: Doc, src: Layer, dst: Layer) {
+        val sm = src.mask ?: return
+        val t = try { Tex(W, H) } catch (e: OutOfMemoryError) { return }
+        val m = Layer(d.nextId++, t)
+        m.apply(sm.props())
+        m.maskOf = dst.id
+        blit(sm.tex.fb, 0, 0, W, H, t.fb, 0, 0, W, H, false)
+        dst.mask = m
+    }
+
+    /** Lepas masker [l] (tanpa diterapkan) dan catat di [edits]. */
+    private fun dropMask(l: Layer, edits: MutableList<Edit>) {
+        val m = l.mask ?: return
+        val e = Edit.MaskExist(l.id, m.id, null)
+        swapMask(e)
+        edits.add(e)
+    }
+
+    /** Terapkan masker [l] ke pikselnya (bila masker aktif), lalu lepas maskernya; dicatat di [edits]. */
+    private fun bakeMask(l: Layer, edits: MutableList<Edit>) {
+        val m = l.mask ?: return
+        if (m.visible) {
+            val full = IRect(0, 0, W, H)
+            val before = readRegion(l.tex.fb, full)
+            utilPass(2, l.tex, preview!!, m.tex)
+            blit(preview!!.fb, 0, 0, W, H, l.tex.fb, 0, 0, W, H, false)
+            edits.add(Edit.Pixels(l.id, full, RegionData(W, H, before)))
+            layerChanged(l)
+        }
+        dropMask(l, edits)
+    }
+
+    /** Tambah masker layer (putih = semua tampil) ke layer [id]; masker langsung terpilih untuk digambari. */
+    fun addMask(id: Int) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val l = d.find(id)?.let { d.owner(it) } ?: return
+        if (l.mask != null) { d.active = l.mask!!.id; postLayers(); return }
+        if (l.text != null) { post { listener.onMessage("Layer teks tidak bisa diberi masker") }; return }
+        val t = newLayerTex() ?: return
+        fillTex(t, Color.WHITE)
+        val m = Layer(d.nextId++, t)
+        m.name = "Masker layer"
+        m.maskOf = l.id
+        l.mask = m
+        d.active = m.id
+        l.thumbDirty = true
+        pushEdit(Edit.MaskExist(l.id, m.id, null))
+        structChanged()
+        makeThumbs()
+        post { listener.onMessage("Masker layer: hitam menyembunyikan, putih menampilkan lagi") }
+    }
+
+    /** Hapus masker layer [parentId] tanpa menerapkannya. */
+    fun deleteMask(parentId: Int) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val l = d.layers.firstOrNull { it.id == parentId } ?: return
+        if (l.mask == null) return
+        val edits = ArrayList<Edit>()
+        dropMask(l, edits)
+        commitEdits(edits)
+        makeThumbs()
+    }
+
+    /** Terapkan masker ke layer [parentId] (bagian tersembunyi benar-benar dihapus), lalu masker dilepas. */
+    fun applyMask(parentId: Int) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val l = d.layers.firstOrNull { it.id == parentId } ?: return
+        if (l.mask == null) return
+        if (l.locked) { post { listener.onMessage("Layer ini terkunci") }; return }
+        val edits = ArrayList<Edit>()
+        bakeMask(l, edits)
+        d.active = l.id
+        commitEdits(edits)
+        makeThumbs()
+    }
+
+    /**
+     * Balik warna layer [id] (di dalam pilihan bila ada). Pada masker: terang jadi gelap, jadi bagian yang tadinya
+     * tersembunyi tampil dan sebaliknya.
+     */
+    fun invertLayer(id: Int) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val l = d.find(id) ?: return
+        if (l.locked) { post { listener.onMessage("Layer ini terkunci") }; return }
+        val full = IRect(0, 0, W, H)
+        val before = readRegion(l.tex.fb, full)
+        utilPass(if (l.maskOf != 0) 1 else 0, l.tex, preview!!)
+        if (selOn) selMix(l, full)
+        blit(preview!!.fb, 0, 0, W, H, l.tex.fb, 0, 0, W, H, false)
+        val px = Edit.Pixels(l.id, full, RegionData(W, H, before))
+        if (l.text != null && l.maskOf == 0) {
+            // Teks yang dibalik warnanya jadi gambar biasa.
+            val old = l.props()
+            l.text = null
+            pushEdit(Edit.Group(listOf(px, Edit.Props(l.id, old))))
+        } else pushEdit(px)
+        layerChanged(l)
+        if (l.maskOf != 0) d.find(l.maskOf)?.thumbDirty = true
+        dirty.set(0, 0, W, H)
+        makeThumbs()
+    }
+
+    /** Isi layer [id] jadi pilihan (alfa; pada masker: kecerahan). */
+    fun selectFromLayer(id: Int) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val l = d.find(id) ?: return
+        ensureHeap(W.toLong() * H * 6)
+        val buf = readRegion(l.tex.fb, IRect(0, 0, W, H))
+        val isMask = l.maskOf != 0
+        val n = W * H
+        work {
+            val m = ByteArray(n)
+            if (isMask) {
+                for (i in 0 until n) {
+                    val o = i * 4
+                    val v = ((buf.get(o).toInt() and 0xFF) * 299 + (buf.get(o + 1).toInt() and 0xFF) * 587 + (buf.get(o + 2).toInt() and 0xFF) * 114) / 1000
+                    m[i] = v.toByte()
+                }
+            } else {
+                for (i in 0 until n) m[i] = buf.get(i * 4 + 3)
+            }
+            setSel(m)
+            if (selMask == null) post { listener.onMessage("Layer ini masih kosong") }
+        }
+    }
+
+    /** Jadikan [id] satu-satunya layer referensi ([on] false = matikan). */
+    fun setReference(id: Int, on: Boolean) {
+        val d = doc ?: return
+        val l = d.find(id)?.let { d.owner(it) } ?: return
+        val edits = ArrayList<Edit>()
+        for (o in d.layers) {
+            val want = on && o.id == l.id
+            if (o.reference != want) {
+                val old = o.props()
+                o.reference = want
+                edits.add(Edit.Props(o.id, old))
+            }
+        }
+        commitEdits(edits)
+        if (on) post { listener.onMessage("\"${l.name}\" jadi referensi: ColorDrop di layer lain mengikuti garisnya") }
+    }
+
+    /**
+     * Gabungkan beberapa layer (mis. dicubit di panel layer) jadi satu layer di posisi layer paling bawah,
+     * seperti tampilannya sekarang (opasitas, mode campur, clipping, dan masker ikut diterapkan).
+     */
+    fun mergeLayers(ids: List<Int>) {
+        val d = doc ?: return
+        if (modal || strokeActive) return
+        val members = d.layers.filter { it.id in ids }
+        if (members.size < 2) return
+        val base = members.first()
+        if (members.any { it.locked }) { post { listener.onMessage("Ada layer terkunci di antara layer yang digabung") }; return }
+        val full = IRect(0, 0, W, H)
+        val tmp = Doc(d.id, d.name, d.w, d.h)
+        tmp.layers.addAll(members)
+        tmp.groups.putAll(d.groups)
+        val sub = substitute
+        substitute = null
+        compositeInto(tmp, full, preview!!, scratch!!, null, -1)
+        substitute = sub
+        tmp.layers.clear()
+        val edits = ArrayList<Edit>()
+        val before = readRegion(base.tex.fb, full)
+        blit(preview!!.fb, 0, 0, W, H, base.tex.fb, 0, 0, W, H, false)
+        edits.add(Edit.Pixels(base.id, full, RegionData(W, H, before)))
+        dropMask(base, edits)
+        val old = base.props()
+        base.apply(old.copy(visible = true, opacity = 1f, blend = 0, alphaLock = false, clip = false, text = null))
+        if (base.props() != old) edits.add(Edit.Props(base.id, old))
+        for (m in members.drop(1).asReversed()) {
+            val e = Edit.Exist(m.id, d.indexOf(m.id), null)
+            swapExist(e)
+            edits.add(e)
+        }
+        dropEmptyGroups(d, edits)
+        d.active = base.id
+        layerChanged(base)
+        commitEdits(edits)
+        makeThumbs()
+        val n = members.size
+        post { listener.onMessage("$n layer digabung") }
     }
 
     fun selectLayer(id: Int) {
@@ -3843,6 +4194,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val before = readRegion(base.tex.fb, full)
         blit(preview!!.fb, 0, 0, W, H, base.tex.fb, 0, 0, W, H, false)
         edits.add(Edit.Pixels(base.id, full, RegionData(W, H, before)))
+        dropMask(base, edits)
         val old = base.props()
         base.apply(LayerProps(meta.name, true, 1f, 0, false, false, false, 0))
         edits.add(Edit.Props(base.id, old))
@@ -3897,7 +4249,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             l.apply(m.props())
             l.group = ng
             l.locked = false
+            l.reference = false
             blit(m.tex.fb, 0, 0, W, H, tex.fb, 0, 0, W, H, false)
+            copyMask(d, m, l)
             d.layers.add(at, l)
             edits.add(Edit.Exist(l.id, at, null))
             at++
@@ -4113,9 +4467,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         substitute = null
         val ow = W
         val oh = H
-        for (l in d.layers) {
+        for (l in d.allLayers()) {
             val t = Tex(nw, nh)
-            clearRect(t, IRect(0, 0, nw, nh))
+            // Bagian baru di masker = putih (tetap tampil); di layer biasa = transparan.
+            if (l.maskOf != 0) fillTex(t, Color.WHITE) else clearRect(t, IRect(0, 0, nw, nh))
             if (scale) {
                 scaleInto(l.tex, ow, oh, t, nw, nh)
             } else {
@@ -4312,7 +4667,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     /** Frame yang tampil: saat diputar = frame urutan putar, selain itu frame layer aktif. */
     private fun animCurrent(d: Doc, fr: List<AnimFrame>): Int {
         if (animPlaying && animShow in fr.indices) return animShow
-        val i = fr.indexOfFirst { d.active in it.layers }
+        val act = d.activeLayer()?.let { d.owner(it).id } ?: d.active
+        val i = fr.indexOfFirst { act in it.layers }
         return if (i >= 0) i else 0
     }
 
@@ -4512,7 +4868,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     fun makeThumbs() {
         val d = doc ?: return
-        for (l in d.layers) {
+        for (l in d.allLayers()) {
             if (!l.thumbDirty) continue
             l.thumbDirty = false
             val bmp = downscale(l.tex.fb, W, H, 144)
@@ -4585,7 +4941,11 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val l = fillLayer ?: return
         if (fillSrc == null) {
             val full = IRect(0, 0, W, H)
-            val buf = if (fillRefAll) {
+            // Layer referensi (bila ada dan bukan layer yang diisi) jadi acuan batas: garis di satu layer, warna di layer lain.
+            val ref = doc?.let { dd -> dd.referenceLayer()?.takeIf { it.id != dd.owner(l).id } }
+            val buf = if (ref != null) {
+                readRegion(ref.tex.fb, full)
+            } else if (fillRefAll) {
                 // Acuan semua layer: tumpuk tanpa pratinjau isi.
                 val d = doc!!
                 val sub = substitute
@@ -5835,8 +6195,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val d = doc ?: return
         val l = d.activeLayer() ?: return
         ensureHeap(W.toLong() * H * 16)
+        val src = d.referenceLayer() ?: l
         val arr = try {
-            val buf = readRegion(l.tex.fb, IRect(0, 0, W, H))
+            val buf = readRegion(src.tex.fb, IRect(0, 0, W, H))
             ByteArray(W * H * 4).also { buf.get(it) }
         } catch (e: OutOfMemoryError) {
             lowMemory()
@@ -6113,10 +6474,12 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             post { listener.onTransformBounds(RectF()) }
             return
         }
+        // Masker layer ikut berpindah bersama layernya (batas kotak tetap mengikuti isi layer saja).
+        val all = if (xfSel) targets else targets + targets.mapNotNull { t -> t.mask?.takeIf { m -> targets.none { it.id == m.id } } }
         xfOn = true
-        xfLayers = targets
+        xfLayers = all
         xfIds.clear()
-        targets.forEach { xfIds.add(it.id) }
+        all.forEach { xfIds.add(it.id) }
         xfOrig.set(b)
         xfPrev.set(b)
         xfMatrix = floatArrayOf(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)
@@ -6163,7 +6526,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val mat = Matrix().apply { setValues(f.m) }
         val inv = Matrix()
         if (!mat.invert(inv)) return
-        val warp = f.net != null && xfLayers.size == 1
+        // Warp hanya untuk satu layer (maskernya, bila ada, tetap di tempat).
+        val prim = xfLayers.filter { it.maskOf == 0 }.ifEmpty { xfLayers }
+        val warp = f.net != null && prim.size == 1
         val now = if (warp) buildMesh(f) else mappedBounds(f.m)
         now.clampTo(W, H)
         val region = xfPrev.copy()
@@ -6171,7 +6536,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         if (warp != xfWarp) region.set(0, 0, W, H)
         region.clampTo(W, H)
         if (warp) {
-            val l = xfLayers[0]
+            val l = prim[0]
             val pv = preview!!
             clearRect(pv, if (!xfWarp) IRect(0, 0, W, H) else region)
             drawMesh(if (xfSel) xfFloat!! else l.tex, pv)
@@ -6308,6 +6673,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             val edits = ArrayList<Edit>()
             for (l in xfLayers) {
                 if (d.find(l.id) == null) continue
+                if (xfWarp && l.maskOf != 0 && xfLayers.size > 1) continue
                 val pv = preview!!
                 if (xfWarp) {
                     clearRect(pv, r)
@@ -6368,7 +6734,13 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         val d = doc ?: return null
         if (strokeActive) commitStroke()
         val l = d.layers.getOrNull(index) ?: return null
-        val buf = readRegion(l.tex.fb, IRect(0, 0, W, H))
+        val m = l.activeMask()
+        val buf = if (m != null) {
+            // Masker diterapkan pada hasil ekspor (layernya sendiri tidak berubah).
+            utilPass(2, l.tex, scratch!!, m.tex)
+            dirty.set(0, 0, W, H)
+            readRegion(scratch!!.fb, IRect(0, 0, W, H))
+        } else readRegion(l.tex.fb, IRect(0, 0, W, H))
         return l.name to outBitmap(d, buf, W, H)
     }
 
@@ -6542,7 +6914,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
                 out.add(Psd.LayerOut("</Layer group>", 1f, 0, true, false, false, section = 3) { Buffers.direct(0) })
             }
             val fb = l.tex.fb
-            out.add(Psd.LayerOut(l.name, l.opacity, l.blend, l.visible, l.alphaLock, l.clip) { readRegion(fb, full) })
+            val mfb = l.mask?.tex?.fb
+            val mOn = l.mask?.visible ?: true
+            out.add(Psd.LayerOut(l.name, l.opacity, l.blend, l.visible, l.alphaLock, l.clip,
+                mask = if (mfb != null) ({ readRegion(mfb, full) }) else null, maskEnabled = mOn) { readRegion(fb, full) })
             if (g != 0 && (i == d.layers.size - 1 || d.layers[i + 1].group != g)) {
                 val meta = d.groups[g] ?: GroupData("Grup", true, false)
                 out.add(Psd.LayerOut(meta.name, 1f, 0, meta.visible, false, false, section = if (meta.collapsed) 2 else 1) { Buffers.direct(0) })

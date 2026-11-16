@@ -41,6 +41,13 @@ class ImportLayer(
     var locked: Boolean = false,
     /** Nomor grup (1 = ImportDoc.groups[0]), 0 = tanpa grup. */
     var group: Int = 0,
+    /**
+     * Masker layer seukuran kanvas (0..255 per piksel, baris 0 = atas), hanya bila pembaca diminta menyimpan masker;
+     * null = tanpa masker (atau maskernya sudah diterapkan ke piksel).
+     */
+    var mask: ByteArray? = null,
+    /** false = masker dimatikan di berkas asal. */
+    var maskVisible: Boolean = true,
 )
 
 interface ImportSink {
@@ -92,7 +99,8 @@ object PsdReader {
         val h get() = bottom - top
     }
 
-    fun read(file: File, sink: ImportSink) {
+    /** [keepMasks] true: masker layer dikirim lewat [ImportLayer.mask] (tidak diterapkan ke piksel). */
+    fun read(file: File, sink: ImportSink, keepMasks: Boolean = false) {
         RandomAccessFile(file, "r").use { raf ->
             val r = Reader(raf)
             if (r.str(4) != "8BPS") error("Bukan berkas PSD")
@@ -137,7 +145,7 @@ object PsdReader {
             var emitted = 0
             if (lmLen > 0) {
                 val liLen = if (psb) r.u64() else r.u32()
-                if (liLen > 0) emitted = readLayers(r, psb, doc, w, h, depth, mode, sink)
+                if (liLen > 0) emitted = readLayers(r, psb, doc, w, h, depth, mode, sink, keepMasks)
             }
             if (emitted == 0) {
                 r.seek(lmEnd)
@@ -146,7 +154,7 @@ object PsdReader {
         }
     }
 
-    private fun readLayers(r: Reader, psb: Boolean, doc: ImportDoc, w: Int, h: Int, depth: Int, mode: Int, sink: ImportSink): Int {
+    private fun readLayers(r: Reader, psb: Boolean, doc: ImportDoc, w: Int, h: Int, depth: Int, mode: Int, sink: ImportSink, keepMasks: Boolean): Int {
         val count = abs(r.s16())
         if (count == 0) return 0
         val recs = ArrayList<Rec>(count)
@@ -267,7 +275,13 @@ object PsdReader {
                         continue
                     }
                     java.util.Arrays.fill(px, 0)
+                    val mk = planes[-2]
+                    val keep = keepMasks && mk != null && rec.mRight > rec.mLeft && rec.mBottom > rec.mTop
+                    val mOn = rec.mOn
+                    if (keep) rec.mOn = false
                     compose(rec, planes, mode, w, h, px)
+                    rec.mOn = mOn
+                    val maskArr = if (keep) maskCanvas(rec, mk!!, w, h) else null
                     val info = ImportLayer(
                         name = rec.name.ifBlank { "Layer" },
                         opacity = rec.opacity / 255f * (rec.fill / 255f),
@@ -279,6 +293,8 @@ object PsdReader {
                         alphaLock = rec.lock != -1 && (rec.lock and 1 != 0 || rec.lock < 0),
                         locked = rec.lock != -1 && (rec.lock and 2 != 0 || rec.lock < 0),
                         group = topGroup,
+                        mask = maskArr,
+                        maskVisible = mOn,
                     )
                     sink.layer(info, px)
                     infos.add(info)
@@ -289,6 +305,24 @@ object PsdReader {
         }
         if (recs.any { it.adjust }) doc.notes.add("Layer penyesuaian Photoshop dilewati")
         return emitted
+    }
+
+    /** Masker layer PSD dipetakan ke seluruh kanvas (di luar kotak masker = warna bawaannya). */
+    private fun maskCanvas(rec: Rec, mk: ByteArray, w: Int, h: Int): ByteArray {
+        val out = ByteArray(w * h)
+        java.util.Arrays.fill(out, rec.mDefault.toByte())
+        val mw = rec.mRight - rec.mLeft
+        val mh = rec.mBottom - rec.mTop
+        for (my in 0 until mh) {
+            val y = rec.mTop + my
+            if (y !in 0 until h) continue
+            for (mx in 0 until mw) {
+                val x = rec.mLeft + mx
+                if (x !in 0 until w) continue
+                out[y * w + x] = mk[my * mw + mx]
+            }
+        }
+        return out
     }
 
     private fun compose(rec: Rec, planes: Map<Int, ByteArray>, mode: Int, w: Int, h: Int, px: ByteArray) {
@@ -518,7 +552,8 @@ object ProcreateReader {
 
     private class Item(val dict: Map<String, Any?>, val group: Int, val hidden: Boolean, val opacity: Float)
 
-    fun read(file: File, sink: ImportSink) {
+    /** [keepMasks] true: masker layer dikirim lewat [ImportLayer.mask] (tidak diterapkan ke piksel). */
+    fun read(file: File, sink: ImportSink, keepMasks: Boolean = false) {
         ZipFile(file).use { zip ->
             val docEntry = zip.getEntry("Document.archive") ?: error("Bukan berkas .procreate")
             @Suppress("UNCHECKED_CAST")
@@ -634,7 +669,13 @@ object ProcreateReader {
                 paint(ns.str(d["UUID"]) ?: "", 4, px)
                 @Suppress("UNCHECKED_CAST")
                 val md = ns.deref(d["mask"]) as? Map<String, Any?>
-                if (md != null && ns.bool(md["hidden"]) != true) {
+                var keptMask: ByteArray? = null
+                if (md != null && keepMasks) {
+                    val m = ByteArray(w * h)
+                    java.util.Arrays.fill(m, 0xFF.toByte())
+                    paint(ns.str(md["UUID"]) ?: "", 1, m)
+                    keptMask = m
+                } else if (md != null && ns.bool(md["hidden"]) != true) {
                     val m = mask ?: ByteArray(w * h).also { mask = it }
                     java.util.Arrays.fill(m, 0xFF.toByte())
                     paint(ns.str(md["UUID"]) ?: "", 1, m)
@@ -660,6 +701,8 @@ object ProcreateReader {
                     alphaLock = ns.bool(d["preserve"]) == true,
                     locked = ns.bool(d["locked"]) == true,
                     group = item.group,
+                    mask = keptMask,
+                    maskVisible = md == null || ns.bool(md["hidden"]) != true,
                 )
                 sink.layer(info, px)
             }

@@ -65,6 +65,13 @@ uniform int uClipXf;
 uniform int uInterp;
 // Onion skin: warna layer didorong ke warna ini sebanyak .a (0 = tanpa warna).
 uniform vec4 uTint;
+// Masker layer (nilai = kecerahan, transparan = tersembunyi) dan masker layer dasar clipping.
+uniform sampler2D uMask;
+uniform int uUseMask;
+uniform int uMaskXf;
+uniform sampler2D uClipMask;
+uniform int uUseClipMask;
+uniform int uClipMaskXf;
 out vec4 o;
 
 // Interpolasi saat transformasi: 0 terdekat, 1 bilinear, 2 bikubik (Catmull-Rom). p dalam piksel kanvas.
@@ -173,7 +180,11 @@ void main() {
     vec4 base = texture(uBase, uv);
     vec4 lay = sampleAt(uLayer, uXf);
     float a = lay.a * uOpacity;
-    if (uUseClip == 1) a *= sampleAt(uClip, uClipXf).a;
+    if (uUseMask == 1) a *= clamp(dot(sampleAt(uMask, uMaskXf).rgb, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+    if (uUseClip == 1) {
+        a *= sampleAt(uClip, uClipXf).a;
+        if (uUseClipMask == 1) a *= clamp(dot(sampleAt(uClipMask, uClipMaskXf).rgb, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+    }
     if (a <= 0.0) { o = base; return; }
     vec3 cs = lay.rgb / max(lay.a, 1e-5);
     cs = mix(cs, uTint.rgb, uTint.a);
@@ -182,6 +193,32 @@ void main() {
     vec3 bl = clamp(blend(uMode, cb, cs), 0.0, 1.0);
     vec3 co = a * (1.0 - ab) * cs + a * ab * bl + (1.0 - a) * base.rgb;
     o = vec4(co, a + ab * (1.0 - a));
+}
+"""
+
+    /** Lihat Engine.utilPass: balik warna, balik masker, terapkan masker, salin. */
+    const val UTIL_FS = """#version 300 es
+precision highp float;
+in vec2 vPos;
+uniform sampler2D uSrc;
+uniform sampler2D uMask;
+uniform vec2 uSize;
+uniform int uMode;
+out vec4 o;
+void main() {
+    vec2 uv = vPos / uSize;
+    vec4 c = texture(uSrc, uv);
+    if (uMode == 0) {
+        o = vec4(max(vec3(c.a) - c.rgb, 0.0), c.a);
+    } else if (uMode == 1) {
+        float v = 1.0 - clamp(dot(c.rgb, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+        o = vec4(v, v, v, 1.0);
+    } else if (uMode == 2) {
+        float m = clamp(dot(texture(uMask, uv).rgb, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+        o = c * m;
+    } else {
+        o = c;
+    }
 }
 """
 

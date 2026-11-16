@@ -523,19 +523,25 @@ private fun FillBar(state: AppState, modifier: Modifier) {
                 Spacer(Modifier.width(12.dp))
                 Text("Ambang ${(state.fillThreshold * 100).roundToInt()}%", color = Muted, fontSize = 13.sp)
                 Spacer(Modifier.weight(1f))
-                FilterChip(
-                    selected = !state.fillRefAll,
-                    onClick = { state.fillRefAll = false; state.fillChanged() },
-                    label = { Text("Acuan: layer ini") },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
-                )
-                Spacer(Modifier.width(6.dp))
-                FilterChip(
-                    selected = state.fillRefAll,
-                    onClick = { state.fillRefAll = true; state.fillChanged() },
-                    label = { Text("Semua layer") },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
-                )
+                val ref = state.referenceLayer
+                if (ref != null && ref.id != state.activeLayerId) {
+                    // Layer referensi menentukan batas isian (garis di layer itu, warna di layer aktif).
+                    Text("Acuan: referensi \"${ref.name}\"", color = Color(0xFF6FD3A8), fontSize = 13.sp, maxLines = 1)
+                } else {
+                    FilterChip(
+                        selected = !state.fillRefAll,
+                        onClick = { state.fillRefAll = false; state.fillChanged() },
+                        label = { Text("Acuan: layer ini") },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    FilterChip(
+                        selected = state.fillRefAll,
+                        onClick = { state.fillRefAll = true; state.fillChanged() },
+                        label = { Text("Semua layer") },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
+                    )
+                }
             }
             Slider(
                 value = state.fillThreshold,

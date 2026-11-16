@@ -73,6 +73,13 @@ class DrawActivity : ComponentActivity() {
                     if (intent.hasExtra("uji_kertas")) {
                         state.pendingPaper = intent.getIntExtra("uji_kertas", 0)
                     }
+                    // Uji palet: berkas palet (ASE/ACO/.swatches/GPL, dipisah koma) dan foto untuk palet otomatis.
+                    intent.getStringExtra("uji_palet")?.split(',')?.forEach { f ->
+                        state.importPalette(android.net.Uri.fromFile(java.io.File(filesDir, f)))
+                    }
+                    intent.getStringExtra("uji_palet_foto")?.let { f ->
+                        state.paletteFromUri(android.net.Uri.fromFile(java.io.File(filesDir, f)))
+                    }
                 }
                 intent.getBooleanExtra(EXTRA_NEW, false) -> {
                     state.exitOnClose = true

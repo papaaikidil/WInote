@@ -44,6 +44,33 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -57,12 +84,13 @@ private val HueColors = listOf(
 
 @Composable
 fun ColorPanel(state: AppState, modifier: Modifier) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(state.prefs.getInt("colorTab", 0).coerceIn(0, 4)) }
+    var panelRect by remember { mutableStateOf(Rect.Zero) }
     Surface(
         color = PanelBg,
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 8.dp,
-        modifier = modifier.width(360.dp),
+        modifier = modifier.width(380.dp).onGloballyPositioned { panelRect = it.boundsInRoot() },
     ) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,7 +122,7 @@ fun ColorPanel(state: AppState, modifier: Modifier) {
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Cakram", "Klasik", "Nilai", "Palet").forEachIndexed { i, n ->
+                listOf("Cakram", "Klasik", "Harmoni", "Nilai", "Palet").forEachIndexed { i, n ->
                     val sel = tab == i
                     Text(
                         n,
@@ -105,7 +133,7 @@ fun ColorPanel(state: AppState, modifier: Modifier) {
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (sel) Color(0x333D8BFF) else Color(0x10FFFFFF))
-                            .clickable { tab = i }
+                            .clickable { tab = i; state.prefs.putInt("colorTab", i) }
                             .padding(vertical = 8.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
@@ -116,8 +144,22 @@ fun ColorPanel(state: AppState, modifier: Modifier) {
                 when (tab) {
                     0 -> ColorDisc(state)
                     1 -> ColorClassic(state)
-                    2 -> ColorValues(state)
-                    else -> ColorPalette(state)
+                    2 -> ColorHarmony(state)
+                    3 -> ColorValues(state)
+                    else -> ColorPalette(state) { panelRect }
+                }
+            }
+            if (tab != 4) {
+                // Palet utama (ringkas) di bawah pemilih warna, seperti Procreate.
+                val dp = state.palettes.getOrNull(state.defaultPaletteIndex)
+                if (dp != null && dp.colors.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        for (c in dp.colors.take(40)) Swatch(state, c, 28.dp, { panelRect }, menu = false)
+                    }
                 }
             }
             if (state.profile == id.goresan.engine.ColorProfile.CMYK) {
@@ -172,7 +214,7 @@ fun ColorPanel(state: AppState, modifier: Modifier) {
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Text("Seret lingkaran warna di bilah atas ke kanvas untuk ColorDrop", color = Muted, fontSize = 11.sp)
+            Text("Seret lingkaran warna di bilah atas ke kanvas untuk ColorDrop · tahan lalu seret kotak palet ke kanvas untuk SwatchDrop", color = Muted, fontSize = 11.sp)
         }
     }
 }
@@ -334,38 +376,285 @@ private fun ColorValues(state: AppState) {
     }
 }
 
+/**
+ * Satu kotak warna palet: ketuk = pakai; tahan lalu seret ke kanvas = SwatchDrop (isi area dengan warna ini);
+ * tahan tanpa digeser = menu (hapus/ganti), bila [menu].
+ */
 @Composable
-private fun ColorPalette(state: AppState) {
-    Column(Modifier.fillMaxWidth()) {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(38.dp),
-            modifier = Modifier.fillMaxWidth().height(220.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(state.palette.toList()) { c ->
-                Box(
-                    Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(c))
-                        .border(
-                            if (c == state.color) 2.dp else 1.dp,
-                            if (c == state.color) Color.White else Color(0x44FFFFFF),
-                            RoundedCornerShape(8.dp),
-                        )
-                        .pointerInput(c) {
-                            detectTapGestures(
-                                onTap = { state.setColor(c) },
-                                onLongPress = { state.removeFromPalette(c) },
-                            )
-                        },
+private fun Swatch(state: AppState, c: Int, size: androidx.compose.ui.unit.Dp, panelRect: () -> Rect, menu: Boolean) {
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var moved by remember { mutableFloatStateOf(0f) }
+    Box {
+        Box(
+            Modifier
+                .size(size)
+                .onGloballyPositioned { origin = it.positionInRoot() }
+                .semantics { contentDescription = "Warna #" + String.format("%06X", c and 0xFFFFFF) }
+                .clip(RoundedCornerShape(if (size < 32.dp) 7.dp else 8.dp))
+                .background(Color(c))
+                .border(
+                    if (c == state.color) 2.dp else 1.dp,
+                    if (c == state.color) Color.White else Color(0x44FFFFFF),
+                    RoundedCornerShape(if (size < 32.dp) 7.dp else 8.dp),
                 )
+                .pointerInput(c) { detectTapGestures(onTap = { state.setColor(c) }) }
+                .pointerInput(c, menu) {
+                    var last = Offset.Zero
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { p ->
+                            last = p
+                            moved = 0f
+                            state.setColor(c)
+                        },
+                        onDrag = { ch, d ->
+                            ch.consume()
+                            last += d
+                            moved += d.getDistance()
+                            if (moved > 12f) state.dropPos = origin + last
+                        },
+                        onDragEnd = {
+                            val p = origin + last
+                            state.dropPos = null
+                            if (moved <= 12f) {
+                                if (menu) menuOpen = true
+                            } else if (!panelRect().contains(p)) {
+                                state.dropSwatch(c, p.x, p.y)
+                            }
+                        },
+                        onDragCancel = { state.dropPos = null },
+                    )
+                },
+        )
+        if (menu) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Ganti dengan warna sekarang") }, onClick = { menuOpen = false; state.replaceInPalette(c) })
+                DropdownMenuItem(text = { Text("Hapus warna", color = Color(0xFFFF8A80)) }, onClick = { menuOpen = false; state.removeFromPalette(c) })
+            }
+        }
+    }
+}
+
+private val HarmonyNames = listOf("Komplementer", "Komplementer terpisah", "Analog", "Triadik", "Tetradik")
+
+/**
+ * Harmoni warna: cakram rona (sudut) × saturasi (jarak dari tengah) dengan penggeser kecerahan. Titik besar = warna
+ * sekarang; titik kecil = pasangan harmoninya (ketuk untuk dipakai).
+ */
+@Composable
+private fun ColorHarmony(state: AppState) {
+    var modeMenu by remember { mutableStateOf(false) }
+    val pairs = id.goresan.engine.Palettes.harmony(state.harmonyMode, state.hue, state.sat, state.value)
+    val offs = id.goresan.engine.Palettes.harmonyOffsets(state.harmonyMode)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Box {
+            Text(
+                HarmonyNames[state.harmonyMode] + "  ▾",
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x14FFFFFF)).clickable { modeMenu = true }
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+            )
+            DropdownMenu(expanded = modeMenu, onDismissRequest = { modeMenu = false }) {
+                HarmonyNames.forEachIndexed { i, n ->
+                    DropdownMenuItem(text = { Text(n) }, onClick = { modeMenu = false; state.chooseHarmony(i) })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Canvas(
+            Modifier
+                .size(250.dp)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        down.consume()
+                        val c = Offset(size.width / 2f, size.height / 2f)
+                        val rad = min(size.width, size.height) / 2f - 14.dp.toPx()
+                        // Ketuk titik pasangan = pakai warna itu (titik utama pindah ke sana).
+                        val hit = id.goresan.engine.Palettes.harmonyOffsets(state.harmonyMode).firstOrNull { o ->
+                            val a = Math.toRadians(((state.hue + o) % 360f).toDouble())
+                            val p = Offset(c.x + (cos(a) * rad * state.sat).toFloat(), c.y + (sin(a) * rad * state.sat).toFloat())
+                            (down.position - p).getDistance() < 18.dp.toPx()
+                        }
+                        if (hit != null) {
+                            state.setHsv(((state.hue + hit) % 360f + 360f) % 360f, state.sat, state.value)
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                if (ev.changes.none { it.pressed }) break
+                            }
+                            return@awaitEachGesture
+                        }
+                        fun handle(p: Offset) {
+                            val v = p - c
+                            var deg = Math.toDegrees(atan2(v.y.toDouble(), v.x.toDouble())).toFloat()
+                            if (deg < 0f) deg += 360f
+                            val sat = (v.getDistance() / rad).coerceIn(0f, 1f)
+                            state.setHsv(deg, sat, state.value)
+                        }
+                        handle(down.position)
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!ch.pressed) break
+                            ch.consume()
+                            handle(ch.position)
+                        }
+                    }
+                },
+        ) {
+            val c = center
+            val rad = size.minDimension / 2f - 14.dp.toPx()
+            drawCircle(brush = Brush.sweepGradient(HueColors, center = c), radius = rad, center = c)
+            drawCircle(brush = Brush.radialGradient(listOf(Color.White, Color.White.copy(alpha = 0f)), center = c, radius = rad), radius = rad, center = c)
+            drawCircle(Color.Black.copy(alpha = (1f - state.value).coerceIn(0f, 1f)), radius = rad, center = c)
+            drawCircle(Color(0x55FFFFFF), radius = rad, center = c, style = Stroke(1.dp.toPx()))
+            fun at(h: Float): Offset {
+                val a = Math.toRadians(h.toDouble())
+                return Offset(c.x + (cos(a) * rad * state.sat).toFloat(), c.y + (sin(a) * rad * state.sat).toFloat())
+            }
+            val main = at(state.hue)
+            for ((k, o) in offs.withIndex()) {
+                val p = at(state.hue + o)
+                drawLine(Color(0x88FFFFFF), main, p, strokeWidth = 1.5.dp.toPx())
+                drawCircle(Color(pairs[k]), radius = 11.dp.toPx(), center = p)
+                drawCircle(Color.White, radius = 11.dp.toPx(), center = p, style = Stroke(2.dp.toPx()))
+            }
+            drawCircle(Color(state.color), radius = 15.dp.toPx(), center = main)
+            drawCircle(Color(0x88000000), radius = 17.dp.toPx(), center = main, style = Stroke(1.dp.toPx()))
+            drawCircle(Color.White, radius = 15.dp.toPx(), center = main, style = Stroke(3.dp.toPx()))
+        }
+        Spacer(Modifier.height(8.dp))
+        LabeledSlider("Kecerahan", state.value, { state.setHsv(state.hue, state.sat, it) })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(width = 54.dp, height = 30.dp).clip(RoundedCornerShape(8.dp)).background(Color(state.color)).border(2.dp, Color.White, RoundedCornerShape(8.dp)))
+            for (p in pairs) {
+                Box(
+                    Modifier.size(width = 54.dp, height = 30.dp).clip(RoundedCornerShape(8.dp)).background(Color(p))
+                        .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(8.dp)).clickable { state.setColor(p) },
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = {
+                state.newPalette("Harmoni " + HarmonyNames[state.harmonyMode].lowercase(), listOf(state.color) + pairs)
+                state.showFlash("Warna harmoni disimpan jadi palet baru")
+            }) { Text("Simpan") }
+        }
+    }
+}
+
+@Composable
+private fun ColorPalette(state: AppState, panelRect: () -> Rect) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var menu by remember { mutableStateOf(false) }
+    var addMenu by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) state.importPalette(uri) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) state.paletteFromUri(uri) }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
+        if (bmp != null) state.paletteFromBitmap(bmp, "Kamera " + java.text.SimpleDateFormat("d MMM HH.mm", java.util.Locale("id")).format(java.util.Date()))
+    }
+    val camPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) runCatching { camera.launch(null) }.onFailure { state.showFlash("Kamera tidak tersedia") }
+        else state.showFlash("Izin kamera diperlukan untuk palet dari kamera")
+    }
+    val cur = state.palettes.getOrNull(state.paletteIndex)
+    Column(Modifier.fillMaxWidth()) {
+        // Daftar palet: ketuk untuk membuka; bintang = palet utama (tampil ringkas di tab lain).
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                state.palettes.forEachIndexed { i, p ->
+                    val sel = i == state.paletteIndex
+                    Text(
+                        (if (i == state.defaultPaletteIndex) "★ " else "") + p.name,
+                        color = if (sel) Color.White else Color(0xFFB8B8C0),
+                        fontSize = 13.sp,
+                        fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (sel) Color(0x333D8BFF) else Color(0x10FFFFFF))
+                            .clickable { state.choosePalette(i) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            Box {
+                IconButton(onClick = { addMenu = true }) { Icon(Icons.Filled.Add, "Palet baru", tint = Color.White) }
+                DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                    DropdownMenuItem(text = { Text("Palet kosong") }, leadingIcon = { Icon(Icons.Filled.Add, null) },
+                        onClick = { addMenu = false; state.newPalette("Palet baru") })
+                    DropdownMenuItem(text = { Text("Dari foto") }, leadingIcon = { Icon(Icons.Filled.Image, null) },
+                        onClick = { addMenu = false; runCatching { pickPhoto.launch("image/*") } })
+                    DropdownMenuItem(text = { Text("Dari kamera") }, leadingIcon = { Icon(Icons.Filled.PhotoCamera, null) },
+                        onClick = {
+                            addMenu = false
+                            val granted = androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.CAMERA) ==
+                                android.content.pm.PackageManager.PERMISSION_GRANTED
+                            if (granted) runCatching { camera.launch(null) }.onFailure { state.showFlash("Kamera tidak tersedia") }
+                            else camPerm.launch(android.Manifest.permission.CAMERA)
+                        })
+                    DropdownMenuItem(text = { Text("Impor berkas (ASE, ACO, .swatches, GPL)") }, leadingIcon = { Icon(Icons.Filled.FileOpen, null) },
+                        onClick = { addMenu = false; runCatching { pickFile.launch(arrayOf("*/*")) } })
+                }
+            }
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Menu palet", tint = Color.White) }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Jadikan palet utama") }, leadingIcon = { Icon(Icons.Filled.Star, null) },
+                        onClick = { menu = false; state.setDefaultPalette(state.paletteIndex) })
+                    DropdownMenuItem(text = { Text("Ganti nama") }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                        onClick = { menu = false; renaming = true })
+                    DropdownMenuItem(text = { Text("Simpan sebagai .swatches") }, leadingIcon = { Icon(Icons.Filled.Download, null) },
+                        onClick = { menu = false; state.exportPalette(state.paletteIndex) })
+                    DropdownMenuItem(text = { Text("Hapus palet", color = Color(0xFFFF8A80)) }, leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color(0xFFFF8A80)) },
+                        onClick = { menu = false; confirmDelete = true })
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        if (cur != null && cur.colors.isEmpty()) {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Text("Palet ini masih kosong.\nKetuk \"+ Simpan warna ini\" untuk menambah warna.", color = Muted, fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(38.dp),
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                items(cur?.colors?.toList() ?: emptyList()) { c -> Swatch(state, c, 38.dp, panelRect, menu = true) }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Tahan kotak warna untuk menghapusnya", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text("Tahan kotak: hapus/ganti · tahan & seret ke kanvas: SwatchDrop", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
             TextButton(onClick = { state.addToPalette() }) { Text("+ Simpan warna ini") }
         }
+    }
+    if (renaming && cur != null) {
+        var name by remember { mutableStateOf(cur.name) }
+        AlertDialog(
+            onDismissRequest = { renaming = false },
+            title = { Text("Ganti nama palet") },
+            text = { OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true) },
+            confirmButton = { TextButton(onClick = { state.renamePalette(state.paletteIndex, name); renaming = false }) { Text("Simpan") } },
+            dismissButton = { TextButton(onClick = { renaming = false }) { Text("Batal") } },
+        )
+    }
+    if (confirmDelete && cur != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Hapus palet \"${cur.name}\"?") },
+            text = { Text("${cur.colors.size} warna di palet ini ikut terhapus.") },
+            confirmButton = { TextButton(onClick = { state.deletePalette(state.paletteIndex); confirmDelete = false }) { Text("Hapus", color = Color(0xFFFF8A80)) } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal") } },
+        )
     }
 }

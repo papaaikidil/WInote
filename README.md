@@ -1065,3 +1065,28 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Menu yang sama ada di panel Aksi › **Salin & tempel**. Di HyperOS, geser tiga jari ke bawah dipakai sistem untuk
   tangkapan layar; matikan di Setelan › Setelan tambahan › Pintasan gerakan › Ambil tangkapan layar bila ingin memakai
   gerakan ini di WInote.
+
+## Tambahan 0.1.119: Masker layer, referensi, gestur layer, harmoni warna, palet
+
+**Layer**
+
+- **Masker layer** (menu layer › Masker layer): masker abu-abu yang tidak merusak gambar. Hitam menyembunyikan, putih
+  menampilkan lagi. Gambar mininya ada di sebelah gambar mini layer; ketuk untuk menggambar di masker (kuas, penghapus,
+  ColorDrop, penyesuaian, transformasi), ketuk lagi untuk menunya: Balik masker, Matikan/Nyalakan, Isi putih, Pilih isi
+  masker, Terapkan masker, Hapus masker. Masker ikut saat layer dipindah, diduplikat, digabung, ditransformasi, diekspor
+  ke PSD (jadi masker layer Photoshop), dan saat PSD/.procreate bermasker diimpor.
+- **Referensi** (menu layer › Referensi): garis di layer referensi jadi batas ColorDrop, SwatchDrop, dan pilihan
+  otomatis di layer lain, jadi warna bisa diisi di layer terpisah dari garisnya.
+- **Balik warna (invert)** dan **Pilih isi layer** (isi layer langsung jadi pilihan, alat Pilihan terbuka).
+- **Gestur di panel layer**: geser kanan = pilih beberapa layer; geser kiri = tombol Kunci/Duplikat/Hapus; ketuk dua
+  jari = Alpha Lock; cubit dua layer (atau lebih) = gabungkan semua layer di antaranya.
+
+**Warna**
+
+- Tab **Harmoni**: komplementer, komplementer terpisah, analog, triadik, tetradik. Titik besar = warna sekarang, titik
+  kecil = pasangannya (ketuk untuk dipakai); "Simpan" menjadikannya palet.
+- **Banyak palet**: buat, ganti nama, hapus, jadikan palet utama (tampil ringkas di bawah Cakram/Klasik/Harmoni),
+  simpan sebagai .swatches (bisa dibuka Procreate).
+- **Impor palet**: ASE (Adobe), ACO (Photoshop), .swatches (Procreate), GPL (GIMP), atau daftar kode hex.
+- **Palet dari foto/kamera**: sampai 30 warna utama diambil otomatis.
+- **SwatchDrop**: tahan kotak warna palet lalu seret ke kanvas untuk mengisi area dengan warna itu.

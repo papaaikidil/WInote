@@ -227,6 +227,9 @@ pm = premul(mid)
 for c in range(4):
     pm[..., c] = ((pm[..., c].astype(np.uint32) * mask + 127) // 255).astype(np.uint8)
 layers_exp = [premul(bottom), pm, premul(mid2), premul(top)]
+# Untuk impor dengan masker dipisah: layer tanpa masker + masker abu-abu.
+premul(mid).tofile(os.path.join(out, "uji-procreate.1u.rgba"))
+mask.tofile(os.path.join(out, "uji-procreate.mask.gray"))
 for i, l in enumerate(layers_exp):
     l.tofile(os.path.join(out, f"uji-procreate.{i}.rgba"))
 with open(os.path.join(out, "uji-procreate.json"), "w") as f:
@@ -243,3 +246,72 @@ for i, col in enumerate([(240, 90, 60), (60, 160, 240), (90, 200, 120)]):
     pages.append(Image.fromarray(a))
 pages[0].save(os.path.join(out, "uji.pdf"), save_all=True, append_images=pages[1:], resolution=72)
 print("pdf", os.path.getsize(os.path.join(out, "uji.pdf")))
+
+# ---------------- palet ----------------
+import colorsys
+pal = os.path.join(out, "palet")
+os.makedirs(pal, exist_ok=True)
+
+
+def hexs(cols):
+    return ",".join("%02X%02X%02X" % c for c in cols)
+
+
+def clamp8(v):
+    return max(0, min(255, int(round(v * 255))))
+
+
+def ase_block_color(name, model, vals):
+    nm = (name + "\0").encode("utf-16-be")
+    body = struct.pack(">H", len(name) + 1) + nm + model.encode("ascii") + b"".join(struct.pack(">f", v) for v in vals) + struct.pack(">H", 2)
+    return struct.pack(">HI", 0x0001, len(body)) + body
+
+
+def ase_group(name):
+    nm = (name + "\0").encode("utf-16-be")
+    body = struct.pack(">H", len(name) + 1) + nm
+    return struct.pack(">HI", 0xC001, len(body)) + body
+
+
+blocks = [ase_block_color("Lepas", "RGB ", [0.2, 0.4, 0.6]), ase_group("Grup A"),
+          ase_block_color("Merah", "RGB ", [1.0, 0.0, 0.0]),
+          ase_block_color("Cmyk", "CMYK", [0.0, 1.0, 1.0, 0.0]),
+          ase_block_color("Abu", "Gray", [0.5]),
+          struct.pack(">HI", 0xC002, 0)]
+with open(os.path.join(pal, "uji.ase"), "wb") as f:
+    f.write(b"ASEF" + struct.pack(">HHI", 1, 0, len(blocks)) + b"".join(blocks))
+expect = ["uji.ase|uji|" + hexs([(51, 102, 153)]), "uji.ase|Grup A|" + hexs([(255, 0, 0), (255, 0, 0), (128, 128, 128)])]
+
+aco_cols = [(0, (65535, 32768, 0, 0)), (1, (int(65535 * 200 / 360), 65535, 65535, 0)), (2, (65535, 0, 65535, 65535))]
+v1 = struct.pack(">HH", 1, len(aco_cols)) + b"".join(struct.pack(">HHHHH", sp, *v) for sp, v in aco_cols)
+v2 = struct.pack(">HH", 2, len(aco_cols))
+for i, (sp, v) in enumerate(aco_cols):
+    nm = "W%d" % i
+    v2 += struct.pack(">HHHHH", sp, *v) + struct.pack(">I", len(nm) + 1) + (nm + "\0").encode("utf-16-be")
+with open(os.path.join(pal, "uji.aco"), "wb") as f:
+    f.write(v1 + v2)
+r, g, b = colorsys.hsv_to_rgb(200 / 360, 1, 1)
+# CMYK di ACO: 0 = tinta 100%: (65535,0,65535,65535) = C0 M100 Y0 K0 = magenta.
+expect.append("uji.aco|uji|" + hexs([(255, 128, 0), (clamp8(r), clamp8(g), clamp8(b)), (255, 0, 255)]))
+
+sw = [{"name": "Dari Procreate", "swatches": [
+    {"hue": 0.0, "saturation": 1.0, "brightness": 1.0, "alpha": 1, "colorSpace": 0},
+    None,
+    {"hue": 0.5, "saturation": 0.5, "brightness": 0.5, "alpha": 1, "colorSpace": 0},
+]}]
+with zipfile.ZipFile(os.path.join(pal, "uji.swatches"), "w") as z:
+    z.writestr("Swatches.json", json.dumps(sw))
+r2, g2, b2 = colorsys.hsv_to_rgb(0.5, 0.5, 0.5)
+expect.append("uji.swatches|Dari Procreate|" + hexs([(255, 0, 0), (clamp8(r2), clamp8(g2), clamp8(b2))]))
+
+with open(os.path.join(pal, "uji.gpl"), "w") as f:
+    f.write("GIMP Palette\nName: Gimp Uji\nColumns: 4\n# komentar\n255   0   0 Merah\n  0 128 255\tBiru\n")
+expect.append("uji.gpl|Gimp Uji|" + hexs([(255, 0, 0), (0, 128, 255)]))
+
+with open(os.path.join(pal, "uji.txt"), "w") as f:
+    f.write("#112233\nAABBCC\nbukan warna\n")
+expect.append("uji.txt|uji|" + hexs([(0x11, 0x22, 0x33), (0xAA, 0xBB, 0xCC)]))
+
+with open(os.path.join(pal, "harapan.txt"), "w") as f:
+    f.write("\n".join(expect) + "\n")
+print("palet", len(expect))

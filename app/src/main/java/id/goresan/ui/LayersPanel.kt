@@ -97,6 +97,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -173,6 +180,148 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
     var listWidth by remember { mutableIntStateOf(1) }
     val rows = buildRows(state, hideMembersOf = drag?.groupId ?: 0)
     val rowsRef = rememberUpdatedState(rows)
+    val dragRef = rememberUpdatedState(drag)
+
+    // ---- gestur di daftar layer (seperti Procreate) ----
+    // Geser kanan = pilih beberapa layer; geser kiri = tombol Kunci/Duplikat/Hapus;
+    // ketuk dua jari = Alpha Lock; cubit dua layer (atau lebih) = gabungkan.
+    var swipeKey by remember { mutableStateOf<String?>(null) }
+    var swipeDx by remember { mutableFloatStateOf(0f) }
+    var revealed by remember { mutableIntStateOf(-1) }
+    var pinchRange by remember { mutableStateOf<IntRange?>(null) }
+    var maskMenuFor by remember { mutableIntStateOf(-1) }
+    val headPx = with(density) { 62.dp.toPx() }
+    val swipeMax = with(density) { 150.dp.toPx() }
+    val swipeAct = with(density) { 64.dp.toPx() }
+    val pinchMin = with(density) { 36.dp.toPx() }
+
+    /** Id layer dari baris daftar (kepala grup = semua anggotanya). */
+    fun idsOfRow(r: PanelRow): List<Int> = when (r) {
+        is PanelRow.Lay -> listOf(r.info.id)
+        is PanelRow.Grp -> state.layers.filter { it.group == r.id }.map { it.id }
+    }
+
+    val gestures = Modifier.pointerInput(Unit) {
+        val slop = viewConfiguration.touchSlop
+        fun itemAt(y: Float) = listState.layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size }
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (dragRef.value != null) return@awaitEachGesture
+            val firstItem = itemAt(down.position.y)
+            val firstKey = firstItem?.key as? String
+            // Geser hanya dari bagian kepala baris (bukan penggeser opasitas di bawahnya).
+            val swipeOk = firstItem != null && firstKey != null && firstKey.startsWith("l") && down.position.y - firstItem.offset < headPx
+            var mode = 0 // 0 belum jelas, 1 geser satu jari, 2 dua jari, 3 abaikan (gulir/seret)
+            var p2Id: androidx.compose.ui.input.pointer.PointerId? = null
+            var p1Start = down.position
+            var p2Start = Offset.Zero
+            var startDist = 0f
+            var twoStart = 0L
+            var twoMoved = false
+            var pinching = false
+            var r1 = -1
+            var r2 = -1
+            while (true) {
+                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                if (dragRef.value != null) { mode = 3 }
+                val c1 = ev.changes.firstOrNull { it.id == down.id }
+                if (mode == 0 || mode == 1) {
+                    val other = ev.changes.firstOrNull { it.id != down.id && it.pressed }
+                    if (other != null && mode == 0 && c1 != null && c1.pressed) {
+                        mode = 2
+                        p2Id = other.id
+                        p1Start = c1.position
+                        p2Start = other.position
+                        startDist = (p1Start - p2Start).getDistance()
+                        twoStart = ev.changes.maxOf { it.uptimeMillis }
+                        r1 = itemAt(p1Start.y)?.index ?: -1
+                        r2 = itemAt(p2Start.y)?.index ?: -1
+                        ev.changes.forEach { it.consume() }
+                        continue
+                    }
+                }
+                when (mode) {
+                    0 -> {
+                        if (c1 == null || !c1.pressed) break
+                        val d = c1.position - down.position
+                        if (swipeOk && kotlin.math.abs(d.x) > slop * 1.2f && kotlin.math.abs(d.x) > kotlin.math.abs(d.y) * 2f) {
+                            mode = 1
+                            swipeKey = firstKey
+                            c1.consume()
+                        } else if (kotlin.math.abs(d.y) > slop) {
+                            mode = 3
+                        }
+                    }
+                    1 -> {
+                        if (c1 == null) break
+                        c1.consume()
+                        swipeDx = (c1.position.x - down.position.x).coerceIn(-swipeMax, swipeMax)
+                        if (!c1.pressed) {
+                            val id = firstKey?.drop(1)?.toIntOrNull()
+                            val dx = swipeDx
+                            swipeKey = null
+                            swipeDx = 0f
+                            if (id != null) {
+                                if (dx > swipeAct) {
+                                    // Geser kanan: masuk/keluar pilihan beberapa layer.
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    revealed = -1
+                                    if (!selecting) {
+                                        selecting = true
+                                        selected.clear()
+                                        if (state.activeLayerId != id && state.layers.any { it.id == state.activeLayerId }) selected.add(state.activeLayerId)
+                                    }
+                                    if (id in selected) selected.remove(id) else selected.add(id)
+                                    if (selected.isEmpty()) selecting = false
+                                } else if (dx < -swipeAct) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    revealed = if (revealed == id) -1 else id
+                                }
+                            }
+                            break
+                        }
+                    }
+                    2 -> {
+                        ev.changes.forEach { it.consume() }
+                        val a = ev.changes.firstOrNull { it.id == down.id }
+                        val b = ev.changes.firstOrNull { it.id == p2Id }
+                        if (a != null && b != null && a.pressed && b.pressed) {
+                            if ((a.position - p1Start).getDistance() > slop || (b.position - p2Start).getDistance() > slop) twoMoved = true
+                            val dist = (a.position - b.position).getDistance()
+                            val wasPinching = pinching
+                            pinching = r1 >= 0 && r2 >= 0 && r1 != r2 && dist < startDist * 0.7f && startDist - dist > pinchMin
+                            pinchRange = if (pinching) minOf(r1, r2)..maxOf(r1, r2) else null
+                            if (pinching && !wasPinching) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        if (ev.changes.none { it.pressed }) {
+                            val range = pinchRange
+                            pinchRange = null
+                            val dur = ev.changes.maxOf { it.uptimeMillis } - twoStart
+                            if (pinching && range != null) {
+                                val rs = rowsRef.value
+                                val ids = range.flatMap { i -> rs.getOrNull(i)?.let { idsOfRow(it) } ?: emptyList() }.distinct()
+                                if (ids.size >= 2) state.layerCmd { it.mergeLayers(ids) }
+                            } else if (!twoMoved && dur < 450) {
+                                // Ketuk dua jari: Alpha Lock layer di bawah jari pertama.
+                                val r = rowsRef.value.getOrNull(r1)
+                                if (r is PanelRow.Lay) {
+                                    val l = r.info
+                                    state.setLayerProps(l.id, state.propsOf(l).copy(alphaLock = !l.alphaLock))
+                                    state.showFlash(if (l.alphaLock) "Alpha Lock mati: ${l.name}" else "Alpha Lock aktif: ${l.name}")
+                                }
+                            }
+                            break
+                        }
+                    }
+                    else -> {
+                        if (ev.changes.none { it.pressed }) break
+                    }
+                }
+            }
+            if (mode == 1) { swipeKey = null; swipeDx = 0f }
+            if (mode == 2) pinchRange = null
+        }
+    }
 
     fun pointerY(d: DragState) = d.startOffset + d.startY + dragDy
     fun pointerX(d: DragState) = d.startX + dragDx
@@ -285,18 +434,21 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                 }
             }
             Text(
-                if (selecting) "Ketuk layer/grup untuk memilih · tahan & seret untuk memindah semuanya"
-                else "Ketuk layer aktif untuk pilihan · tahan & seret untuk memindah; lepas di atas layer lain untuk mengelompokkan",
+                if (selecting) "Ketuk/geser kanan layer untuk memilih · tahan & seret untuk memindah semuanya"
+                else "Ketuk layer aktif untuk pilihan · tahan & seret untuk memindah · geser kiri: kunci/duplikat/hapus · " +
+                    "geser kanan: pilih · ketuk dua jari: Alpha Lock · cubit beberapa layer: gabung",
                 color = Muted, fontSize = 12.sp,
             )
             Spacer(Modifier.height(6.dp))
-            Box(Modifier.onSizeChanged { listWidth = it.width.coerceAtLeast(1) }) {
+            Box(Modifier.onSizeChanged { listWidth = it.width.coerceAtLeast(1) }.then(gestures)) {
             LazyColumn(Modifier.heightIn(max = if (selecting) 500.dp else 560.dp), state = listState) {
                 items(rows, key = { r -> r.key() }) { r ->
                     val rk = r.key()
                     val dragged = drag?.key == rk
                     val t = target
-                    val dropHere = t is DropTarget.Onto && rows.getOrNull(t.index)?.key() == rk
+                    val pr = pinchRange
+                    val rowIndex = rows.indexOf(r)
+                    val dropHere = (t is DropTarget.Onto && rows.getOrNull(t.index)?.key() == rk) || (pr != null && rowIndex in pr)
                     Box(
                         Modifier
                             .zIndex(if (dragged) 1f else 0f)
@@ -310,6 +462,7 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                                     scaleY = 1.02f
                                     alpha = 0.92f
                                 }
+                                if (swipeKey == rk) translationX = swipeDx
                             }
                             .then(
                                 when (r) {
@@ -361,17 +514,30 @@ fun LayersPanel(state: AppState, modifier: Modifier) {
                                 l = l,
                                 inGroup = r.inGroup,
                                 active = l.id == state.activeLayerId,
+                                maskActive = l.mask != null && l.mask.id == state.activeLayerId,
                                 expanded = expanded == l.id && !selecting,
                                 menuOpen = menuFor == l.id,
+                                maskMenuOpen = maskMenuFor == l.id,
+                                revealed = revealed == l.id && !selecting,
                                 selecting = selecting,
                                 selected = l.id in selected,
                                 onTap = {
+                                    revealed = -1
                                     when {
                                         selecting -> if (l.id in selected) selected.remove(l.id) else selected.add(l.id)
                                         l.id == state.activeLayerId -> menuFor = l.id
                                         else -> state.layerCmd { it.selectLayer(l.id) }
                                     }
                                 },
+                                onMaskTap = {
+                                    revealed = -1
+                                    val m = l.mask
+                                    if (m != null) {
+                                        if (m.id == state.activeLayerId) maskMenuFor = l.id else state.layerCmd { it.selectLayer(m.id) }
+                                    }
+                                },
+                                onMaskMenuDismiss = { maskMenuFor = -1 },
+                                onHideActions = { revealed = -1 },
                                 onToggleExpand = { expanded = if (expanded == l.id) -1 else l.id },
                                 onMenuDismiss = { menuFor = -1 },
                                 onRename = { renameFor = l; menuFor = -1 },
@@ -639,11 +805,17 @@ private fun LayerRow(
     l: LayerInfo,
     inGroup: Boolean,
     active: Boolean,
+    maskActive: Boolean,
     expanded: Boolean,
     menuOpen: Boolean,
+    maskMenuOpen: Boolean,
+    revealed: Boolean,
     selecting: Boolean,
     selected: Boolean,
     onTap: () -> Unit,
+    onMaskTap: () -> Unit,
+    onMaskMenuDismiss: () -> Unit,
+    onHideActions: () -> Unit,
     onToggleExpand: () -> Unit,
     onMenuDismiss: () -> Unit,
     onRename: () -> Unit,
@@ -654,7 +826,7 @@ private fun LayerRow(
             .fillMaxWidth()
             .padding(start = if (inGroup) 18.dp else 0.dp, top = 3.dp, bottom = 3.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (active) Color(0x663D8BFF) else Color(0x14FFFFFF)),
+            .background(if (active || maskActive) Color(0x663D8BFF) else Color(0x14FFFFFF)),
     ) {
         Row(
             Modifier
@@ -672,27 +844,70 @@ private fun LayerRow(
             if (l.clip) {
                 Text("↳", color = Muted, modifier = Modifier.padding(end = 4.dp))
             }
+            val m = l.mask
             Box(
                 Modifier
-                    .size(width = 64.dp, height = 46.dp)
+                    .size(width = if (m != null) 52.dp else 64.dp, height = 46.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .checker()
-                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(6.dp)),
+                    .border(if (m != null && active) 2.dp else 1.dp, if (m != null && active) Color.White else Color(0x44FFFFFF), RoundedCornerShape(6.dp)),
             ) {
                 state.thumbs[l.id]?.let {
-                    Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(width = 64.dp, height = 46.dp))
+                    Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(width = if (m != null) 52.dp else 64.dp, height = 46.dp))
+                }
+            }
+            if (m != null) {
+                // Masker layer: ketuk untuk menggambar di masker, ketuk lagi untuk menunya.
+                Icon(Icons.Filled.Link, null, tint = Muted, modifier = Modifier.padding(horizontal = 2.dp).size(12.dp))
+                Box {
+                    Box(
+                        Modifier
+                            .size(width = 40.dp, height = 46.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black)
+                            .border(if (maskActive) 2.dp else 1.dp, if (maskActive) Color.White else Color(0x44FFFFFF), RoundedCornerShape(6.dp))
+                            .clickable { onMaskTap() },
+                    ) {
+                        state.thumbs[m.id]?.let {
+                            Image(
+                                it, contentDescription = "Masker layer", contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(width = 40.dp, height = 46.dp).graphicsLayer { alpha = if (m.visible) 1f else 0.35f },
+                            )
+                        }
+                        if (!m.visible) Icon(Icons.Filled.Close, null, tint = Color(0xFFFF8A80), modifier = Modifier.align(Alignment.Center).size(18.dp))
+                    }
+                    DropdownMenu(expanded = maskMenuOpen, onDismissRequest = onMaskMenuDismiss) {
+                        MaskMenu(state, l, m, onMaskMenuDismiss)
+                    }
                 }
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(l.name, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (maskActive) Text("Masker  ", color = Color(0xFF9FD2FF), fontSize = 11.sp)
+                    if (l.reference) Text("Referensi  ", color = Color(0xFF6FD3A8), fontSize = 11.sp)
                     if (l.alphaLock) Text("Alpha lock  ", color = Color(0xFFF6C453), fontSize = 11.sp)
                     if (l.assist) Text("Bantuan  ", color = Color(0xFF6FB6FF), fontSize = 11.sp)
                     if (l.text != null) Text("Teks  ", color = Color(0xFFB59CFF), fontSize = 11.sp)
                     if (l.locked) Icon(Icons.Filled.Lock, null, tint = Muted, modifier = Modifier.size(12.dp))
                 }
             }
+            if (revealed) {
+                // Tombol hasil geser kiri.
+                SwipeAction(if (l.locked) Icons.Filled.LockOpen else Icons.Filled.Lock, if (l.locked) "Buka" else "Kunci", Color(0xFF5A6070)) {
+                    onHideActions()
+                    state.setLayerProps(l.id, state.propsOf(l).copy(locked = !l.locked))
+                }
+                SwipeAction(Icons.Filled.ContentCopy, "Duplikat", Color(0xFF3D6FD8)) {
+                    onHideActions()
+                    state.layerCmd { it.duplicateLayer(l.id) }
+                }
+                SwipeAction(Icons.Filled.Delete, "Hapus", Color(0xFFD9534F)) {
+                    onHideActions()
+                    state.layerCmd { it.deleteLayer(l.id) }
+                }
+            } else {
             Text(
                 BlendShort.getOrElse(l.blend) { "N" } + if (l.opacity < 0.995f) " ${(l.opacity * 100).roundToInt()}" else "",
                 color = if (expanded) Accent else Color(0xFFDADAE0),
@@ -710,6 +925,7 @@ private fun LayerRow(
                     tint = if (l.visible) Color.White else Muted,
                 )
             }
+            }
             Box {
                 DropdownMenu(expanded = menuOpen, onDismissRequest = onMenuDismiss) {
                     LayerMenu(state, l, onMenuDismiss, onRename, onSelectMany)
@@ -718,6 +934,59 @@ private fun LayerRow(
         }
         if (expanded) BlendControls(state, l)
     }
+}
+
+@Composable
+private fun SwipeAction(icon: ImageVector, label: String, bg: Color, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .padding(start = 4.dp)
+            .size(width = 58.dp, height = 46.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Text(label, color = Color.White, fontSize = 10.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun MaskMenu(state: AppState, owner: LayerInfo, m: LayerInfo, dismiss: () -> Unit) {
+    fun act(block: () -> Unit) { block(); dismiss() }
+    DropdownMenuItem(
+        text = { Text("Balik masker") },
+        leadingIcon = { Icon(Icons.Filled.InvertColors, null) },
+        onClick = { act { state.layerCmd { it.invertLayer(m.id) } } },
+    )
+    DropdownMenuItem(
+        text = { Text(if (m.visible) "Matikan masker" else "Nyalakan masker") },
+        leadingIcon = { Icon(if (m.visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null) },
+        onClick = { act { state.setLayerProps(m.id, state.propsOf(m).copy(visible = !m.visible)) } },
+    )
+    DropdownMenuItem(
+        text = { Text("Isi masker putih (tampilkan semua)") },
+        leadingIcon = { Icon(Icons.Filled.FormatColorFill, null) },
+        onClick = { act { state.layerCmd { it.fillWholeLayer(m.id, android.graphics.Color.WHITE) } } },
+    )
+    DropdownMenuItem(
+        text = { Text("Pilih isi masker") },
+        leadingIcon = { Icon(Icons.Filled.SelectAll, null) },
+        onClick = { act { state.selectLayerContents(m.id) } },
+    )
+    HorizontalDivider()
+    DropdownMenuItem(
+        text = { Text("Terapkan masker") },
+        leadingIcon = { Icon(Icons.Filled.FilterBAndW, null) },
+        onClick = { act { state.layerCmd { it.applyMask(owner.id) } } },
+    )
+    DropdownMenuItem(
+        text = { Text("Hapus masker", color = Color(0xFFFF8A80)) },
+        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color(0xFFFF8A80)) },
+        onClick = { act { state.layerCmd { it.deleteMask(owner.id) } } },
+    )
 }
 
 /** Kelompok mode campur seperti di Procreate (indeks ke [BlendNames]). */
@@ -834,7 +1103,30 @@ private fun LayerMenu(state: AppState, l: LayerInfo, dismiss: () -> Unit, onRena
         onClick = { act { val c = state.color; state.layerCmd { it.fillWholeLayer(l.id, c) } } },
     )
     DropdownMenuItem(text = { Text("Bersihkan") }, onClick = { act { state.layerCmd { it.clearLayer(l.id) } } })
+    DropdownMenuItem(
+        text = { Text("Pilih isi layer") },
+        leadingIcon = { Icon(Icons.Filled.SelectAll, null) },
+        onClick = { act { state.selectLayerContents(l.id) } },
+    )
+    DropdownMenuItem(
+        text = { Text("Balik warna (invert)") },
+        leadingIcon = { Icon(Icons.Filled.InvertColors, null) },
+        onClick = { act { state.layerCmd { it.invertLayer(l.id) } } },
+    )
     HorizontalDivider()
+    if (l.mask == null) {
+        DropdownMenuItem(
+            text = { Text("Masker layer") },
+            leadingIcon = { Icon(Icons.Filled.Contrast, null) },
+            enabled = l.text == null,
+            onClick = { act { state.layerCmd { it.addMask(l.id) } } },
+        )
+    }
+    DropdownMenuItem(
+        text = { Text("Referensi (untuk ColorDrop)") },
+        trailingIcon = { if (l.reference) Icon(Icons.Filled.Check, null) },
+        onClick = { act { state.layerCmd { it.setReference(l.id, !l.reference) } } },
+    )
     DropdownMenuItem(
         text = { Text("Alpha Lock") },
         trailingIcon = { if (l.alphaLock) Icon(Icons.Filled.Check, null) },

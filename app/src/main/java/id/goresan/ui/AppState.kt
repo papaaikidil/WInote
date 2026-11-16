@@ -78,6 +78,12 @@ const val SEL_ELLIPSE = 3
 
 class Loupe(val x: Float, val y: Float, val color: Int)
 
+/** Satu palet di panel Warna (bisa diubah langsung oleh antarmuka). */
+class PaletteState(name: String, colors: List<Int>) {
+    var name by mutableStateOf(name)
+    val colors = mutableStateListOf<Int>().apply { addAll(colors) }
+}
+
 /** Seluruh keadaan antarmuka. Hidup di thread utama; perintah ke kanvas dikirim lewat [gl]. */
 class AppState(val app: Context) : Engine.Listener {
     val prefs = Prefs(app)
@@ -132,7 +138,14 @@ class AppState(val app: Context) : Engine.Listener {
     /** Warna kedua: dipakai dinamika warna kuas (getaran/tekanan/kemiringan menuju warna kedua). */
     var color2 by mutableIntStateOf(prefs.getInt("color2", Color.WHITE))
     val history = mutableStateListOf<Int>().apply { addAll(prefs.getIntList("history")) }
-    val palette = mutableStateListOf<Int>()
+    /** Semua palet; [paletteIndex] = yang tampil di tab Palet, [defaultPaletteIndex] = baris ringkas di tab lain. */
+    val palettes = mutableStateListOf<PaletteState>()
+    var paletteIndex by mutableIntStateOf(0)
+    var defaultPaletteIndex by mutableIntStateOf(0)
+    /** Warna palet yang sedang dibuka (kosong bila belum ada palet). */
+    val palette: List<Int> get() = palettes.getOrNull(paletteIndex)?.colors ?: emptyList()
+    /** Mode harmoni warna (Palettes.COMPLEMENTARY … TETRADIC). */
+    var harmonyMode by mutableIntStateOf(prefs.getInt("harmony", 0).coerceIn(0, 4))
 
     // Panel & mode
     var panel by mutableStateOf(Panel.NONE)
@@ -403,8 +416,8 @@ class AppState(val app: Context) : Engine.Listener {
         val t0 = android.os.SystemClock.uptimeMillis()
         try {
             when {
-                magic == "8BPS" -> PsdReader.read(tmp, sink)
-                magic == "PK\u0003\u0004" -> ProcreateReader.read(tmp, sink)
+                magic == "8BPS" -> PsdReader.read(tmp, sink, keepMasks = true)
+                magic == "PK\u0003\u0004" -> ProcreateReader.read(tmp, sink, keepMasks = true)
                 magic == "%PDF" -> importPdf(tmp, sink)
                 else -> importImage(tmp, sink)
             }
@@ -495,6 +508,8 @@ class AppState(val app: Context) : Engine.Listener {
         private var dir: File? = null
         private lateinit var doc: ImportDoc
         private val written = ArrayList<Pair<Int, ImportLayer>>()
+        /** Id masker per id layer. */
+        private val maskIds = HashMap<Int, Int>()
         private var merge = 0
         private var seen = 0
         private var acc: ByteArray? = null
@@ -523,6 +538,15 @@ class AppState(val app: Context) : Engine.Listener {
             seen++
             if (merge > 1 && seen <= merge) {
                 val a = acc ?: ByteArray(px.size).also { acc = it }
+                val m = info.mask
+                if (m != null && info.maskVisible) {
+                    for (i in m.indices) {
+                        val mv = m[i].toInt() and 0xFF
+                        if (mv == 255) continue
+                        val o = i * 4
+                        for (c in 0 until 4) px[o + c] = (((px[o + c].toInt() and 0xFF) * mv + 127) / 255).toByte()
+                    }
+                }
                 if (info.visible) overInto(a, px, info.opacity.coerceIn(0f, 1f))
                 if (seen < merge) return
                 write(ImportLayer("Gabungan $merge layer"), a)
@@ -536,6 +560,19 @@ class AppState(val app: Context) : Engine.Listener {
             val lid = nextId++
             Storage.writeLayer(dir!!, lid, doc.w, doc.h, java.nio.ByteBuffer.wrap(px))
             written.add(lid to info)
+            val m = info.mask
+            if (m != null) {
+                // Masker jadi masker layer WInote (abu-abu opak), tidak diterapkan ke gambar.
+                val mid = nextId++
+                val mb = ByteArray(m.size * 4)
+                for (i in m.indices) {
+                    val o = i * 4
+                    mb[o] = m[i]; mb[o + 1] = m[i]; mb[o + 2] = m[i]; mb[o + 3] = 0xFF.toByte()
+                }
+                Storage.writeLayer(dir!!, mid, doc.w, doc.h, java.nio.ByteBuffer.wrap(mb))
+                maskIds[lid] = mid
+                info.mask = null
+            }
             val n = written.size
             main.post { if (busy != null) busy = "Mengimpor… layer $n" }
         }
@@ -566,15 +603,17 @@ class AppState(val app: Context) : Engine.Listener {
             val arr = org.json.JSONArray()
             for ((lid, l) in written) {
                 val g = if (l.group in 1..doc.groups.size) gidBase + l.group - 1 else 0
-                arr.put(
-                    Storage.layerJson(
-                        lid,
-                        LayerProps(
-                            name = l.name.ifBlank { "Layer" }, visible = l.visible, opacity = l.opacity.coerceIn(0f, 1f),
-                            blend = l.blend, alphaLock = l.alphaLock, clip = l.clip, locked = l.locked, group = g,
-                        ),
+                val o = Storage.layerJson(
+                    lid,
+                    LayerProps(
+                        name = l.name.ifBlank { "Layer" }, visible = l.visible, opacity = l.opacity.coerceIn(0f, 1f),
+                        blend = l.blend, alphaLock = l.alphaLock, clip = l.clip, locked = l.locked, group = g,
                     ),
                 )
+                maskIds[lid]?.let { mid ->
+                    o.put("mask", Storage.layerJson(mid, LayerProps("Masker layer", l.maskVisible, 1f, 0, false, false, false)))
+                }
+                arr.put(o)
             }
             meta.put("layers", arr)
             val ga = org.json.JSONArray()
@@ -1149,8 +1188,7 @@ class AppState(val app: Context) : Engine.Listener {
     init {
         val c = prefs.getInt("color", Color.rgb(28, 32, 48))
         setColorQuiet(c)
-        val pal = prefs.getIntList("palette")
-        palette.addAll(if (pal.isNotEmpty()) pal else defaultPalette())
+        loadPalettes()
         if (Diag.takeCrashFlag()) {
             showFlash("Ruang gambar sempat tertutup sendiri. Catatannya ada di Aksi › Laporan teknis")
         }
@@ -1912,17 +1950,194 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
-    fun addToPalette() {
-        val c = color
-        if (c !in palette) {
-            palette.add(c)
-            prefs.putIntList("palette", palette.toList())
+    // ================= palet =================
+
+    private fun loadPalettes() {
+        val raw = prefs.getString("palettes", "")
+        val ok = raw.isNotBlank() && runCatching {
+            val o = org.json.JSONObject(raw)
+            val arr = o.getJSONArray("list")
+            for (i in 0 until arr.length()) {
+                val p = arr.getJSONObject(i)
+                val cs = p.optJSONArray("colors") ?: org.json.JSONArray()
+                palettes.add(PaletteState(p.optString("name", "Palet"), List(cs.length()) { cs.getInt(it) }))
+            }
+            paletteIndex = o.optInt("active", 0)
+            defaultPaletteIndex = o.optInt("default", 0)
+        }.isSuccess && palettes.isNotEmpty()
+        if (!ok) {
+            palettes.clear()
+            val old = prefs.getIntList("palette")
+            palettes.add(PaletteState("Palet saya", if (old.isNotEmpty()) old else defaultPalette()))
+            palettes.add(PaletteState("Kulit", listOf(0xFFFFE0CC, 0xFFF6C9A8, 0xFFE8B996, 0xFFD9A07B, 0xFFC68B59, 0xFFA86B44, 0xFF8D5524, 0xFF6B3E1F, 0xFF4A2A15).map { it.toInt() }))
+            paletteIndex = 0
+            defaultPaletteIndex = 0
         }
+        paletteIndex = paletteIndex.coerceIn(0, palettes.size - 1)
+        defaultPaletteIndex = defaultPaletteIndex.coerceIn(0, palettes.size - 1)
+    }
+
+    fun savePalettes() {
+        val arr = org.json.JSONArray()
+        for (p in palettes) {
+            arr.put(org.json.JSONObject().apply {
+                put("name", p.name)
+                put("colors", org.json.JSONArray().apply { p.colors.forEach { put(it) } })
+            })
+        }
+        prefs.putString("palettes", org.json.JSONObject().apply {
+            put("list", arr); put("active", paletteIndex); put("default", defaultPaletteIndex)
+        }.toString())
+    }
+
+    fun addToPalette() {
+        val p = palettes.getOrNull(paletteIndex) ?: return
+        val c = color
+        if (c in p.colors) { showFlash("Warna ini sudah ada di palet"); return }
+        if (p.colors.size >= id.goresan.engine.Palettes.MAX_COLORS) { showFlash("Palet sudah penuh"); return }
+        p.colors.add(c)
+        savePalettes()
     }
 
     fun removeFromPalette(c: Int) {
-        palette.remove(c)
-        prefs.putIntList("palette", palette.toList())
+        val p = palettes.getOrNull(paletteIndex) ?: return
+        p.colors.remove(c)
+        savePalettes()
+    }
+
+    fun replaceInPalette(old: Int) {
+        val p = palettes.getOrNull(paletteIndex) ?: return
+        val i = p.colors.indexOf(old)
+        if (i < 0) return
+        if (color in p.colors && p.colors[i] != color) { showFlash("Warna ini sudah ada di palet"); return }
+        p.colors[i] = color
+        savePalettes()
+    }
+
+    fun choosePalette(i: Int) {
+        paletteIndex = i.coerceIn(0, palettes.size - 1)
+        savePalettes()
+    }
+
+    fun newPalette(name: String, colors: List<Int> = emptyList()): Int {
+        val base = name.ifBlank { "Palet" }
+        var n = base
+        var k = 2
+        while (palettes.any { it.name == n }) n = "$base ${k++}"
+        palettes.add(PaletteState(n, colors.distinct().take(id.goresan.engine.Palettes.MAX_COLORS)))
+        paletteIndex = palettes.size - 1
+        savePalettes()
+        return paletteIndex
+    }
+
+    fun renamePalette(i: Int, name: String) {
+        palettes.getOrNull(i)?.name = name.ifBlank { return }
+        savePalettes()
+    }
+
+    fun deletePalette(i: Int) {
+        if (palettes.size <= 1) { showFlash("Perlu minimal satu palet"); return }
+        if (i !in palettes.indices) return
+        palettes.removeAt(i)
+        if (defaultPaletteIndex == i) defaultPaletteIndex = 0 else if (defaultPaletteIndex > i) defaultPaletteIndex--
+        paletteIndex = (if (paletteIndex > i) paletteIndex - 1 else paletteIndex).coerceIn(0, palettes.size - 1)
+        savePalettes()
+    }
+
+    fun setDefaultPalette(i: Int) {
+        if (i !in palettes.indices) return
+        defaultPaletteIndex = i
+        savePalettes()
+        showFlash("\"${palettes[i].name}\" jadi palet utama")
+    }
+
+    fun chooseHarmony(m: Int) {
+        harmonyMode = m.coerceIn(0, 4)
+        prefs.putInt("harmony", harmonyMode)
+    }
+
+    /** Impor palet dari berkas ASE, ACO, .swatches, GPL, atau daftar hex. */
+    fun importPalette(uri: Uri) {
+        val name = runCatching { nameOf(uri) }.getOrNull() ?: "Palet"
+        bg.execute {
+            val res = runCatching {
+                val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Berkas tidak bisa dibaca")
+                if (bytes.size > 8 shl 20) error("Berkas terlalu besar untuk palet")
+                id.goresan.engine.Palettes.parse(bytes, name)
+            }
+            main.post {
+                val list = res.getOrNull()
+                when {
+                    list == null -> showFlash("Gagal membaca palet: ${res.exceptionOrNull()?.message ?: "format tidak dikenal"}")
+                    list.isEmpty() -> showFlash("Tidak ada warna yang terbaca (pakai ASE, ACO, .swatches, GPL, atau daftar hex)")
+                    else -> {
+                        for (p in list) newPalette(p.name, p.colors)
+                        val n = list.sumOf { it.colors.size }
+                        showFlash(if (list.size == 1) "Palet \"${list[0].name}\" diimpor ($n warna)" else "${list.size} palet diimpor ($n warna)")
+                    }
+                }
+            }
+        }
+    }
+
+    /** Palet otomatis dari foto/kamera (paling banyak 30 warna utama). */
+    fun paletteFromBitmap(bmp: Bitmap, name: String) {
+        bg.execute {
+            val small = runCatching {
+                val k = min(1f, 160f / max(bmp.width, bmp.height))
+                val w = max(1, (bmp.width * k).toInt())
+                val h = max(1, (bmp.height * k).toInt())
+                val sb = Bitmap.createScaledBitmap(bmp.copy(Bitmap.Config.ARGB_8888, false), w, h, true)
+                IntArray(w * h).also { sb.getPixels(it, 0, w, 0, 0, w, h) }
+            }.getOrNull()
+            val colors = small?.let { id.goresan.engine.Palettes.fromImage(it, 30) }.orEmpty()
+            main.post {
+                if (colors.isEmpty()) showFlash("Tidak ada warna yang bisa diambil dari gambar ini")
+                else {
+                    newPalette(name, colors)
+                    showFlash("Palet baru: ${colors.size} warna dari gambar")
+                }
+            }
+        }
+    }
+
+    fun paletteFromUri(uri: Uri) {
+        bg.execute {
+            val bmp = runCatching {
+                val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                app.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) }
+                var ss = 1
+                while (max(o.outWidth, o.outHeight) / ss > 1024) ss *= 2
+                app.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = ss }) }
+            }.getOrNull()
+            main.post {
+                if (bmp == null) showFlash("Gambar tidak bisa dibuka")
+                else paletteFromBitmap(bmp, "Foto ${SimpleDateFormat("d MMM HH.mm", Locale("id")).format(Date())}")
+            }
+        }
+    }
+
+    /** Simpan palet sebagai .swatches (bisa dibuka Procreate) di Download/WInote. */
+    fun exportPalette(i: Int) {
+        val p = palettes.getOrNull(i) ?: return
+        val pal = id.goresan.engine.Palette(p.name, p.colors.toMutableList())
+        bg.execute {
+            val r = runCatching {
+                val safe = p.name.replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "Palet" }
+                val f = File(app.cacheDir, "$safe.swatches")
+                f.writeBytes(id.goresan.engine.Palettes.toSwatches(pal))
+                saveDownload(f, "application/zip")
+                f.delete()
+                f.name
+            }
+            main.post { showFlash(r.getOrNull()?.let { "Palet disimpan: Download/WInote/$it" } ?: "Gagal menyimpan palet: ${r.exceptionOrNull()?.message}") }
+        }
+    }
+
+    /** SwatchDrop: warna palet diseret ke kanvas = ColorDrop dengan warna itu. */
+    fun dropSwatch(c: Int, x: Float, y: Float) {
+        setColor(c)
+        dropColorAt(x, y)
     }
 
     // ================= pipet =================
@@ -2023,7 +2238,21 @@ class AppState(val app: Context) : Engine.Listener {
         gl { it.setProps(id, p, undoable) }
     }
 
-    fun propsOf(l: LayerInfo) = LayerProps(l.name, l.visible, l.opacity, l.blend, l.alphaLock, l.clip, l.locked, l.group, l.assist, l.text)
+    fun propsOf(l: LayerInfo) = LayerProps(l.name, l.visible, l.opacity, l.blend, l.alphaLock, l.clip, l.locked, l.group, l.assist, l.text, l.reference)
+
+    /** Layer referensi sekarang (untuk keterangan ColorDrop), bila ada. */
+    val referenceLayer: LayerInfo? get() = layers.firstOrNull { it.reference }
+
+    /** Isi layer [id] jadi pilihan, lalu alat Pilihan dibuka (seperti "Pilih" di menu layer Procreate). */
+    fun selectLayerContents(id: Int) {
+        if (modalActive()) return
+        gl { it.selectFromLayer(id) }
+        panel = Panel.NONE
+        if (!selTool) {
+            selTool = true
+            selPanel = 0
+        }
+    }
 
     // ================= ColorDrop =================
 

@@ -108,12 +108,15 @@ data class LayerProps(
     val assist: Boolean = false,
     /** Layer teks: isi dan gaya teks (JSON TextSpec) supaya bisa diedit lagi; null = layer biasa. */
     val text: String? = null,
+    /** Layer referensi: ColorDrop dan pilihan otomatis di layer lain memakai garis dari layer ini. */
+    val reference: Boolean = false,
 )
 
 /** Data satu grup layer. Anggota grup selalu berurutan (bersebelahan) di daftar layer. */
 data class GroupData(val name: String, val visible: Boolean, val collapsed: Boolean)
 
-class LayerSnapshot(val props: LayerProps, val data: RegionData)
+/** Isi layer yang dihapus (untuk urungkan), beserta masker layernya bila ada. */
+class LayerSnapshot(val props: LayerProps, val data: RegionData, val maskId: Int = 0, val mask: LayerSnapshot? = null)
 
 /**
  * Satu langkah di riwayat. Semua langkah bersifat "tukar": menerapkan langkah yang sama dua kali
@@ -129,6 +132,8 @@ sealed class Edit {
     class GroupMeta(val groupId: Int, var data: GroupData?) : Edit()
     /** Urutan layer ditukar dengan urutan [ids]. */
     class Order(var ids: List<Int>) : Edit()
+    /** Masker layer [maskId] milik layer [parentId] dipasang atau dilepas (snapshot = isi masker saat dilepas). */
+    class MaskExist(val parentId: Int, val maskId: Int, var snapshot: LayerSnapshot?) : Edit()
     class Group(val list: List<Edit>) : Edit()
 
     /** Wilayah kanvas yang berubah bila langkah ini diurungkan/diulang; null = bisa di mana saja (gambar ulang semua). */
@@ -152,6 +157,7 @@ sealed class Edit {
         is Props -> "pengaturan layer"
         is Exist -> "layer"
         is Move, is Order -> "urutan layer"
+        is MaskExist -> "masker layer"
         is Bg -> "latar"
         is GroupMeta -> "grup"
         is Group -> list.firstOrNull { it is Exist }?.label() ?: list.firstOrNull()?.label() ?: "langkah"
@@ -159,7 +165,8 @@ sealed class Edit {
 
     fun bytes(): Long = when (this) {
         is Pixels -> data.bytes()
-        is Exist -> snapshot?.data?.bytes() ?: 0L
+        is Exist -> snapshot?.let { it.data.bytes() + (it.mask?.data?.bytes() ?: 0L) } ?: 0L
+        is MaskExist -> snapshot?.data?.bytes() ?: 0L
         is Group -> list.sumOf { it.bytes() }
         else -> 64L
     }
@@ -167,7 +174,8 @@ sealed class Edit {
     fun forEachData(f: (RegionData) -> Unit) {
         when (this) {
             is Pixels -> f(data)
-            is Exist -> snapshot?.let { f(it.data) }
+            is Exist -> snapshot?.let { f(it.data); it.mask?.let { m -> f(m.data) } }
+            is MaskExist -> snapshot?.let { f(it.data) }
             is Group -> list.forEach { it.forEachData(f) }
             else -> Unit
         }

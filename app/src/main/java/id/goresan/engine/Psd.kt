@@ -19,6 +19,10 @@ object Psd {
         val clip: Boolean,
         /** 0 = layer biasa, 1 = folder grup terbuka, 2 = folder grup terlipat, 3 = penutup grup. */
         val section: Int = 0,
+        /** Masker layer (RGBA premultiplied sebesar kanvas; nilai = kecerahan), atau null. */
+        val mask: (() -> ByteBuffer)? = null,
+        /** false = masker dimatikan (tetap disimpan). */
+        val maskEnabled: Boolean = true,
         /** Mengembalikan piksel RGBA premultiplied sebesar kanvas. */
         val pixels: () -> ByteBuffer,
     )
@@ -80,10 +84,12 @@ object Psd {
                 } else {
                     f.writeInt(0); f.writeInt(0); f.writeInt(h); f.writeInt(w)
                 }
-                f.writeShort(4)
-                val pos = LongArray(4)
-                val ids = intArrayOf(-1, 0, 1, 2)
-                for (c in 0 until 4) {
+                val hasMask = l.section == 0 && l.mask != null
+                val nch = if (hasMask) 5 else 4
+                f.writeShort(nch)
+                val pos = LongArray(nch)
+                val ids = intArrayOf(-1, 0, 1, 2, -2)
+                for (c in 0 until nch) {
                     f.writeShort(ids[c])
                     pos[c] = f.filePointer
                     f.writeInt(0)
@@ -107,9 +113,18 @@ object Psd {
                 if (uniLen % 2 != 0) uniLen++
                 // 'lsct' = penanda folder grup (12 byte isi untuk folder, 4 byte untuk penutup)
                 val lsctLen = when (l.section) { 1, 2 -> 12; 3 -> 4; else -> 0 }
-                val extra = 4 + 4 + nameLen + 12 + uniLen + 16 + (if (lsctLen > 0) 12 + lsctLen else 0)
+                val extra = 4 + (if (hasMask) 20 else 0) + 4 + nameLen + 12 + uniLen + 16 + (if (lsctLen > 0) 12 + lsctLen else 0)
                 f.writeInt(extra)
-                f.writeInt(0) // masker layer
+                if (hasMask) {
+                    // Masker layer seukuran kanvas: kotak, warna bawaan di luar kotak (putih), bendera (bit 1 = mati).
+                    f.writeInt(20)
+                    f.writeInt(0); f.writeInt(0); f.writeInt(h); f.writeInt(w)
+                    f.writeByte(255)
+                    f.writeByte(if (l.maskEnabled) 0 else 2)
+                    f.writeShort(0)
+                } else {
+                    f.writeInt(0) // tanpa masker layer
+                }
                 f.writeInt(0) // rentang campur
                 f.writeByte(nameBytes.size)
                 f.write(nameBytes)
@@ -152,8 +167,9 @@ object Psd {
                     continue
                 }
                 val px = l.pixels()
-                for (c in 0 until 4) {
-                    extractPlane(px, w, h, c, plane)
+                val mpx = if (chanLenPos[li].size > 4) l.mask?.invoke() else null
+                for (c in 0 until chanLenPos[li].size) {
+                    if (c < 4) extractPlane(px, w, h, c, plane) else maskPlane(mpx!!, w, h, plane)
                     val start = f.filePointer
                     writeRleChannel(f, plane, w, h)
                     val len = f.filePointer - start
@@ -201,6 +217,15 @@ object Psd {
             }
             f.write(tb)
             f.seek(end)
+        }
+    }
+
+    /** Nilai masker (kecerahan RGB premultiplied, jadi transparan = 0). */
+    private fun maskPlane(px: ByteBuffer, w: Int, h: Int, out: ByteArray) {
+        for (i in 0 until w * h) {
+            val o = i * 4
+            val v = ((px.get(o).toInt() and 0xFF) * 299 + (px.get(o + 1).toInt() and 0xFF) * 587 + (px.get(o + 2).toInt() and 0xFF) * 114 + 500) / 1000
+            out[i] = minOf(255, v).toByte()
         }
     }
 

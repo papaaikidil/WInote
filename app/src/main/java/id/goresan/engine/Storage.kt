@@ -76,6 +76,7 @@ object Storage {
         if (p.group != 0) put("group", p.group)
         if (p.assist) put("assist", true)
         if (p.text != null) put("text", p.text)
+        if (p.reference) put("reference", true)
     }
 
     fun guideJson(g: DrawingGuide): JSONObject = JSONObject().apply {
@@ -120,6 +121,7 @@ object Storage {
         group = o.optInt("group", 0),
         assist = o.optBoolean("assist", false),
         text = if (o.has("text")) o.optString("text") else null,
+        reference = o.optBoolean("reference", false),
     )
 
     fun readMeta(d: File): JSONObject? {

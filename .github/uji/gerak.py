@@ -6,6 +6,9 @@ Pemakaian: gerak.py <perangkat> <maxX> <maxY> <W> <H> <dens> <perintah> [argumen
   ketuk n                   — ketukan n jari di tengah kanvas
   geser3 persen             — tiga jari bergeser ke bawah (menu Salin & Tempel)
   tahan n ms                — n jari ditahan diam selama ms
+  seret x0 y0 x1 y1 ms      — satu jari (piksel) ditahan ms lalu digeser (SwatchDrop)
+  cubit x1 y1 x2 y2 sisa    — dua jari (piksel) saling mendekat sampai jaraknya tinggal sisa %
+  ketuk2xy x y              — ketukan dua jari di (x, y) piksel
 Hasilnya: folder g/ berisi bingkai biner struct input_event (satu berkas per bingkai, ditulis sekaligus dengan cat
 supaya jari-jari mendarat hampir bersamaan) dan run.sh untuk dijalankan di perangkat.
 """
@@ -113,6 +116,62 @@ elif cmd == "geser3":
         if k == 2:
             ev(1, 330, 0)
         syn()
+elif cmd == "seret":
+    # Satu jari (piksel): turun di (x0,y0), ditahan `tahan` ms, lalu digeser ke (x1,y1) dan diangkat.
+    x0, y0, x1, y1 = map(float, a[:4])
+    hold = int(a[4]) if len(a) > 4 else 0
+    down(0, 800, x0, y0)
+    ev(1, 330, 1)
+    syn()
+    if hold:
+        out.append(f"usleep {hold * 1000}")
+    steps = 30
+    for i in range(1, steps + 1):
+        move(0, x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps)
+        syn()
+        out.append("usleep 12000")
+    out.append("usleep 150000")
+    up(0)
+    ev(1, 330, 0)
+    syn()
+elif cmd == "cubit":
+    # Dua jari (piksel) di (x1,y1) dan (x2,y2) saling mendekat sampai jaraknya tinggal `sisa` persen.
+    x1, y1, x2, y2 = map(float, a[:4])
+    rest = float(a[4]) / 100 if len(a) > 4 else 0.3
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    down(0, 810, x1, y1)
+    ev(1, 330, 1)
+    syn()
+    down(1, 811, x2, y2)
+    syn()
+    out.append("usleep 60000")
+    steps = 24
+    for i in range(1, steps + 1):
+        f = 1 - (1 - rest) * i / steps
+        move(0, mx + (x1 - mx) * f, my + (y1 - my) * f)
+        move(1, mx + (x2 - mx) * f, my + (y2 - my) * f)
+        syn()
+        out.append("usleep 15000")
+    up(0)
+    syn()
+    up(1)
+    ev(1, 330, 0)
+    syn()
+elif cmd == "ketuk2xy":
+    # Ketukan dua jari di sekitar (x, y) piksel.
+    x, y = map(float, a[:2])
+    gap = 30 * dp
+    down(0, 820, x - gap, y)
+    ev(1, 330, 1)
+    syn()
+    down(1, 821, x + gap, y)
+    syn()
+    out.append("usleep 90000")
+    up(0)
+    syn()
+    up(1)
+    ev(1, 330, 0)
+    syn()
 elif cmd == "angkat":
     up(0)
     ev(1, 330, 0)
