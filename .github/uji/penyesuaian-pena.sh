@@ -134,7 +134,7 @@ depan
 # ---- mode Pena ----
 SBX=$(dp 32); SBY=$((H/2 - $(dp 150)))
 menu "Blur Gaussian" && {
-  tap_node "Pena" 3; shot pena-mulai
+  tap_node "Pena" 3; shot pena-mulai; tap_node "Atur" 2
   # Ukuran sapuan diperbesar lewat penggeser samping (seret ke atas, relatif); ukuran kuas tidak berubah.
   adb shell input swipe $SBX $SBY $SBX $((SBY - $(dp 40))) 800; sleep 2
   slide "Radius" 0.8; shot pena-belum-disapu
@@ -148,7 +148,7 @@ menu "Blur Gaussian" && {
   tap_node "Urungkan" 3; shot pena-urungkan
   tap_node "Ulangi" 3; shot pena-ulangi
   tap_node "Seluruh layer" 3; shot pena-ke-seluruh-layer
-  tap_node "Pena" 3; shot pena-lagi
+  tap_node "Pena" 3; tap_node "Atur" 2; shot pena-lagi
   adb shell input swipe $((W*40/100)) $((H*70/100)) $((W*85/100)) $((H*70/100)) 900; sleep 3
   shot pena-lagi-sapu
   terapkan; }
@@ -159,7 +159,7 @@ shot pena-diterapkan-urungkan
 tap_node "Ulangi" 3 || true
 shot pena-diterapkan-ulangi
 menu "Rona, Saturasi, Kecerahan" && {
-  tap_node "Pena" 3
+  tap_node "Pena" 3; tap_node "Atur" 2
   slide "Rona" 0.85
   adb shell input swipe $((W*14/100)) $((H*70/100)) $((W*34/100)) $((H*70/100)) 900; sleep 3
   shot pena-hsb
@@ -167,7 +167,7 @@ menu "Rona, Saturasi, Kecerahan" && {
 depan
 shot pena-hsb-diterapkan
 menu "Blur Gerak" && {
-  tap_node "Pena" 3
+  tap_node "Pena" 3; tap_node "Atur" 2
   slide "Jumlah" 0.8
   adb shell input swipe $((W*45/100)) $((H*58/100)) $((W*80/100)) $((H*86/100)) 900; sleep 3
   shot pena-gerak

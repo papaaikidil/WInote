@@ -181,6 +181,8 @@ class AppState(val app: Context) : Engine.Listener {
     var adjPen by mutableStateOf(false)
     /** Mode Pena: sapuan menghapus efek (bukan menambah). */
     var adjPenErase by mutableStateOf(false)
+    /** Bar penyesuaian disembunyikan menjadi satu baris kecil (otomatis saat memilih mode Pena). */
+    var adjCollapsed by mutableStateOf(false)
     var penUndo by mutableIntStateOf(0)
     var penRedo by mutableIntStateOf(0)
     /** Mode Pena sedang dipakai (Liquify dan Klon punya sapuan sendiri). */
@@ -2151,6 +2153,7 @@ class AppState(val app: Context) : Engine.Listener {
         cloneArmed = false
         adjPen = false
         adjPenErase = false
+        adjCollapsed = false
         penUndo = 0
         penRedo = 0
         if (kind == Adj.CURVES) curvePts.forEach { it.clear(); it.add(Offset(0f, 0f)); it.add(Offset(1f, 1f)) }
@@ -2270,7 +2273,11 @@ class AppState(val app: Context) : Engine.Listener {
         gl { it.adjustPen(on) }
         if (on) {
             penPreset()
-            showFlash("Sapukan pena di bagian yang ingin diberi efek")
+            // Panel disembunyikan supaya kanvas lapang untuk menyapu; ketuk "Atur" untuk mengubah kekuatan efek.
+            adjCollapsed = true
+            showFlash("Sapukan pena di bagian yang ingin diberi efek · ketuk Atur untuk mengubah kekuatan")
+        } else {
+            adjCollapsed = false
         }
     }
 
@@ -2317,6 +2324,7 @@ class AppState(val app: Context) : Engine.Listener {
         cloneArmed = false
         adjPen = false
         adjPenErase = false
+        adjCollapsed = false
         penUndo = 0
         penRedo = 0
         canvasView?.engine?.marker = null

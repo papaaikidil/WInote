@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterTiltShift
 import androidx.compose.material.icons.filled.Flare
 import androidx.compose.material.icons.filled.Gradient
@@ -42,6 +44,7 @@ import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -168,11 +171,18 @@ private fun deg(v: Float) = "${v.roundToInt()}°"
 @Composable
 fun AdjustBar(state: AppState, modifier: Modifier) {
     val k = state.adjustKind
+    if (state.adjCollapsed) {
+        AdjustMini(state, modifier)
+        return
+    }
     Surface(color = PanelBg, shape = RoundedCornerShape(18.dp), modifier = modifier.width(520.dp), shadowElevation = 6.dp) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(adjTitles[k] ?: "", color = Color.White, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = { state.adjCollapsed = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.ExpandLess, "Sembunyikan panel", tint = Color.White)
+                }
                 if (k == Adj.CLONE) {
                     TextButton(onClick = { state.adjustDone(true) }) { Text("Selesai", fontWeight = FontWeight.SemiBold) }
                 } else {
@@ -322,6 +332,41 @@ private fun SQ(
     val span = max(1e-3f, hi - lo)
     val t = kotlin.math.sqrt(((v - lo) / span).coerceIn(0f, 1f))
     LabeledSlider(label, t, { state.setAdj(i, lo + span * it * it) }, 0f..1f, { display(lo + span * it * it) })
+}
+
+/**
+ * Bar penyesuaian yang disembunyikan: hanya satu baris kecil (judul, Hapus efek untuk mode Pena, tombol untuk
+ * menampilkan panel lagi, Batal/Terapkan), supaya kanvas tidak tertutup saat menyapu.
+ */
+@Composable
+private fun AdjustMini(state: AppState, modifier: Modifier) {
+    val k = state.adjustKind
+    Surface(color = PanelBg, shape = RoundedCornerShape(24.dp), modifier = modifier, shadowElevation = 6.dp) {
+        Row(Modifier.padding(start = 16.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(adjTitles[k] ?: "", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            if (state.adjPenActive) {
+                Spacer(Modifier.width(10.dp))
+                FilterChip(
+                    selected = state.adjPenErase,
+                    onClick = { state.adjPenErase = !state.adjPenErase },
+                    label = { Text("Hapus efek") },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0x553D8BFF)),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            TextButton(onClick = { state.adjCollapsed = false }) {
+                Icon(Icons.Filled.ExpandMore, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Atur")
+            }
+            if (k == Adj.CLONE) {
+                TextButton(onClick = { state.adjustDone(true) }) { Text("Selesai", fontWeight = FontWeight.SemiBold) }
+            } else {
+                TextButton(onClick = { state.adjustDone(false) }) { Text("Batal") }
+                TextButton(onClick = { state.adjustDone(true) }) { Text("Terapkan", fontWeight = FontWeight.SemiBold) }
+            }
+        }
+    }
 }
 
 @Composable
