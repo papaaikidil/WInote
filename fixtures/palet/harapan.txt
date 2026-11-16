@@ -1,0 +1,6 @@
+uji.ase|uji|336699
+uji.ase|Grup A|FF0000,FF0000,808080
+uji.aco|uji|FF8000,00AAFF,FF00FF
+uji.swatches|Dari Procreate|FF0000,408080
+uji.gpl|Gimp Uji|FF0000,0080FF
+uji.txt|uji|112233,AABBCC
