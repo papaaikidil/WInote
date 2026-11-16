@@ -990,8 +990,9 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 ## Tambahan 0.1.114: Mode Pena penyesuaian, efek yang lebih kuat dan halus
 
 - **Mode Pena** di semua penyesuaian (kecuali Liquify dan Klon): pilih *Pena* di bar penyesuaian, atur efeknya, lalu
-  sapukan pena/jari hanya di bagian yang ingin diberi efek (seperti mode Pencil di Procreate). Ukuran dan opasitas
-  sapuan memakai penggeser samping; tekanan pena mengatur kekuatan. *Hapus efek* (atau ujung penghapus pena)
+  sapukan pena/jari hanya di bagian yang ingin diberi efek (seperti mode Pencil di Procreate). Selama mode Pena,
+  penggeser samping mengatur ukuran dan kekuatan sapuan (terpisah dari ukuran kuas); tekanan pena ikut mengatur
+  kekuatan. *Hapus efek* (atau ujung penghapus pena)
   menghapus efek dari bagian tertentu, *Hapus semua* mengosongkan sapuan. Urungkan/ulangi (tombol samping atau ketuk
   dua/tiga jari) bekerja per sapuan selama penyesuaian masih terbuka. Penggeser efek tetap bisa diubah setelah
   menyapu. *Seluruh layer* kembali ke efek penuh.
