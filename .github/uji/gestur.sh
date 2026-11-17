@@ -159,7 +159,7 @@ kosongkan() { # kolom teks yang sedang aktif
   for k in 1 2 3 4 5 6 7; do adb shell input keyevent KEYCODE_DEL; done
 }
 for k in $(seq 1 60); do adb shell service check activity 2>/dev/null | grep -q "found" && break; sleep 3; done
-export JARI_MM=11
+export JARI_MM=14
 echo "density $DEN, jari $JARI_MM mm" | tee $OUT/info.txt
 adb shell am start -W -n $PKG/id.goresan.DrawActivity --ez uji_buat true --es uji_warna E53935
 sleep 25
