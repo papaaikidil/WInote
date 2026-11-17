@@ -131,28 +131,14 @@ cari() { # kata kunci, nama kuas persis
 depan() {
   adb shell dumpsys activity activities | grep -q "ResumedActivity.*$PKG" && return 0
   shot keluar; echo "APLIKASI TIDAK DI DEPAN"
-  adb shell run-as $PKG cat shared_prefs/goresan.xml 2>/dev/null | grep -i "fourFinger" > $OUT/prefs.txt
-tap_node "Tampilkan alat" 2 || gerak ketuk 4
-sleep 2
-# Pena dipakai, lalu dua jari mencubit/mengetuk 0,6 detik kemudian (pena masih "baru dipakai").
-tap_node "Pas ke layar" 2 || true
-aksi "Pas ke layar"
-tap_node "Aksi" 2 || true
-shot sebelum-pena-cubit
-gerak penacubit
-sleep 2
-shot pena-lalu-cubit
-gerak penaketuk2
-sleep 2
-shot pena-lalu-ketuk2
-adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
+  adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
   adb logcat -d -t 1500 | grep -i "goresan\|hananote\|AndroidRuntime" | tail -120 > $OUT/logcat.txt
   exit 0
 }
 # Panel Aksi sedang terbuka (satu kali dump).
 panel_aksi() {
   adb shell uiautomator dump /sdcard/ui.xml >> "$OUT/dump-log.txt" 2>&1
-  adb shell cat /sdcard/ui.xml 2>/dev/null | grep -q 'text="Tambah teks"\|text="Simpan PDF"\|text="Rekam time-lapse"\|text="Animation Assist"\|text="Info kanvas"\|text="Preferensi"\|text="Panduan menggambar"'
+  adb shell cat /sdcard/ui.xml 2>/dev/null | grep -q 'text="Tambah teks"\|text="Simpan PDF"\|text="Rekam time-lapse"\|text="Animation Assist"\|text="Info kanvas"\|text="Preferensi"\|text="Panduan menggambar"\|text="Gestur"\|text="Bantuan"\|text="Kanvas"\|text="Tekanan &amp; penghalusan"'
 }
 # Cari baris di panel Aksi (buka panel bila perlu, gulir panel bila belum tampak; tidak pernah menggeser kanvas).
 aksi() {
@@ -210,6 +196,19 @@ tap_node "Aksi" 2 || true
 gerak ketuk 4
 sleep 2
 shot ketuk4-quickmenu
+adb shell run-as $PKG cat shared_prefs/goresan.xml 2>/dev/null | grep -i "fourFinger" > $OUT/prefs.txt
+tap_node "Tampilkan alat" 2 || gerak ketuk 4
+sleep 2
+# Pena dipakai, lalu dua jari mencubit/mengetuk 0,6 detik kemudian (pena masih "baru dipakai").
+aksi "Pas ke layar"
+tap_node "Aksi" 2 || true
+shot sebelum-pena-cubit
+gerak penacubit
+sleep 2
+shot pena-lalu-cubit
+gerak penaketuk2
+sleep 2
+shot pena-lalu-ketuk2
 adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
 grep -n "Sentuh\|Gosok\|Tiga jari" $OUT/laporan.txt | tee $OUT/sentuh-log.txt
 adb logcat -d -t 3000 | grep -i "FATAL\|AndroidRuntime: E" | tail -40 > $OUT/galat.txt
