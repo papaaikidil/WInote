@@ -1,0 +1,38 @@
+02:25:15.787  === Aplikasi dibuka · WInote Gambar 0.1.28 (28) · Google sdk_gphone64_x86_64 · Android 13
+02:25:15.839  Aktivitas: lanjut
+02:25:16.487  Buka karya kmwk2l6ied716
+02:25:16.825  Permukaan kanvas dibuat
+02:25:16.847  Permukaan kanvas: sRGB
+02:25:16.849  GL: konteks dibuat
+02:25:18.285  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+02:25:18.371  GL: siap (1522 ms)
+02:25:18.372  GL: ukuran permukaan 2560x1800
+02:25:18.385  Karya dibuka 1600x1200, 1 layer, batas 110 layer (13 ms)
+02:25:21.792  !!! Kanvas macet 3420 ms. Posisi thread kanvas:
+02:25:21.793      android.opengl.GLES20.glGenTextures(Native Method)
+02:25:21.793      id.goresan.engine.Tex.<init>(GL.kt:49)
+02:25:21.793      id.goresan.engine.Tex.<init>(GL.kt:43)
+02:25:21.793      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4316)
+02:25:21.793      id.goresan.engine.Engine.onDrawFrame(Engine.kt:878)
+02:25:21.794      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+02:25:21.794      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+02:25:21.795      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+02:25:23.802  Frame lambat: 5430 ms
+02:25:24.798  Kanvas kembali merespons
+02:25:41.727  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:25:41.957  Frame lambat: 229 ms
+02:25:45.465  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:25:45.579  Frame lambat: 165 ms
+02:25:48.484  Frame lambat: 96 ms
+02:25:50.072  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:25:55.371  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:25:58.682  Frame lambat: 91 ms
+02:26:00.171  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:26:03.758  Frame lambat: 159 ms
+02:26:05.840  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:26:10.749  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:26:14.849  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+02:26:23.099  Simpan: 1 layer dibaca dari GPU (16 ms)
+02:26:27.034  Frame lambat: 286 ms
+02:26:30.547  Frame lambat: 283 ms
+02:26:38.300  Simpan: 1 layer dibaca dari GPU (19 ms)
