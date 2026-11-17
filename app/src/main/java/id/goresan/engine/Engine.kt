@@ -322,6 +322,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var paperTexKey = ""
     private var paperPending = ""
     private var noiseTex = 0
+    /** Rata-rata noise dan lekukan kertas (1 − tinggi), untuk pola granulasi yang rata-ratanya netral. */
+    private var noiseMean = 0.5f
+    private var valleyMean = 0.5f
     private val paperCache = HashMap<Int, ByteArray>()
     // Teks yang sedang diedit: gambarnya ditaruh di strokeBuf (tak ada goresan selama mengedit teks) dan ditumpuk
     // di atas layer aktif (teks baru) atau menggantikan layer teks yang sedang diedit.
@@ -744,7 +747,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pDot = Program(Shaders.SPRITE_VS, Shaders.DOT_FS)
         pSelOp = Program(Shaders.RECT_VS, Shaders.SELOP_FS)
         pPaper = Program(Shaders.RECT_VS, Shaders.PAPER_FS)
-        noiseTex = uploadR8(Paper.noiseTile(), 256, true)
+        val nt = Paper.noiseTile()
+        noiseMean = nt.sumOf { (it.toInt() and 0xFF).toLong() }.toFloat() / (nt.size * 255f)
+        noiseTex = uploadR8(nt, 256, true)
+        valleyMean = 1f - 0x80 / 255f
         paperTex = newRepeatTex()
         G.glBindTexture(G.GL_TEXTURE_2D, paperTex)
         val one = Buffers.direct(4).apply { put(0, (-1).toByte()); put(1, (-1).toByte()); put(2, (-1).toByte()); put(3, 0x80.toByte()) }
@@ -2206,6 +2212,15 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             pSmudge.f("uRot", wetRnd.nextFloat() * 6.2831855f)
             pSmudge.f("uDetail", if (wet > 0f) 1f else 0f)
             pSmudge.f("uDetR", (s * 0.08f).coerceIn(5f, 16f))
+            pSmudge.tex("uNoise", 6, noiseTex)
+            pSmudge.tex("uPaper", 7, paperTex)
+            pSmudge.f("uPaperScale", paperTexN * (doc?.paperScale ?: 1f))
+            pSmudge.f("uValleyMean", valleyMean)
+            pSmudge.f("uNoiseMean", noiseMean)
+            pSmudge.f("uNoiseK", (s / 60f).coerceIn(0.5f, 8f))
+            val wc = brush.watercolor && wet > 0f
+            pSmudge.f("uGran", if (wc) brush.wcGrain * 1.0f else 0f)
+            pSmudge.f("uMott", if (wc) brush.wcBloom * 0.6f else 0f)
             pSmudge.i("uAlphaLock", if (layer.alphaLock) 1 else 0)
             pSmudge.f2("uCanvas", W.toFloat(), H.toFloat())
             G.glBindVertexArray(dabVao)
@@ -2898,6 +2913,10 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         G.glTexImage2D(G.GL_TEXTURE_2D, 0, G.GL_RGBA8, n, n, 0, G.GL_RGBA, G.GL_UNSIGNED_BYTE, buf)
         paperTexN = n
         paperTexKey = key
+        var hs = 0L
+        var k = 3
+        while (k < data.size) { hs += data[k].toInt() and 0xFF; k += 4 }
+        valleyMean = 1f - hs.toFloat() / (max(1, data.size / 4) * 255f)
         dirty.set(0, 0, W, H)
         mipDirty = true
     }

@@ -597,6 +597,15 @@ uniform float uLod;
 uniform float uRot;
 uniform float uDetail;
 uniform float uDetR;
+// Kuas cat air: pigmen yang larut mengendap lagi di lekukan kertas (granulasi) dan sedikit belang (noise).
+uniform sampler2D uNoise;
+uniform sampler2D uPaper;
+uniform float uPaperScale;
+uniform float uValleyMean;
+uniform float uNoiseMean;
+uniform float uNoiseK;
+uniform float uGran;
+uniform float uMott;
 uniform int uAlphaLock;
 uniform sampler2D uSel;
 uniform int uUseSel;
@@ -609,6 +618,12 @@ vec4 near(vec2 p) {
     vec2 q = clamp(p, lo, uValid - lo);
     return textureLod(uCur, q / uTSize, uLod);
 }
+// Faktor kepekatan pigmen karena kertas dan belang (rata-rata ≈ 1).
+float wtex(vec2 p) {
+    float valley = 1.0 - texture(uPaper, p / uPaperScale).a;
+    float n = texture(uNoise, p / (uNoiseK * 256.0)).r;
+    return (1.0 + uGran * (valley - uValleyMean)) * (1.0 + uMott * (n - uNoiseMean));
+}
 void main() {
     vec2 l = vPos - uCurMin;
     vec4 cur = textureLod(uCur, l / uTSize, 0.0);
@@ -620,13 +635,20 @@ void main() {
     if (uWet > 0.0) {
         // Larut: cat di bawah kuas diganti rata-rata cat di sekitarnya (cakram, 11 contoh spiral emas yang
         // diputar acak tiap cap). Cap yang saling menumpuk membuat campuran makin luas dan halus.
+        bool tx = uGran > 0.0 || uMott > 0.0;
+        float f0 = tx ? wtex(vPos) : 1.0;
         vec4 acc = near(l);
+        float fs = f0;
         for (int i = 0; i < 10; i++) {
             float fi = float(i) + 0.5;
             float a = uRot + fi * 2.39996323;
-            acc += near(l + vec2(cos(a), sin(a)) * (sqrt(fi / 10.0) * uBlurR));
+            vec2 off = vec2(cos(a), sin(a)) * (sqrt(fi / 10.0) * uBlurR);
+            acc += near(l + off);
+            if (tx) fs += wtex(vPos + off);
         }
         vec4 blur = acc / 11.0;
+        // Pola kertas dinormalkan terhadap rata-rata di sekitar, jadi dibaur berulang kali pun tidak makin pekat/pudar.
+        float gF = tx ? clamp(f0 / max(fs / 11.0, 0.2), 0.4, 1.6) : 1.0;
         // Tekstur cat (pigmen yang mengendap di butir kertas, granulasi) dari layer sebelum goresan tetap
         // dipertahankan: hanya kepekatannya (alfa) yang diambil, jadi beda warna tetap menyatu; tepi cat yang
         // tegas (beda kepekatan besar, mis. tepi sapuan ke kertas kosong) tidak ikut.
@@ -644,7 +666,7 @@ void main() {
         float q = dA / 0.35;
         dA *= exp(-q * q) * uDetail;
         vec4 wetT = blur;
-        if (blur.a > 0.002) wetT = blur * (clamp(blur.a + dA, 0.0, 1.0) / blur.a);
+        if (blur.a > 0.002) wetT = blur * (clamp(blur.a * gF + dA, 0.0, 1.0) / blur.a);
         target = mix(car, wetT, uWet);
     }
     vec4 r = mix(cur, target, m * uStrength);

@@ -127,7 +127,8 @@ PY
 ketik() { local s="$1"; for ((i=0; i<${#s}; i++)); do adb shell input text "${s:$i:1}"; sleep 0.4; done; }
 # Tab Properti ada di bawah daftar tab Studio: gulir daftar tab dulu, lalu gulir isinya ke bawah.
 properti() {
-  tap_node "Properti" 2 || { adb shell input swipe $((W*61/100)) $((H*70/100)) $((W*61/100)) $((H*30/100)) 600; sleep 2; tap_node "Properti" 2; } || true
+  adb shell input swipe $((W*61/100)) $((H*70/100)) $((W*61/100)) $((H*30/100)) 600; sleep 2
+  tap_node "Properti" 2 || true
 }
 # Pilih kuas lewat kotak cari di pustaka (pustaka sudah terbuka).
 cari_kuas() {
