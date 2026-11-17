@@ -270,6 +270,21 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
 
     private fun big(e: MotionEvent, i: Int) = e.getTouchMajor(i) > palmPx
 
+    /**
+     * Untuk ketukan banyak jari (urungkan/ulangi/QuickMenu) batasnya lebih longgar (30 mm): telapak tangan yang
+     * bersandar tidak terangkat cepat bersamaan, jadi ketukan jari hampir tidak mungkin tertukar dengan telapak.
+     */
+    private val tapPalmPx: Float = run {
+        val dm = resources.displayMetrics
+        val dpi = if (dm.xdpi in 100f..800f) dm.xdpi else dm.densityDpi.toFloat()
+        max(palmPx, 30f / 25.4f * dpi)
+    }
+
+    private fun bigTap(e: MotionEvent, i: Int) = e.getTouchMajor(i) > tapPalmPx
+
+    /** Contoh lebar sentuhan jari asli perangkat (untuk Laporan teknis). */
+    private var sizeSamples = 0
+
     /** Jari pertama diabaikan hanya karena pena baru dipakai/melayang (bukan karena lebar): jari kedua boleh cubit. */
     private var softIgnore = false
     private var softIgnoreT = 0L
@@ -1532,9 +1547,13 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 stopRepeat()
                 mtDown.clear()
                 // Pena yang sekadar melayang tidak lagi menahan ketukan; hanya sentuhan pena yang baru terjadi.
-                mtActive = !isStylus(e, 0) && !big(e, 0) &&
+                mtActive = !isStylus(e, 0) && !bigTap(e, 0) &&
                     !penTouchRecent() && !state.xfActive
-                if (!isStylus(e, 0) && big(e, 0)) touchLog("jari lebar ${mm(e.getTouchMajor(0))} (batas ${mm(palmPx)})")
+                if (!isStylus(e, 0) && sizeSamples < 8) {
+                    sizeSamples++
+                    Diag.log("Sentuh: jari ${mm(e.getTouchMajor(0))} (batas telapak ${mm(palmPx)}, ketukan ${mm(tapPalmPx)})" +
+                        if (penRecent()) ", pena baru dipakai/melayang" else "")
+                }
                 mtStrict = penRecent()
                 mtRepeated = false
                 mtStart = e.eventTime
@@ -1545,10 +1564,10 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 if (!mtActive) return
                 val i = e.actionIndex
                 val spread = if (mtStrict) 250L else 400L
-                if (mtRepeated || isStylus(e, i) || big(e, i) || e.eventTime - mtStart > spread) {
+                if (mtRepeated || isStylus(e, i) || bigTap(e, i) || e.eventTime - mtStart > spread) {
                     if (!isStylus(e, i)) touchLog(
                         "ketukan banyak jari batal (jari ke-${e.pointerCount}: " +
-                            (if (big(e, i)) "lebar ${mm(e.getTouchMajor(i))}" else "jeda ${e.eventTime - mtStart} ms") + ")",
+                            (if (bigTap(e, i)) "lebar ${mm(e.getTouchMajor(i))}" else "jeda ${e.eventTime - mtStart} ms") + ")",
                     )
                     mtActive = false
                     stopRepeat()
@@ -1582,6 +1601,8 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 if (mtActive && !mtRepeated && e.eventTime - mtStart < limit && mtMax in 2..4 && !penTouchRecent()) {
                     val n = mtMax
                     post { state.onMultiTap(n) }
+                } else if (mtActive && !mtRepeated && mtMax in 2..4) {
+                    touchLog("ketukan $mtMax jari tidak dihitung (${e.eventTime - mtStart} ms, batas $limit ms)")
                 }
                 mtActive = false
             }
