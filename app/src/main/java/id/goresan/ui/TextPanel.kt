@@ -255,7 +255,7 @@ private fun FontTab(state: AppState, s: TextSpec) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Hapus font \"${f.name}\"?") },
-            text = { Text("Teks yang memakai font ini akan beralih ke Sans saat diedit lagi.") },
+            text = { Column { DialogImmersive(); Text("Teks yang memakai font ini akan beralih ke Sans saat diedit lagi.") } },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = { state.deleteFont(f.id); families.remove(f.id); deleting = null }) { Text("Hapus") }
             },

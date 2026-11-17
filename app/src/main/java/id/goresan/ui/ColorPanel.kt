@@ -653,7 +653,7 @@ private fun ColorPalette(state: AppState, panelRect: () -> Rect) {
         AlertDialog(
             onDismissRequest = { renaming = false },
             title = { Text("Ganti nama palet") },
-            text = { OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true) },
+            text = { Column { DialogImmersive(); OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true) } },
             confirmButton = { TextButton(onClick = { state.renamePalette(state.paletteIndex, name); renaming = false }) { Text("Simpan") } },
             dismissButton = { TextButton(onClick = { renaming = false }) { Text("Batal") } },
         )
@@ -662,7 +662,7 @@ private fun ColorPalette(state: AppState, panelRect: () -> Rect) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Hapus palet \"${cur.name}\"?") },
-            text = { Text("${cur.colors.size} warna di palet ini ikut terhapus.") },
+            text = { Column { DialogImmersive(); Text("${cur.colors.size} warna di palet ini ikut terhapus.") } },
             confirmButton = { TextButton(onClick = { state.deletePalette(state.paletteIndex); confirmDelete = false }) { Text("Hapus", color = Color(0xFFFF8A80)) } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal") } },
         )

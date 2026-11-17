@@ -227,6 +227,8 @@ tap_node "Urungkan" 2 || true
 # 6. Font impor muncul di kategori Font saya.
 aksi "Tambah teks"
 sleep 3
+tap_node "Tutup keyboard" 2 || adb shell input keyevent KEYCODE_BACK
+sleep 2
 tap_node "Font saya" 2
 shot font-saya
 tap_node "UjiFont" 2 || true

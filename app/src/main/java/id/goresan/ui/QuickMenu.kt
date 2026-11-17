@@ -162,6 +162,7 @@ fun QuickMenu(state: AppState) {
             onDismissRequest = { editing = -1 },
             title = { Text("Ganti tombol QuickMenu") },
             text = {
+                DialogImmersive()
                 LazyColumn(Modifier.heightIn(max = 420.dp).width(320.dp)) {
                     itemsIndexed(QuickActions) { i, a ->
                         val sel = state.quickSlots.getOrNull(k) == i

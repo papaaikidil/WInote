@@ -1436,7 +1436,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             else -> if (x < scExt) scExt = x else if (x - scExt > amp) { scTurns++; scDir = 1; scExt = x }
         }
         val dy = kotlin.math.abs(avg3(e, true) - sw3Y)
-        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 2500L) {
+        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 4000L) {
             Diag.log("Gosok tiga jari: ${e.eventTime - sw3T} ms, $scTurns kali balik")
             endSwipe3()
             post { state.scrubClear() }
