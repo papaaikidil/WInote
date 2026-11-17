@@ -1137,3 +1137,11 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Ketuk empat jari kembali untuk menyembunyikan/menampilkan alat; tombol pipet kembali hanya untuk pipet.
 - **Duplikat ke layer baru** dan **Pindahkan ke layer baru** (dulu hanya di menu tiga jari) sekarang ada di panel Aksi ›
   Salin & tempel, bersama Potong, Salin, Salin semua, dan Tempel.
+
+## Perubahan 0.1.123: Jarak antar cap sampai 1000%
+
+- **Studio Kuas › Jalur goresan › Jarak antar cap** sekarang 1%–1000% (dulu mentok 150%). Penggesernya berskala
+  logaritmik: sepertiga pertama 1–10%, sepertiga tengah 10–100%, sepertiga akhir 100–1000%, jadi jarak rapat tetap
+  bisa diatur halus. Nilai dibulatkan ke persen bulat.
+- Kuas ABR yang jarak capnya di atas 150% (Photoshop membolehkan sampai 1000%) kini diimpor apa adanya.
+- Kuas campur (smudge) dan cat basah tetap memakai jarak rapat agar warnanya mengalir.
