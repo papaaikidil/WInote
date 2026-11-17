@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RotateRight
@@ -419,6 +420,20 @@ private fun SideBar(state: AppState, modifier: Modifier, onHint: (Int) -> Unit) 
         val pen = state.adjPenActive
         RepeatBarIcon(Icons.AutoMirrored.Filled.Undo, "Urungkan", enabled = if (pen) state.penUndo > 0 else state.canUndo) { state.undo() }
         RepeatBarIcon(Icons.AutoMirrored.Filled.Redo, "Ulangi", enabled = if (pen) state.penRedo > 0 else state.canRedo) { state.redo() }
+        Spacer(Modifier.height(6.dp))
+        // Bersihkan layer aktif (pengganti gestur gosok tiga jari); bisa diurungkan.
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(enabled = !pen) { state.clearActiveLayer() },
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.material3.Icon(
+                Icons.Filled.LayersClear, "Bersihkan layer",
+                tint = if (pen) Color(0x55FFFFFF) else Color(0xFFEDEDF2), modifier = Modifier.size(22.dp),
+            )
+        }
     }
 }
 

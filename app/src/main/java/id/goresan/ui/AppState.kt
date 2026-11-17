@@ -2265,6 +2265,17 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
+    /** Tombol Bersihkan layer: kosongkan layer aktif (masker kembali putih). Bisa diurungkan. */
+    fun clearActiveLayer() {
+        if (docW <= 0 || modalActive()) return
+        val owner = layers.firstOrNull { it.mask?.id == activeLayerId }
+        val l = layers.firstOrNull { it.id == activeLayerId } ?: owner
+        if (l?.locked == true && owner == null) { showFlash("Layer ini terkunci"); return }
+        val id = activeLayerId
+        if (owner != null) gl { it.fillWholeLayer(id, Color.WHITE) } else gl { it.clearLayer(id) }
+        showFlash("Layer dibersihkan" + (l?.let { ": ${it.name}" } ?: "") + " · ketuk dua jari untuk mengurungkan")
+    }
+
     fun closePanelsFromCanvas(): Boolean {
         if (panel != Panel.NONE) {
             panel = Panel.NONE

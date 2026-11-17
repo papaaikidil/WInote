@@ -1132,6 +1132,8 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Atas permintaan (tidak jalan di Xiaomi Pad 7 karena HyperOS memakai sentuhan tiga jari untuk tangkapan layar):
   **gosok tiga jari**, **geser tiga jari ke bawah** (menu Salin & Tempel), dan **QuickMenu** (tahan tombol pipet /
   ketuk empat jari) dihapus beserta bagian **Gestur** di Preferensi.
+- **Bersihkan layer** kembali jadi tombol: ikon di bilah samping, di bawah Urungkan/Ulangi (bisa diurungkan; pada
+  masker, masker kembali putih). Tetap ada juga di menu layer › Bersihkan.
 - Ketuk empat jari kembali untuk menyembunyikan/menampilkan alat; tombol pipet kembali hanya untuk pipet.
 - **Duplikat ke layer baru** dan **Pindahkan ke layer baru** (dulu hanya di menu tiga jari) sekarang ada di panel Aksi ›
   Salin & tempel, bersama Potong, Salin, Salin semua, dan Tempel.

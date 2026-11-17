@@ -177,6 +177,11 @@ read A B < <(echo $((W * 40 / 100)) $((H * 50 / 100)))
 gerak cubit $((W * 25 / 100)) $((H * 50 / 100)) $((W * 65 / 100)) $((H * 50 / 100)) 40
 sleep 2
 shot cubit-perkecil
+tap_node "Bersihkan layer" 3
+shot tombol-bersihkan
+gerak ketuk 2
+sleep 2
+shot bersihkan-diurungkan
 gerak ketuk 4
 sleep 2
 shot ketuk4-sembunyi

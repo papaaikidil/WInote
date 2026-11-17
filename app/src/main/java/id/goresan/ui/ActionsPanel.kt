@@ -269,7 +269,7 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
             }
             Text(
                 "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat · cubit cepat = pas layar · " +
-                    "tahan jari = pipet",
+                    "tahan jari = pipet · tombol di bawah Ulangi pada bilah samping = bersihkan layer",
                 color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
