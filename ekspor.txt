@@ -1,0 +1,9 @@
+total 44
+-rwxrwx--- 1 u0_a158 media_rw 39023 2026-11-17 00:22 Uji-animasi-20261117-002221.png
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+ModuleNotFoundError: No module named 'PIL'
+total 112
+drwx------ 2 u0_a174 u0_a174  4096 2026-11-17 00:17 .
+drwxrwx--x 6 u0_a174 u0_a174  4096 2026-11-17 00:17 ..
+-rw------- 1 u0_a174 u0_a174 93148 2026-11-17 00:17 UjiFont.ttf
