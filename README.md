@@ -1090,3 +1090,30 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - **Impor palet**: ASE (Adobe), ACO (Photoshop), .swatches (Procreate), GPL (GIMP), atau daftar kode hex.
 - **Palet dari foto/kamera**: sampai 30 warna utama diambil otomatis.
 - **SwatchDrop**: tahan kotak warna palet lalu seret ke kanvas untuk mengisi area dengan warna itu.
+
+## Tambahan 0.1.120: Melengkapi layer, gestur, teks, dan ekspor
+
+**Layer**
+
+- **Ketuk dua jari di layer** = atur opasitas: geser jari ke kiri/kanan di mana saja di kanvas (ada juga penggeser
+  di bilah atas), ketuk kanvas untuk selesai. Persis seperti Procreate.
+- **Geser dua jari ke kanan di layer** = Alpha Lock (sebelumnya ketuk dua jari).
+- Menu layer: **Satukan ke grup dengan layer bawah** (Combine Down) dan **Salin layer** (ke papan klip).
+
+**Gestur**
+
+- **Gosok tiga jari** ke kiri-kanan di kanvas = bersihkan layer aktif (bisa diurungkan; masker kembali putih).
+- **QuickMenu**: tahan tombol pipet di bilah samping (atau ketuk empat jari bila dinyalakan di Preferensi). Enam
+  tombol aksi cepat; tahan salah satu tombol untuk menggantinya dari 21 aksi (layer baru, duplikat, gabung, bersihkan,
+  salin/tempel/potong, balik warna, pilih isi, Alpha Lock, masker, transformasi, pilihan, balik tampilan, pas layar,
+  urungkan/ulangi, sembunyikan alat, isi layer, opasitas, referensi).
+- Preferensi › **Gestur**: nyalakan/matikan gosok tiga jari, geser tiga jari (Salin & Tempel; bisa dimatikan bila
+  bentrok dengan tangkapan layar HyperOS), dan ketuk empat jari = QuickMenu.
+
+**Teks**
+
+- **Impor font TTF/OTF/TTC**: panel teks › kategori **Font saya** › + Impor font. Tahan nama font untuk menghapusnya.
+
+**Ekspor**
+
+- **Ekspor animasi PNG (APNG)**: warna penuh dan tepi halus, transparan bila latar disembunyikan (melengkapi GIF dan MP4).
