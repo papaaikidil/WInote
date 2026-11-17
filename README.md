@@ -1117,3 +1117,12 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 **Ekspor**
 
 - **Ekspor animasi PNG (APNG)**: warna penuh dan tepi halus, transparan bila latar disembunyikan (melengkapi GIF dan MP4).
+
+## Perbaikan 0.1.121: Gestur di tablet asli
+
+- Batas "telapak tangan" sekarang diukur dalam milimeter fisik: sentuhan dianggap telapak bila lebih lebar dari
+  18 mm (ketukan banyak jari: 30 mm). Sebelumnya 60 dp (±9 mm di Xiaomi Pad 7), sehingga ujung jari biasa sering
+  diabaikan dan ketuk 2/3/4 jari, cubit, serta tahan jari untuk pipet tidak jalan.
+- Cubit/geser/putar kanvas tetap jalan walau pena baru saja dipakai atau sedang melayang di dekat layar.
+- Bila HyperOS merebut gestur banyak jari (tangkapan layar tiga jari), muncul petunjuk cara mematikannya.
+- Laporan teknis mencatat lebar jari asli dan alasan gestur tidak dihitung, untuk perbaikan berikutnya.
