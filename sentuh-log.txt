@@ -1,0 +1,9 @@
+22:01:51:52.100  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+24:01:51:55.945  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+26:01:51:59.859  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+28:01:52:05.328  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+30:01:52:10.916  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+33:01:52:17.105  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+36:01:52:23.401  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+38:01:52:27.812  Sentuh: jari 11.9 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+40:01:52:40.451  Gosok tiga jari: 2102 ms, 3 kali balik
