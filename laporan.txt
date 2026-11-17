@@ -1,0 +1,301 @@
+04:59:20.488  === Aplikasi dibuka · WInote Gambar 0.1.33 (33) · Google sdk_gphone64_x86_64 · Android 13
+04:59:20.551  Aktivitas: lanjut
+04:59:21.218  Buka karya kmwk83brx1083
+04:59:21.627  Permukaan kanvas dibuat
+04:59:21.748  Permukaan kanvas: sRGB
+04:59:21.765  GL: konteks dibuat
+04:59:23.174  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+04:59:23.237  GL: siap (1472 ms)
+04:59:23.238  GL: ukuran permukaan 2560x1800
+04:59:23.253  Karya dibuka 1600x1200, 1 layer, batas 110 layer (15 ms)
+04:59:26.522  !!! Kanvas macet 3283 ms. Posisi thread kanvas:
+04:59:26.523      android.opengl.GLES20.glGenTextures(Native Method)
+04:59:26.523      id.goresan.engine.Tex.<init>(GL.kt:49)
+04:59:26.523      id.goresan.engine.Tex.<init>(GL.kt:43)
+04:59:26.523      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+04:59:26.523      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+04:59:26.524      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+04:59:26.524      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+04:59:26.524      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+04:59:27.540  Frame lambat: 4301 ms
+04:59:28.526  Kanvas kembali merespons
+04:59:45.344  Frame lambat: 840 ms
+04:59:50.523  Frame lambat: 1087 ms
+05:00:02.070  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:02.085  Cat air hidup: sesi mulai layer 1, kuas wcutama, rembes 22.769773 px
+05:00:02.717  Frame lambat: 645 ms
+05:00:06.059  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:06.321  Frame lambat: 676 ms
+05:00:06.656  Frame lambat: 266 ms
+05:00:07.262  Frame lambat: 218 ms
+05:00:07.844  Frame lambat: 202 ms
+05:00:08.441  Frame lambat: 194 ms
+05:00:08.988  Frame lambat: 191 ms
+05:00:09.973  Frame lambat: 598 ms
+05:00:10.529  Frame lambat: 494 ms
+05:00:11.046  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:11.128  Frame lambat: 523 ms
+05:00:11.470  Frame lambat: 286 ms
+05:00:12.131  Frame lambat: 261 ms
+05:00:12.654  Frame lambat: 203 ms
+05:00:13.342  Frame lambat: 282 ms
+05:00:13.954  Frame lambat: 258 ms
+05:00:15.172  Frame lambat: 811 ms
+05:00:15.617  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:15.800  Frame lambat: 593 ms
+05:00:16.217  Frame lambat: 365 ms
+05:00:17.164  Frame lambat: 352 ms
+05:00:18.193  Frame lambat: 409 ms
+05:00:19.990  Frame lambat: 1247 ms
+05:00:20.463  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:20.843  Frame lambat: 822 ms
+05:00:21.395  Frame lambat: 486 ms
+05:00:22.413  Frame lambat: 407 ms
+05:00:25.303  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:25.366  Frame lambat: 1186 ms
+05:00:25.859  Frame lambat: 459 ms
+05:00:26.781  Frame lambat: 402 ms
+05:00:27.879  Frame lambat: 444 ms
+05:00:29.460  Frame lambat: 1091 ms
+05:00:30.319  Frame lambat: 830 ms
+05:00:31.194  Frame lambat: 816 ms
+05:00:32.139  Frame lambat: 883 ms
+05:00:32.243  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:33.083  Frame lambat: 888 ms
+05:00:33.688  Frame lambat: 534 ms
+05:00:34.862  Frame lambat: 486 ms
+05:00:36.755  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+05:00:37.049  Frame lambat: 1450 ms
+05:00:37.654  Frame lambat: 571 ms
+05:00:39.040  Frame lambat: 552 ms
+05:00:41.334  Frame lambat: 1441 ms
+05:00:42.448  Frame lambat: 1082 ms
+05:00:43.620  Frame lambat: 1111 ms
+05:00:45.683  Frame lambat: 615 ms
+05:00:48.299  Frame lambat: 1766 ms
+05:00:49.513  Frame lambat: 1187 ms
+05:00:50.793  Frame lambat: 1206 ms
+05:00:52.188  Frame lambat: 1336 ms
+05:00:53.364  Frame lambat: 1109 ms
+05:00:54.599  Frame lambat: 1167 ms
+05:00:55.819  Frame lambat: 1130 ms
+05:00:57.098  Frame lambat: 1210 ms
+05:00:58.430  Frame lambat: 1254 ms
+05:00:58.502  Cat air hidup: sesi selesai
+05:01:02.521  Simpan: 1 layer dibaca dari GPU (15 ms)
+05:01:06.284  Cat air hidup: sesi mulai layer 1, kuas wcutama, rembes 22.769773 px
+05:01:07.034  Frame lambat: 83 ms
+05:01:07.626  Frame lambat: 95 ms
+05:01:08.009  Frame lambat: 161 ms
+05:01:08.733  Frame lambat: 195 ms
+05:01:09.878  Frame lambat: 541 ms
+05:01:10.268  Frame lambat: 358 ms
+05:01:11.105  Frame lambat: 370 ms
+05:01:11.559  Frame lambat: 395 ms
+05:01:12.091  Frame lambat: 462 ms
+05:01:12.504  Frame lambat: 381 ms
+05:01:12.844  Frame lambat: 274 ms
+05:01:13.342  Frame lambat: 200 ms
+05:01:13.877  Frame lambat: 185 ms
+05:01:14.403  Frame lambat: 189 ms
+05:01:14.952  Frame lambat: 204 ms
+05:01:15.877  Frame lambat: 589 ms
+05:01:16.320  Frame lambat: 414 ms
+05:01:16.806  Frame lambat: 425 ms
+05:01:17.393  Frame lambat: 521 ms
+05:01:17.959  Frame lambat: 496 ms
+05:01:18.253  Frame lambat: 236 ms
+05:01:18.892  Frame lambat: 262 ms
+05:01:20.249  Frame lambat: 272 ms
+05:01:21.374  Frame lambat: 718 ms
+05:01:21.951  Frame lambat: 549 ms
+05:01:22.586  Frame lambat: 591 ms
+05:01:23.945  Frame lambat: 370 ms
+05:01:24.802  Frame lambat: 319 ms
+05:01:26.255  Frame lambat: 922 ms
+05:01:27.043  Frame lambat: 758 ms
+05:01:27.605  Frame lambat: 507 ms
+05:01:28.472  Frame lambat: 331 ms
+05:01:29.361  Frame lambat: 355 ms
+05:01:31.002  Frame lambat: 1050 ms
+05:01:31.904  Frame lambat: 870 ms
+05:01:32.444  Frame lambat: 469 ms
+05:01:33.360  Frame lambat: 388 ms
+05:01:34.392  Frame lambat: 411 ms
+05:01:36.170  Frame lambat: 1179 ms
+05:01:36.711  Frame lambat: 510 ms
+05:01:37.962  Frame lambat: 494 ms
+05:01:40.135  Frame lambat: 1370 ms
+05:01:41.264  Frame lambat: 1092 ms
+05:01:41.940  Frame lambat: 631 ms
+05:01:43.245  Frame lambat: 561 ms
+05:01:45.665  Frame lambat: 1633 ms
+05:01:46.310  Frame lambat: 616 ms
+05:01:47.718  Frame lambat: 534 ms
+05:01:49.996  Frame lambat: 1477 ms
+05:01:51.176  Frame lambat: 1153 ms
+05:01:52.452  Frame lambat: 1210 ms
+05:01:53.769  Frame lambat: 1281 ms
+05:01:55.061  Frame lambat: 1212 ms
+05:01:56.240  Frame lambat: 1151 ms
+05:01:57.510  Frame lambat: 1198 ms
+05:01:58.951  Frame lambat: 1366 ms
+05:02:00.370  Frame lambat: 1348 ms
+05:02:00.418  Cat air hidup: sesi selesai
+05:02:04.442  Simpan: 1 layer dibaca dari GPU (19 ms)
+05:02:12.146  Frame lambat: 183 ms
+05:03:16.180  Frame lambat: 291 ms
+05:03:16.346  Frame lambat: 127 ms
+05:03:16.953  Frame lambat: 83 ms
+05:03:20.057  Frame lambat: 86 ms
+05:03:21.823  Frame lambat: 93 ms
+05:03:22.291  Frame lambat: 81 ms
+05:03:22.552  Frame lambat: 119 ms
+05:03:24.827  Frame lambat: 88 ms
+05:03:24.945  Frame lambat: 83 ms
+05:03:26.441  Frame lambat: 85 ms
+05:03:29.198  Frame lambat: 81 ms
+05:03:29.561  Frame lambat: 84 ms
+05:03:30.021  Frame lambat: 83 ms
+05:03:30.143  Frame lambat: 84 ms
+05:03:30.403  Frame lambat: 87 ms
+05:03:30.629  Frame lambat: 84 ms
+05:03:31.442  Frame lambat: 81 ms
+05:03:34.160  Frame lambat: 87 ms
+05:03:34.282  Frame lambat: 81 ms
+05:03:34.765  Frame lambat: 96 ms
+05:03:35.227  Frame lambat: 86 ms
+05:03:35.944  Frame lambat: 92 ms
+05:03:36.196  Frame lambat: 90 ms
+05:03:36.322  Frame lambat: 84 ms
+05:03:39.592  Frame lambat: 85 ms
+05:03:39.746  Frame lambat: 101 ms
+05:03:40.564  Frame lambat: 87 ms
+05:03:40.712  Frame lambat: 104 ms
+05:03:40.947  Frame lambat: 85 ms
+05:03:44.912  Simpan: 1 layer dibaca dari GPU (30 ms)
+05:04:29.255  Frame lambat: 92 ms
+05:04:29.402  Frame lambat: 102 ms
+05:04:29.546  Frame lambat: 102 ms
+05:04:30.054  Frame lambat: 96 ms
+05:04:30.177  Frame lambat: 83 ms
+05:04:30.778  Frame lambat: 95 ms
+05:04:31.268  Frame lambat: 85 ms
+05:04:33.703  Frame lambat: 91 ms
+05:04:34.374  Frame lambat: 81 ms
+05:04:34.992  Frame lambat: 105 ms
+05:04:35.697  Frame lambat: 81 ms
+05:04:38.276  Frame lambat: 98 ms
+05:04:38.425  Frame lambat: 90 ms
+05:04:38.568  Frame lambat: 100 ms
+05:04:38.701  Frame lambat: 98 ms
+05:04:38.828  Frame lambat: 85 ms
+05:04:39.730  Frame lambat: 88 ms
+05:04:39.981  Frame lambat: 89 ms
+05:04:40.101  Frame lambat: 85 ms
+05:04:40.263  Frame lambat: 101 ms
+05:04:40.849  Frame lambat: 81 ms
+05:04:42.660  Frame lambat: 93 ms
+05:04:42.809  Frame lambat: 96 ms
+05:04:42.924  Frame lambat: 84 ms
+05:04:43.412  Frame lambat: 83 ms
+05:04:43.644  Frame lambat: 83 ms
+05:04:44.692  Frame lambat: 88 ms
+05:04:45.046  Frame lambat: 95 ms
+05:04:45.166  Frame lambat: 81 ms
+05:04:45.294  Frame lambat: 89 ms
+05:04:47.285  Frame lambat: 81 ms
+05:04:47.403  Frame lambat: 83 ms
+05:04:47.533  Frame lambat: 83 ms
+05:04:47.654  Frame lambat: 85 ms
+05:04:47.789  Frame lambat: 94 ms
+05:04:47.913  Frame lambat: 87 ms
+05:04:48.142  Frame lambat: 84 ms
+05:04:48.406  Frame lambat: 94 ms
+05:04:49.211  Frame lambat: 86 ms
+05:04:49.619  Frame lambat: 115 ms
+05:04:49.937  Frame lambat: 135 ms
+05:04:51.799  Frame lambat: 139 ms
+05:04:51.964  Frame lambat: 106 ms
+05:04:52.342  Frame lambat: 85 ms
+05:04:52.507  Frame lambat: 108 ms
+05:04:52.894  Frame lambat: 92 ms
+05:04:53.035  Frame lambat: 86 ms
+05:04:53.545  Frame lambat: 98 ms
+05:04:53.980  Frame lambat: 104 ms
+05:04:54.251  Frame lambat: 86 ms
+05:04:54.386  Frame lambat: 93 ms
+05:04:54.521  Frame lambat: 82 ms
+05:04:54.795  Frame lambat: 94 ms
+05:04:54.940  Frame lambat: 96 ms
+05:04:55.206  Frame lambat: 92 ms
+05:04:59.198  Simpan: 1 layer dibaca dari GPU (43 ms)
+05:06:09.289  Frame lambat: 279 ms
+05:06:10.381  Frame lambat: 325 ms
+05:06:31.376  Frame lambat: 103 ms
+05:06:31.508  Frame lambat: 92 ms
+05:06:31.748  Frame lambat: 83 ms
+05:06:31.872  Frame lambat: 82 ms
+05:06:32.019  Frame lambat: 93 ms
+05:06:32.155  Frame lambat: 94 ms
+05:06:32.510  Frame lambat: 87 ms
+05:06:32.902  Frame lambat: 98 ms
+05:06:33.025  Frame lambat: 81 ms
+05:06:33.204  Frame lambat: 117 ms
+05:06:33.352  Frame lambat: 110 ms
+05:06:35.209  Frame lambat: 91 ms
+05:06:35.338  Frame lambat: 94 ms
+05:06:35.581  Frame lambat: 91 ms
+05:06:35.721  Frame lambat: 102 ms
+05:06:36.211  Frame lambat: 84 ms
+05:06:36.359  Frame lambat: 101 ms
+05:06:36.480  Frame lambat: 84 ms
+05:06:36.608  Frame lambat: 86 ms
+05:06:36.751  Frame lambat: 104 ms
+05:06:37.128  Frame lambat: 101 ms
+05:06:37.269  Frame lambat: 100 ms
+05:06:37.507  Frame lambat: 89 ms
+05:06:37.654  Frame lambat: 109 ms
+05:06:39.588  Frame lambat: 99 ms
+05:06:39.758  Frame lambat: 116 ms
+05:06:39.884  Frame lambat: 88 ms
+05:06:40.024  Frame lambat: 101 ms
+05:06:40.135  Frame lambat: 81 ms
+05:06:40.496  Frame lambat: 88 ms
+05:06:40.751  Frame lambat: 88 ms
+05:06:40.869  Frame lambat: 84 ms
+05:06:41.018  Frame lambat: 100 ms
+05:06:41.141  Frame lambat: 82 ms
+05:06:41.438  Frame lambat: 100 ms
+05:06:41.562  Frame lambat: 84 ms
+05:06:42.144  Frame lambat: 83 ms
+05:06:42.300  Frame lambat: 108 ms
+05:06:44.173  Frame lambat: 108 ms
+05:06:44.315  Frame lambat: 91 ms
+05:06:44.444  Frame lambat: 94 ms
+05:06:44.571  Frame lambat: 89 ms
+05:06:45.276  Frame lambat: 87 ms
+05:06:45.776  Frame lambat: 94 ms
+05:06:46.277  Frame lambat: 95 ms
+05:06:46.774  Frame lambat: 90 ms
+05:06:46.912  Frame lambat: 98 ms
+05:06:49.077  Frame lambat: 85 ms
+05:06:49.544  Frame lambat: 83 ms
+05:06:49.917  Frame lambat: 82 ms
+05:06:50.985  Frame lambat: 86 ms
+05:06:51.352  Frame lambat: 92 ms
+05:06:51.762  Frame lambat: 124 ms
+05:06:53.628  Frame lambat: 100 ms
+05:06:53.760  Frame lambat: 84 ms
+05:06:54.217  Frame lambat: 81 ms
+05:06:54.380  Frame lambat: 114 ms
+05:06:54.502  Frame lambat: 87 ms
+05:06:54.862  Frame lambat: 81 ms
+05:06:54.995  Frame lambat: 91 ms
+05:06:55.131  Frame lambat: 87 ms
+05:06:55.413  Frame lambat: 102 ms
+05:06:55.773  Frame lambat: 88 ms
+05:06:56.280  Frame lambat: 103 ms
+05:06:56.452  Frame lambat: 126 ms
+05:07:00.454  Simpan: 1 layer dibaca dari GPU (29 ms)
+05:07:05.156  Simpan: 1 layer dibaca dari GPU (25 ms)

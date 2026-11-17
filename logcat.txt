@@ -1,0 +1,72 @@
+11-17 05:06:11.686  6543  6566 D EGL_emulation: app_time_stats: avg=160.83ms min=82.61ms max=216.89ms count=7
+11-17 05:06:12.264   831   920 D EGL_emulation: app_time_stats: avg=12231.84ms min=12231.84ms max=12231.84ms count=1
+11-17 05:06:12.636  1604  2306 D EGL_emulation: app_time_stats: avg=158.42ms min=64.06ms max=245.13ms count=7
+11-17 05:06:12.866  6543  6566 D EGL_emulation: app_time_stats: avg=165.15ms min=69.91ms max=265.60ms count=6
+11-17 05:06:13.687  1604  2306 D EGL_emulation: app_time_stats: avg=253.84ms min=144.81ms max=403.77ms count=4
+11-17 05:06:13.971  6543  6566 D EGL_emulation: app_time_stats: avg=135.84ms min=110.95ms max=200.20ms count=7
+11-17 05:06:15.055  6543  6566 D EGL_emulation: app_time_stats: avg=258.50ms min=141.98ms max=475.43ms count=4
+11-17 05:06:16.055  6543  6566 D EGL_emulation: app_time_stats: avg=500.31ms min=500.30ms max=500.33ms count=2
+11-17 05:06:16.881  1604  1604 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, true)
+11-17 05:06:16.887   517   760 D CoreBackPreview: Window{28946a u0 id.hananote.app/id.goresan.DrawActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@c50b8bd, mPriority=0}
+11-17 05:06:16.931  1604  2306 D EGL_emulation: app_time_stats: avg=1081.03ms min=143.31ms max=2845.37ms count=3
+11-17 05:06:17.013  1075  2068 D EGL_emulation: app_time_stats: avg=4627.51ms min=388.71ms max=8866.30ms count=2
+11-17 05:06:17.160  6543  6566 D EGL_emulation: app_time_stats: avg=552.02ms min=498.10ms max=605.93ms count=2
+11-17 05:06:18.935 11309 11309 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 05:06:18.939 11309 11309 I AndroidRuntime: Using default boot image
+11-17 05:06:18.939 11309 11309 I AndroidRuntime: Leaving lock profiling enabled
+11-17 05:06:19.064 11309 11309 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 05:06:20.128 11309 11309 D AndroidRuntime: Shutting down VM
+11-17 05:06:21.018  6543  6566 D EGL_emulation: app_time_stats: avg=957.96ms min=96.69ms max=3468.53ms count=4
+11-17 05:06:24.119 11336 11337 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-17 05:06:24.965 11339 11339 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 05:06:24.970 11339 11339 I AndroidRuntime: Using default boot image
+11-17 05:06:24.970 11339 11339 I AndroidRuntime: Leaving lock profiling enabled
+11-17 05:06:25.101 11339 11339 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 05:06:26.174 11339 11339 D AndroidRuntime: Shutting down VM
+11-17 05:06:27.080  6543  6566 D EGL_emulation: app_time_stats: avg=1203.82ms min=42.72ms max=5783.54ms count=5
+11-17 05:06:30.185  6543  6583 D EGL_emulation: app_time_stats: avg=19479.09ms min=19479.09ms max=19479.09ms count=1
+11-17 05:06:31.273  6543  6583 D EGL_emulation: app_time_stats: avg=106.75ms min=42.27ms max=139.84ms count=10
+11-17 05:06:32.311  6543  6583 D EGL_emulation: app_time_stats: avg=129.68ms min=117.81ms max=141.59ms count=8
+11-17 05:06:33.380  6543  6583 D EGL_emulation: app_time_stats: avg=133.00ms min=106.07ms max=154.05ms count=8
+11-17 05:06:34.806  6543  6583 D EGL_emulation: app_time_stats: avg=712.33ms min=278.48ms max=1146.18ms count=2
+11-17 05:06:35.883  6543  6583 D EGL_emulation: app_time_stats: avg=116.83ms min=36.83ms max=141.68ms count=9
+11-17 05:06:36.907  6543  6583 D EGL_emulation: app_time_stats: avg=128.01ms min=109.13ms max=137.90ms count=8
+11-17 05:06:37.999  6543  6583 D EGL_emulation: app_time_stats: avg=155.93ms min=117.44ms max=317.51ms count=7
+11-17 05:06:39.184  6543  6583 D EGL_emulation: app_time_stats: avg=1184.90ms min=1184.90ms max=1184.90ms count=1
+11-17 05:06:40.298  6543  6583 D EGL_emulation: app_time_stats: avg=120.25ms min=43.43ms max=153.71ms count=9
+11-17 05:06:41.337  6543  6583 D EGL_emulation: app_time_stats: avg=129.84ms min=109.16ms max=146.47ms count=8
+11-17 05:06:42.643  6543  6583 D EGL_emulation: app_time_stats: avg=145.03ms min=108.11ms max=309.22ms count=9
+11-17 05:06:43.817  6543  6583 D EGL_emulation: app_time_stats: avg=1174.03ms min=1174.03ms max=1174.03ms count=1
+11-17 05:06:44.849  6543  6583 D EGL_emulation: app_time_stats: avg=113.43ms min=49.51ms max=158.96ms count=9
+11-17 05:06:45.938  6543  6583 D EGL_emulation: app_time_stats: avg=120.99ms min=100.27ms max=134.94ms count=9
+11-17 05:06:46.944  6543  6583 D EGL_emulation: app_time_stats: avg=125.74ms min=120.08ms max=131.91ms count=8
+11-17 05:06:48.460  6543  6583 D EGL_emulation: app_time_stats: avg=758.01ms min=295.23ms max=1220.78ms count=2
+11-17 05:06:49.586  6543  6583 D EGL_emulation: app_time_stats: avg=109.90ms min=34.26ms max=130.90ms count=10
+11-17 05:06:50.658  6543  6583 D EGL_emulation: app_time_stats: avg=119.10ms min=110.33ms max=126.71ms count=9
+11-17 05:06:51.790  6543  6583 D EGL_emulation: app_time_stats: avg=125.77ms min=108.98ms max=152.33ms count=9
+11-17 05:06:53.285  6543  6583 D EGL_emulation: app_time_stats: avg=747.15ms min=323.04ms max=1171.26ms count=2
+11-17 05:06:54.415  6543  6583 D EGL_emulation: app_time_stats: avg=111.56ms min=34.00ms max=149.06ms count=10
+11-17 05:06:55.442  6543  6583 D EGL_emulation: app_time_stats: avg=128.46ms min=108.88ms max=146.91ms count=8
+11-17 05:06:56.482  6543  6583 D EGL_emulation: app_time_stats: avg=129.62ms min=111.98ms max=156.57ms count=8
+11-17 05:06:57.978 11858 11859 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-17 05:06:59.060 11861 11861 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 05:06:59.065 11861 11861 I AndroidRuntime: Using default boot image
+11-17 05:06:59.065 11861 11861 I AndroidRuntime: Leaving lock profiling enabled
+11-17 05:06:59.192 11861 11861 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 05:07:00.036   831   920 D EGL_emulation: app_time_stats: avg=47771.91ms min=47771.91ms max=47771.91ms count=1
+11-17 05:07:00.239 11861 11861 D AndroidRuntime: Shutting down VM
+11-17 05:07:00.486  6543  6583 D EGL_emulation: app_time_stats: avg=2002.01ms min=318.59ms max=3685.43ms count=2
+11-17 05:07:01.175  6543  6566 D EGL_emulation: app_time_stats: avg=8514.89ms min=22.38ms max=33934.73ms count=4
+11-17 05:07:01.527  6543  6583 D EGL_emulation: app_time_stats: avg=347.08ms min=90.13ms max=745.27ms count=3
+11-17 05:07:02.764  6543  6566 D EGL_emulation: app_time_stats: avg=1589.03ms min=1589.03ms max=1589.03ms count=1
+11-17 05:07:03.272 11898 11899 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-17 05:07:04.357 11901 11901 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 05:07:04.362 11901 11901 I AndroidRuntime: Using default boot image
+11-17 05:07:04.362 11901 11901 I AndroidRuntime: Leaving lock profiling enabled
+11-17 05:07:04.482 11901 11901 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 05:07:05.200  6543  6583 D EGL_emulation: app_time_stats: avg=3669.93ms min=3669.93ms max=3669.93ms count=1
+11-17 05:07:05.552 11901 11901 D AndroidRuntime: Shutting down VM
+11-17 05:07:06.461  6543  6566 D EGL_emulation: app_time_stats: avg=3697.22ms min=3697.22ms max=3697.22ms count=1
+11-17 05:07:06.510  6543  6583 D EGL_emulation: app_time_stats: avg=1310.19ms min=1310.19ms max=1310.19ms count=1
+11-17 05:07:08.064  6543  6566 D EGL_emulation: app_time_stats: avg=1602.42ms min=1602.42ms max=1602.42ms count=1
+11-17 05:07:08.566 11938 11939 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 

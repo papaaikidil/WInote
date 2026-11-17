@@ -1,0 +1,7 @@
+Starting: Intent { cmp=id.hananote.app/id.goresan.DrawActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.goresan.DrawActivity
+TotalTime: 1917
+WaitTime: 1926
+Complete
