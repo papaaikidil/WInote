@@ -149,7 +149,7 @@ object BrushImport {
             var b = defaults(id, name.take(40), category).copy(
                 tipFile = f,
                 sizeMax = diameter.coerceIn(2f, 1000f),
-                spacing = ((p?.spacing ?: s.spacing ?: 25f) / 100f).coerceIn(0.01f, 1.5f),
+                spacing = ((p?.spacing ?: s.spacing ?: 25f) / 100f).coerceIn(0.01f, 10f),
             )
             if (stamp) {
                 stamps++
@@ -168,7 +168,7 @@ object BrushImport {
             val hard = (p.hardness ?: 100f) >= 80f
             var b = defaults(id, (p.name?.takeIf { it.isNotBlank() } ?: "$category ${i + 1}").take(40), category).copy(
                 tip = if (hard) TipShape.HARD_ROUND else TipShape.SOFT_ROUND,
-                spacing = ((p.spacing ?: 25f) / 100f).coerceIn(0.01f, 1.5f),
+                spacing = ((p.spacing ?: 25f) / 100f).coerceIn(0.01f, 10f),
             )
             b = applyPreset(sized(b, p.diameter ?: 20f), p)
             texture(b, p, patterns, grains)?.let { b = it; textured++ }
@@ -228,7 +228,7 @@ object BrushImport {
             val count = (p.count ?: 1f).coerceIn(1f, 16f)
             b = b.copy(
                 scatter = ((p.scatter?.jitter ?: 0f) / 100f / 1.5f).coerceIn(0f, 1f),
-                spacing = (b.spacing / count).coerceIn(0.01f, 1.5f),
+                spacing = (b.spacing / count).coerceIn(0.01f, 10f),
             )
         }
         // Transfer: opasitas/aliran mengikuti tekanan, variasi opasitas.

@@ -65,7 +65,9 @@ import id.goresan.engine.buildCurve
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.ln
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.roundToInt
 
@@ -531,7 +533,15 @@ private fun BrushStudio(state: AppState, b: Brush) {
                 when (studioTabs[tab]) {
                     "Jalur goresan" -> {
                         StampRow(b.stamp) { up(b.copy(stamp = it)) }
-                        LabeledSlider("Jarak antar cap", b.spacing, { up(b.copy(spacing = it)) }, 0.01f..1.5f, pct)
+                        // 1%..1000% berskala logaritmik: 1–10%, 10–100%, dan 100–1000% masing-masing sepertiga geseran,
+                        // jadi jarak rapat tetap mudah diatur halus sementara cap bisa direnggangkan sampai 10× diameter.
+                        LabeledSlider(
+                            "Jarak antar cap",
+                            (ln(b.spacing.coerceIn(SPACING_MIN, SPACING_MAX) / SPACING_MIN) / ln(SPACING_MAX / SPACING_MIN)).coerceIn(0f, 1f),
+                            { up(b.copy(spacing = spacingAtSlider(it))) },
+                            0f..1f,
+                            { pct(spacingAtSlider(it)) },
+                        )
                         LabeledSlider("Getaran jarak", b.spacingJitter, { up(b.copy(spacingJitter = it)) }, display = pctNone)
                         LabeledSlider("Getaran lateral", b.jitterLateral, { up(b.copy(jitterLateral = it)) }, display = pctNone)
                         LabeledSlider("Getaran linear", b.jitterLinear, { up(b.copy(jitterLinear = it)) }, display = pctNone)
@@ -883,3 +893,10 @@ private fun TiltGraph(angle: Float) {
         drawLine(Color.White, c, Offset(c.x + r * cos(rad).toFloat(), c.y - r * sin(rad).toFloat()), strokeWidth = 2.dp.toPx())
     }
 }
+
+private const val SPACING_MIN = 0.01f
+private const val SPACING_MAX = 10f
+
+/** Posisi geser 0..1 → jarak antar cap (pecahan diameter), dibulatkan ke persen bulat. */
+private fun spacingAtSlider(t: Float): Float =
+    ((SPACING_MIN * (SPACING_MAX / SPACING_MIN).pow(t.coerceIn(0f, 1f)) * 100f).roundToInt() / 100f).coerceIn(SPACING_MIN, SPACING_MAX)

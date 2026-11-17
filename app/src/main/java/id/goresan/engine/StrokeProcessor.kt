@@ -242,7 +242,7 @@ class StrokeProcessor {
         hasPressure = pressure
         hasTilt = tilt
         gamma = pressureGamma
-        spacingFrac = if (spacing.isFinite()) spacing.coerceIn(0.01f, 2f) else 0.1f
+        spacingFrac = if (spacing.isFinite()) spacing.coerceIn(0.01f, 10f) else 0.1f
         maxSize = maxDiameter
         this.canvasPerDp = if (canvasPerDp.isFinite() && canvasPerDp > 0f) canvasPerDp else 1f
         started = false
