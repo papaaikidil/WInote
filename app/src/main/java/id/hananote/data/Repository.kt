@@ -1179,6 +1179,7 @@ object PageIO {
     private const val ITEM_CALENDAR = 5
     private const val ITEM_MINDMAP = 6
     private const val ITEM_AUDIO = 7
+    private const val ITEM_TAPE = 8
 
     private fun DataOutputStream.writeStr(s: String) {
         val b = s.toByteArray(Charsets.UTF_8)
@@ -1237,6 +1238,7 @@ object PageIO {
                     is CalendarItem -> ITEM_CALENDAR
                     is MindMapItem -> ITEM_MINDMAP
                     is AudioItem -> ITEM_AUDIO
+                    is TapeItem -> ITEM_TAPE
                 }
                 // Isi tiap benda diawali panjangnya, jadi versi lama bisa melewati jenis benda yang belum dikenalnya.
                 buf.reset()
@@ -1270,6 +1272,15 @@ object PageIO {
                 if (sh != null) { out.writeFloat(sh.distance); out.writeFloat(sh.blur); out.writeFloat(sh.opacity) }
             }
             is AudioItem -> { out.writeStr(it.file); out.writeLong(it.durationMs) }
+            is TapeItem -> {
+                out.writeByte(it.shape.ordinal)
+                out.writeInt(it.color)
+                out.writeFloat(it.thick)
+                out.writeBoolean(it.covered)
+                val pts = it.path
+                out.writeInt(pts?.size ?: 0)
+                if (pts != null) for (v in pts) out.writeFloat(v)
+            }
             is StickyItem -> {
                 out.writeInt(it.color); out.writeStr(it.text); out.writeStr(it.font); out.writeFloat(it.textSize)
                 out.writeByte(it.align.ordinal)
@@ -1484,6 +1495,16 @@ object PageIO {
                 CalendarItem(x, y, w, h, yr, mo, col, inp.readInt())
             }
             ITEM_AUDIO -> { val f = inp.readStr(); AudioItem(x, y, w, h, f, inp.readLong()) }
+            ITEM_TAPE -> {
+                val shape = TapeShape.entries.getOrElse(inp.readByte().toInt()) { TapeShape.RECT }
+                val color = inp.readInt()
+                val thick = inp.readFloat().takeIf { it.isFinite() && it in 0f..2000f } ?: 0f
+                val covered = inp.readBoolean()
+                val n = inp.readInt()
+                if (n < 0 || n > 400_000) throw java.io.IOException("selotip rusak")
+                val pts = if (n > 0) FloatArray(n) { inp.readFloat() } else null
+                TapeItem(x, y, w, h, shape, color, thick, pts, rot, covered)
+            }
             ITEM_MINDMAP -> {
                 val ml = inp.readFloat(); val mt = inp.readFloat(); val mw = inp.readFloat(); val mh = inp.readFloat()
                 val tidy = inp.readBoolean()

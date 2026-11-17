@@ -18,22 +18,24 @@ enum class Tool(val label: String) {
     HIGHLIGHTER("Stabilo"),
     ERASER("Penghapus"),
     LINE("Bentuk"),
-    WATERCOLOR("Cat air");
+    WATERCOLOR("Cat air"),
+    /** Selotip hafalan: bukan goresan, hanya menyimpan warna dan ketebalan alat Selotip. */
+    TAPE("Selotip");
 
     val minWidth: Float
         get() = when (this) {
             PEN -> 0.8f; PENCIL -> 0.6f; BRUSH -> 2f; MARKER -> 2f; HIGHLIGHTER -> 6f; ERASER -> 4f; LINE -> 0.8f
-            WATERCOLOR -> 4f
+            WATERCOLOR -> 4f; TAPE -> 4f
         }
     val maxWidth: Float
         get() = when (this) {
             PEN -> 8f; PENCIL -> 6f; BRUSH -> 24f; MARKER -> 16f; HIGHLIGHTER -> 30f; ERASER -> 40f; LINE -> 12f
-            WATERCOLOR -> 48f
+            WATERCOLOR -> 48f; TAPE -> 60f
         }
     val defaultWidth: Float
         get() = when (this) {
             PEN -> 2f; PENCIL -> 1.6f; BRUSH -> 6f; MARKER -> 5f; HIGHLIGHTER -> 14f; ERASER -> 12f; LINE -> 2f
-            WATERCOLOR -> 16f
+            WATERCOLOR -> 16f; TAPE -> 16f
         }
     /** Tiga ukuran cepat yang ditampilkan di bilah alat. */
     val presets: List<Float>
@@ -46,6 +48,7 @@ enum class Tool(val label: String) {
             ERASER -> listOf(6f, 12f, 24f)
             LINE -> listOf(1.2f, 2f, 4f)
             WATERCOLOR -> listOf(8f, 16f, 30f)
+            TAPE -> listOf(10f, 16f, 28f)
         }
 
     /** Alat yang digambar di bawah teks dan tulisan (seperti cat di atas kertas). */
@@ -68,8 +71,30 @@ enum class Tool(val label: String) {
 enum class EraserMode(val label: String) { BRUSH("Kuas halus"), PARTIAL("Sebagian"), WHOLE("Goresan utuh") }
 
 /** Cara kanvas menanggapi sentuhan pena. */
-/** Cara menyentuh halaman: menulis (pensil), bentuk, memilih, atau mengetik (mode teks). */
-enum class InputMode { INK, SHAPE, SELECT, TYPE }
+/** Cara menyentuh halaman: menulis (pensil), bentuk, memilih, mengetik (mode teks), atau menempel selotip. */
+enum class InputMode { INK, SHAPE, SELECT, TYPE, TAPE }
+
+/**
+ * Bentuk selotip hafalan. Urutannya tersimpan di berkas, jadi bentuk baru selalu ditambahkan di akhir.
+ * STRAIGHT: pita lurus mengikuti arah tarikan; FREE: pita mengikuti jalur tarikan; lainnya: bidang penuh
+ * seukuran kotak yang ditarik.
+ */
+enum class TapeShape(val label: String) {
+    STRAIGHT("Lurus"), FREE("Bebas"), RECT("Kotak"), ROUNDED("Kotak tumpul"), ELLIPSE("Lingkaran"),
+    TRIANGLE("Segitiga"), DIAMOND("Belah ketupat"), HEXAGON("Segi enam"), STAR("Bintang"), HEART("Hati"),
+}
+
+/** Warna selotip: lembut tapi cukup pekat untuk menutupi tulisan. */
+val TapeColors: List<Int> = listOf(
+    0xFFE9746C.toInt(), // merah salem
+    0xFFF2B33D.toInt(), // kuning mustard
+    0xFF6CC08B.toInt(), // hijau mint
+    0xFF5CA8E0.toInt(), // biru langit
+    0xFFA58BDB.toInt(), // ungu lavender
+    0xFFF19AC0.toInt(), // merah muda
+    0xFF8A8F98.toInt(), // abu-abu
+    0xFF2E3138.toInt(), // hitam
+)
 
 enum class ShapeKind(val label: String) {
     LINE("Garis"), ARROW("Panah"), RECT("Kotak"), ELLIPSE("Lingkaran"), TRIANGLE("Segitiga")
@@ -411,6 +436,36 @@ class CalendarItem(
 ) : PageItem(x, y, w, h, 0f) {
     override fun copyAt(x: Float, y: Float, w: Float, h: Float, rotation: Float) = CalendarItem(x, y, w, h, year, month, color, mark)
     override val kindLabel get() = "Kalender"
+}
+
+/**
+ * Selotip hafalan: menutupi bagian catatan supaya bisa dipakai menghafal. Ketuk untuk membuka (jadi tembus
+ * pandang, isi di bawahnya terlihat) dan ketuk lagi untuk menutup. Selalu tampil di atas isi halaman.
+ *
+ * STRAIGHT: pita lurus, [w] = panjang, [h] = tebal, diputar mengikuti arah tarikan. FREE: pita setebal [thick]
+ * mengikuti [path] (pasangan x, y dalam 0..1 terhadap kotak benda). Bentuk lain: bidang penuh seukuran kotak.
+ */
+class TapeItem(
+    x: Float,
+    y: Float,
+    w: Float,
+    h: Float,
+    val shape: TapeShape,
+    val color: Int,
+    val thick: Float = 0f,
+    val path: FloatArray? = null,
+    rotation: Float = 0f,
+    covered: Boolean = true,
+) : PageItem(x, y, w, h, rotation) {
+    /** Tertutup (menyembunyikan isi di bawahnya) atau terbuka. Diubah langsung oleh ketukan, tanpa salinan baru. */
+    @Volatile var covered: Boolean = covered
+
+    override fun copyAt(x: Float, y: Float, w: Float, h: Float, rotation: Float) =
+        TapeItem(x, y, w, h, shape, color, thick, path, rotation, covered)
+    fun withColor(c: Int) = TapeItem(x, y, w, h, shape, c, thick, path, rotation, covered).keepFrom(this)
+    override val kindLabel get() = "Selotip"
+    override val carriesInk get() = false
+    override val canRotate get() = true
 }
 
 /** Satu ide di mind map. [x], [y] pusatnya dalam satuan peta; [parent] -1 untuk ide utama. */

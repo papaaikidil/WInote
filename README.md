@@ -1158,3 +1158,16 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - **Kuas pembaur** (sakelar di Properti): dengan alat Kuas pun kuas itu tidak menambah warna, hanya membaurkan.
 - Kuas baru **Pembaur Cat Air** (kategori Cat Air): larut penuh dan sudah berupa kuas pembaur, jadi bisa dipakai
   langsung dari alat Kuas maupun alat Baur untuk menyatukan dua warna cat air dengan halus.
+
+## Perubahan 0.1.125: Selotip hafalan di catatan
+
+- Alat baru **Selotip** di bilah alat catatan (di sebelah Bentuk): tempelkan selotip di atas tulisan, lalu **ketuk
+  selotip untuk membuka** (jadi tembus pandang, isinya terbaca) dan **ketuk lagi untuk menutup**. Cocok untuk
+  menghafal dan latihan soal. Ketukan bisa dengan jari atau pena, di alat mana pun (juga di mode baca); dengan pena,
+  menarik garis di atas selotip tetap menulis seperti biasa.
+- **Bentuk**: Lurus (pita mengikuti arah tarikan, otomatis lurus bila hampir mendatar/tegak), Bebas (pita mengikuti
+  jalur tarikan), Kotak, Kotak tumpul, Lingkaran, Segitiga, Belah ketupat, Segi enam, Bintang, dan Hati.
+- **Warna** (8 warna selotip + warna sendiri) dan **ketebalan** (untuk pita lurus/bebas) diatur seperti alat lain.
+- **Tutup semua / Buka semua / Lepas semua** selotip di halaman. Lepas semua bisa diurungkan.
+- Selotip bisa dipilih (alat Pilih) untuk digeser, diputar, diubah ukurannya, diganti warnanya, atau dihapus;
+  penghapus juga melepas selotip yang tersapu. Keadaan buka/tutup tiap selotip ikut tersimpan.

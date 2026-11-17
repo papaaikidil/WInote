@@ -105,6 +105,9 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
@@ -196,6 +199,8 @@ import id.hananote.data.InputMode
 import id.hananote.data.LinkItem
 import id.hananote.data.PageItem
 import id.hananote.data.ShapeKind
+import id.hananote.data.TapeColors
+import id.hananote.data.TapeShape
 import id.hananote.data.StickyItem
 import id.hananote.data.TableItem
 import id.hananote.ink.SelectionInfo
@@ -487,6 +492,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
         runCatching { ShapeKind.valueOf(prefs.getString("shape", "RECT") ?: "RECT") }.getOrDefault(ShapeKind.RECT)
     )
         private set
+    /** Bentuk selotip hafalan yang terakhir dipilih. */
+    var tapeShape by mutableStateOf(
+        runCatching { TapeShape.valueOf(prefs.getString("tape_shape", "STRAIGHT") ?: "STRAIGHT") }.getOrDefault(TapeShape.STRAIGHT)
+    )
+        private set
     var ruler by mutableStateOf(false)
         private set
     var selection by mutableStateOf<SelectionInfo?>(null)
@@ -495,7 +505,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
     var linkToOpen by mutableStateOf<String?>(null)
 
     /** Alat yang warna dan ketebalannya sedang diatur: bentuk memakai pengaturannya sendiri. */
-    val styleTool: Tool get() = if (mode == InputMode.SHAPE) Tool.LINE else tool
+    val styleTool: Tool get() = when (mode) {
+        InputMode.SHAPE -> Tool.LINE
+        InputMode.TAPE -> Tool.TAPE
+        else -> tool
+    }
 
     /** Kelompok bilah fitur yang terbuka. Awalnya hanya Sisipkan, supaya bilah tidak penuh. */
     private val openGroups = mutableStateMapOf<String, Boolean>()
@@ -1178,6 +1192,35 @@ class EditorController(private val repo: Repository, val noteId: String) {
 
     fun selectShapes() { endInline(); convertPick = false; convertBackToInk = false; mode = InputMode.SHAPE; CrashLog.note("mode bentuk") }
     fun selectPointer() { endInline(); convertPick = false; convertBackToInk = false; mode = InputMode.SELECT; autoSelect = false; CrashLog.note("mode pilih") }
+
+    /** Alat Selotip: tarik untuk menempel selotip hafalan, ketuk selotip untuk membuka atau menutupnya. */
+    fun selectTape() {
+        endInline(); convertPick = false; convertBackToInk = false
+        mode = InputMode.TAPE
+        CrashLog.note("mode selotip")
+    }
+
+    fun chooseTapeShape(k: TapeShape) {
+        tapeShape = k
+        selectTape()
+        prefs.edit().putString("tape_shape", k.name).apply()
+    }
+
+    /** Tutup ([covered]) atau buka semua selotip di halaman ini. */
+    fun setAllTapes(covered: Boolean) {
+        val v = view ?: return
+        val (all, _) = v.tapeCounts()
+        if (all == 0) { notice = "Belum ada selotip di halaman ini."; return }
+        v.setAllTapes(covered)
+        notice = if (covered) "Semua selotip di halaman ini ditutup." else "Semua selotip di halaman ini dibuka."
+    }
+
+    /** Lepas semua selotip di halaman ini (bisa diurungkan). */
+    fun removeAllTapes() {
+        val v = view ?: return
+        val n = v.removeAllTapes()
+        notice = if (n == 0) "Belum ada selotip di halaman ini." else "$n selotip dilepas dari halaman ini. Ketuk Urungkan untuk mengembalikan."
+    }
 
     fun chooseShape(k: ShapeKind) {
         shapeKind = k
@@ -2822,6 +2865,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
             Tool.HIGHLIGHTER -> 0xFFFFE14D.toInt()
             Tool.WATERCOLOR -> WatercolorColors[0]
             Tool.ERASER -> 0xFF000000.toInt()
+            Tool.TAPE -> TapeColors[0]
         }
     }
 }
@@ -3071,6 +3115,7 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
                 v.tool = c.tool
                 v.inputMode = c.mode
                 v.shapeKind = c.shapeKind
+                v.tapeShape = c.tapeShape
                 v.rulerVisible = c.ruler && !c.readMode
                 v.readOnly = c.readMode
                 v.color = c.colorOf(c.styleTool)
@@ -3344,6 +3389,14 @@ private fun TabletEditor(
                         if (c.mode == InputMode.SHAPE) {
                             Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
                                 ShapeChoices(c)
+                            }
+                            BarDivider(Modifier.align(Alignment.CenterVertically))
+                        }
+                        if (c.mode == InputMode.TAPE) {
+                            // Selotip: bentuk (menu ringkas) dan tutup/buka/lepas semua, lalu warna dan ketebalan.
+                            Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
+                                TapeShapePicker(c)
+                                TapeActionIcons(c)
                             }
                             BarDivider(Modifier.align(Alignment.CenterVertically))
                         }
@@ -3941,6 +3994,16 @@ private fun PhoneDock(c: EditorController, onOptions: () -> Unit) {
                 Modifier
                     .weight(1f)
                     .height(56.dp)
+                    .toolClick { if (c.mode == InputMode.TAPE) onOptions() else c.selectTape() }
+                    .semantics { contentDescription = "Selotip" },
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                TapeGlyph(Color(c.colorOf(Tool.TAPE)), c.mode == InputMode.TAPE)
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(56.dp)
                     .toolClick { c.selectPointer() }
                     .semantics { contentDescription = "Pilih" },
                 contentAlignment = Alignment.BottomCenter,
@@ -3988,10 +4051,27 @@ private fun ToolOptions(c: EditorController, onCustom: () -> Unit) {
             )
             return@Column
         }
-        Text(if (c.mode == InputMode.SHAPE) "Bentuk" else c.tool.label, style = MaterialTheme.typography.titleLarge)
+        Text(
+            when (c.mode) { InputMode.SHAPE -> "Bentuk"; InputMode.TAPE -> "Selotip"; else -> c.tool.label },
+            style = MaterialTheme.typography.titleLarge,
+        )
         if (c.mode == InputMode.SHAPE) {
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                 ShapeChoices(c)
+            }
+        }
+        if (c.mode == InputMode.TAPE) {
+            Text(
+                "Tempel selotip di atas tulisan untuk menghafal. Ketuk selotip untuk membuka, ketuk lagi untuk menutup.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text("Bentuk", style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                TapeShapeChoices(c)
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                TapeActions(c)
             }
         }
         if (c.styleTool != Tool.ERASER) {
@@ -4010,7 +4090,7 @@ private fun ToolOptions(c: EditorController, onCustom: () -> Unit) {
             onValueChange = { c.setWidth(it) },
             valueRange = c.styleTool.minWidth..c.styleTool.maxWidth,
         )
-        StrokePreview(c, Modifier.fillMaxWidth().height(44.dp))
+        if (c.mode != InputMode.TAPE) StrokePreview(c, Modifier.fillMaxWidth().height(44.dp))
     }
 }
 
@@ -4105,6 +4185,13 @@ private fun FocusToolbar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
                         Box(
                             Modifier
                                 .size(width = 38.dp, height = 50.dp)
+                                .toolClick { if (c.mode == InputMode.TAPE) options = true else c.selectTape() }
+                                .semantics { contentDescription = "Selotip" },
+                            contentAlignment = Alignment.BottomCenter,
+                        ) { TapeGlyph(Color(c.colorOf(Tool.TAPE)), c.mode == InputMode.TAPE) }
+                        Box(
+                            Modifier
+                                .size(width = 38.dp, height = 50.dp)
                                 .toolClick { c.selectPointer() }
                                 .semantics { contentDescription = "Pilih" },
                             contentAlignment = Alignment.BottomCenter,
@@ -4121,6 +4208,10 @@ private fun FocusToolbar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             if (c.mode == InputMode.SHAPE) {
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { ShapeChoices(c) }
+                            }
+                            if (c.mode == InputMode.TAPE) {
+                                Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { TapeShapeChoices(c) }
+                                Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { TapeActions(c) }
                             }
                             if (c.styleTool != Tool.ERASER) {
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
@@ -4171,6 +4262,16 @@ private fun ToolTray(c: EditorController) {
             Modifier
                 .size(width = 42.dp, height = 56.dp)
                 .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                .toolClick { c.selectTape() }
+                .semantics { contentDescription = "Selotip" },
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            TapeGlyph(Color(c.colorOf(Tool.TAPE)), c.mode == InputMode.TAPE)
+        }
+        Box(
+            Modifier
+                .size(width = 42.dp, height = 56.dp)
+                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                 .toolClick { c.selectPointer() }
                 .semantics { contentDescription = "Pilih" },
             contentAlignment = Alignment.BottomCenter,
@@ -4198,12 +4299,97 @@ private fun ShapeChoices(c: EditorController) {
     }
 }
 
+/** Pilihan bentuk selotip hafalan: pita lurus, pita bebas, dan bidang (kotak, lingkaran, segitiga, ...). */
+@Composable
+private fun TapeShapeChoices(c: EditorController) {
+    TapeShape.entries.forEach { k ->
+        val selected = k == c.tapeShape
+        Box(
+            Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .clickable { c.chooseTapeShape(k) }
+                .semantics { contentDescription = "Selotip " + k.label },
+            contentAlignment = Alignment.Center,
+        ) {
+            TapeShapeIcon(k, if (selected) Color(c.colorOf(Tool.TAPE)) else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Bentuk selotip yang dipakai, sebagai satu tombol yang membuka daftar semua bentuk (untuk bilah tablet). */
+@Composable
+private fun TapeShapePicker(c: EditorController) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .height(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .clickable { open = true }
+                .semantics { contentDescription = "Bentuk selotip" }
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TapeShapeIcon(c.tapeShape, Color(c.colorOf(Tool.TAPE)))
+            Spacer(Modifier.width(6.dp))
+            Text(c.tapeShape.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            TapeShape.entries.forEach { k ->
+                DropdownMenuItem(
+                    text = { Text(k.label) },
+                    leadingIcon = { TapeShapeIcon(k, if (k == c.tapeShape) Color(c.colorOf(Tool.TAPE)) else MaterialTheme.colorScheme.onSurfaceVariant) },
+                    onClick = { open = false; c.chooseTapeShape(k) },
+                )
+            }
+        }
+    }
+}
+
+/** Tutup, buka, atau lepas semua selotip di halaman ini, sebagai tombol ikon (untuk bilah tablet). */
+@Composable
+private fun TapeActionIcons(c: EditorController) {
+    IconButton(onClick = { c.setAllTapes(true) }) { Icon(Icons.Filled.VisibilityOff, contentDescription = "Tutup semua selotip") }
+    IconButton(onClick = { c.setAllTapes(false) }) { Icon(Icons.Filled.Visibility, contentDescription = "Buka semua selotip") }
+    IconButton(onClick = { c.removeAllTapes() }) { Icon(Icons.Filled.DeleteSweep, contentDescription = "Lepas semua selotip") }
+}
+
+/** Tutup, buka, atau lepas semua selotip di halaman ini. */
+@Composable
+private fun TapeActions(c: EditorController) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        ToolChip(
+            selected = false,
+            onClick = { c.setAllTapes(true) },
+            label = { Text("Tutup semua") },
+            leadingIcon = { Icon(Icons.Filled.VisibilityOff, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        )
+        ToolChip(
+            selected = false,
+            onClick = { c.setAllTapes(false) },
+            label = { Text("Buka semua") },
+            leadingIcon = { Icon(Icons.Filled.Visibility, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        )
+        ToolChip(
+            selected = false,
+            onClick = { c.removeAllTapes() },
+            label = { Text("Lepas semua") },
+            leadingIcon = { Icon(Icons.Filled.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        )
+    }
+}
+
 @Composable
 private fun ColorChoices(c: EditorController, dot: Int, onCustom: () -> Unit) {
     val t = c.styleTool
     val palette = when (t) {
         Tool.HIGHLIGHTER -> HighlighterColors
         Tool.WATERCOLOR -> WatercolorColors
+        Tool.TAPE -> TapeColors
         else -> InkColors
     }
     val current = c.colorOf(t)
@@ -6042,7 +6228,7 @@ private fun TextTypeBar(c: EditorController, value: TextFieldValue, fonts: List<
 @Composable
 private fun ModeSwitch(c: EditorController, modifier: Modifier = Modifier) {
     val typing = c.mode == InputMode.TYPE
-    val pencil = c.mode == InputMode.INK || c.mode == InputMode.SHAPE
+    val pencil = c.mode == InputMode.INK || c.mode == InputMode.SHAPE || c.mode == InputMode.TAPE
     Row(
         modifier
             .height(42.dp)

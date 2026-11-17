@@ -54,6 +54,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 import androidx.compose.ui.graphics.drawscope.translate
 import id.hananote.data.ShapeKind
+import id.hananote.data.TapeItem
+import id.hananote.data.TapeShape
+import id.hananote.ink.Tapes
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.semantics.contentDescription
@@ -230,6 +234,7 @@ private fun DrawScope.drawTool(tool: Tool, ink: Color) {
             }, ink.copy(alpha = 0.85f))
         }
         Tool.LINE -> Unit // bentuk punya ikon sendiri (ShapeGlyph)
+        Tool.TAPE -> Unit // selotip punya ikon sendiri (TapeGlyph)
     }
 }
 
@@ -248,6 +253,54 @@ fun ShapeGlyph(ink: Color, selected: Boolean, modifier: Modifier = Modifier) {
                 moveTo(cx - d(6.5f), d(40f)); lineTo(cx - d(6.5f), d(22f)); lineTo(cx + d(3.5f), d(40f)); close()
             }, Color.White.copy(alpha = 0.75f))
             drawCircle(ink, radius = d(3.4f), center = Offset(cx + d(6f), d(15f)))
+        }
+    }
+}
+
+/** Gulungan selotip dengan pita yang ditarik keluar, untuk alat Selotip. */
+@Composable
+fun TapeGlyph(ink: Color, selected: Boolean, modifier: Modifier = Modifier) {
+    val lift by animateFloatAsState(if (selected) 0f else 10f, label = "lift")
+    Canvas(modifier.size(width = 30.dp, height = 46.dp).clipToBounds()) {
+        translate(top = lift.dp.toPx()) {
+            val cx = size.width / 2f
+            fun d(v: Float) = v.dp.toPx()
+            // Pita yang ditarik ke atas, ujungnya bergerigi seperti disobek.
+            drawPath(Path().apply {
+                moveTo(cx - d(5f), d(40f))
+                lineTo(cx - d(5f), d(10f))
+                lineTo(cx - d(3f), d(7.5f)); lineTo(cx - d(1f), d(10f)); lineTo(cx + d(1f), d(7.5f))
+                lineTo(cx + d(3f), d(10f)); lineTo(cx + d(5f), d(7.5f))
+                lineTo(cx + d(5f), d(40f))
+                close()
+            }, ink)
+            drawRect(Color.White.copy(alpha = 0.3f), Offset(cx - d(3.5f), d(12f)), Size(d(2f), d(26f)))
+            // Gulungan di bawah.
+            drawCircle(Color(0xFFB9BDC6), radius = d(10f), center = Offset(cx, d(44f)))
+            drawCircle(ink.copy(alpha = 0.85f), radius = d(8.5f), center = Offset(cx, d(44f)))
+            drawCircle(Color(0xFFF2F2F4), radius = d(4f), center = Offset(cx, d(44f)))
+        }
+    }
+}
+
+/** Ikon kecil bentuk selotip (diisi penuh, kecuali pita lurus dan bebas). */
+@Composable
+fun TapeShapeIcon(kind: TapeShape, color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(22.dp)) {
+        val w = size.width
+        val h = size.height
+        val p = 2.5.dp.toPx()
+        when (kind) {
+            TapeShape.STRAIGHT -> drawRect(color, Offset(p, h / 2f - 3.dp.toPx()), Size(w - 2 * p, 6.dp.toPx()))
+            TapeShape.FREE -> drawPath(Path().apply {
+                moveTo(p, h * 0.65f)
+                cubicTo(w * 0.3f, h * 0.15f, w * 0.55f, h * 0.95f, w - p, h * 0.35f)
+            }, color, style = DrawStroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
+            else -> {
+                val ap = android.graphics.Path()
+                Tapes.outline(TapeItem(p, p, w - 2 * p, h - 2 * p, kind, 0), ap)
+                drawPath(ap.asComposePath(), color)
+            }
         }
     }
 }

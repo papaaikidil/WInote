@@ -38,6 +38,8 @@ import id.hananote.data.LinkItem
 import id.hananote.data.PageItem
 import id.hananote.data.StickyItem
 import id.hananote.data.TableItem
+import id.hananote.data.TapeItem
+import id.hananote.data.TapeShape
 import java.io.File
 import id.hananote.data.PageContent
 import id.hananote.data.PageMeta
@@ -68,6 +70,7 @@ object InkRenderer {
         Tool.PENCIL -> base * (0.75f + 0.35f * p)
         Tool.MARKER, Tool.HIGHLIGHTER, Tool.ERASER, Tool.LINE -> base
         Tool.WATERCOLOR -> base * (0.45f + 0.85f * p)
+        Tool.TAPE -> base
     }
 
     private val darkenMode = PorterDuffXfermode(PorterDuff.Mode.DARKEN)
@@ -759,6 +762,7 @@ object InkRenderer {
                 }
             }
             is CalendarItem -> drawCalendar(c, item, paint)
+            is TapeItem -> drawTape(c, item, paint)
             is MindMapItem -> MindMapRenderer.drawItem(c, item)
             is AudioItem -> drawAudio(c, item, paint, playing = false)
             is TableItem -> {
@@ -833,6 +837,48 @@ object InkRenderer {
     private val SUNDAY_RED = 0xFFC62828.toInt()
 
     /** Kalender satu bulan seperti kartu kalender cetak, Senin di kiri dan Minggu berwarna merah. */
+    private val tapePath = ThreadLocal.withInitial { Path() }
+
+    /**
+     * Selotip hafalan (belum diputar). Tertutup: warna pekat menutupi isi di bawahnya, dengan tepi sedikit lebih
+     * gelap seperti pita kertas. Terbuka: sisa warna tipis dan garis tepi samar, supaya isinya terbaca tetapi
+     * letak selotipnya tetap kelihatan. [alpha] untuk pratinjau saat sedang ditarik.
+     */
+    fun drawTape(c: Canvas, tp: TapeItem, paint: Paint, alpha: Float = 1f) {
+        val path = tapePath.get() ?: Path()
+        Tapes.outline(tp, path)
+        val dark = darken(tp.color, 0.82f)
+        paint.isAntiAlias = true
+        paint.pathEffect = null
+        if (tp.shape == TapeShape.FREE) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeJoin = Paint.Join.ROUND
+            paint.strokeWidth = max(tp.thick, 1f)
+            paint.color = withAlpha(tp.color, (if (tp.covered) 1f else 0.16f) * alpha)
+            c.drawPath(path, paint)
+            paint.strokeCap = Paint.Cap.BUTT
+            paint.strokeJoin = Paint.Join.MITER
+            return
+        }
+        paint.style = Paint.Style.FILL
+        paint.color = withAlpha(tp.color, (if (tp.covered) 1f else 0.16f) * alpha)
+        c.drawPath(path, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeWidth = if (tp.covered) 0.7f else 0.8f
+        paint.color = withAlpha(dark, (if (tp.covered) 0.9f else 0.45f) * alpha)
+        c.drawPath(path, paint)
+        paint.strokeJoin = Paint.Join.MITER
+    }
+
+    private fun darken(color: Int, k: Float): Int {
+        val r = ((color shr 16 and 0xFF) * k).toInt()
+        val g = ((color shr 8 and 0xFF) * k).toInt()
+        val b = ((color and 0xFF) * k).toInt()
+        return (color and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+    }
+
     private fun drawCalendar(c: Canvas, item: CalendarItem, paint: Paint) {
         val l = item.x
         val t = item.y
@@ -1047,6 +1093,8 @@ object InkRenderer {
         for (o in all) {
             when (o) {
                 is PageItem -> {
+                    // Selotip hafalan selalu di atas semua isi halaman, digambar paling akhir.
+                    if (o is TapeItem) continue
                     itemBounds(o, box)
                     if (vis == null || RectF.intersects(box, vis)) {
                         val m = masks?.get(o)
@@ -1098,6 +1146,11 @@ object InkRenderer {
             }
         }
         if (layer >= 0) c.restoreToCount(layer)
+        for (o in its) {
+            if (o !is TapeItem) continue
+            itemBounds(o, box)
+            if (vis == null || RectF.intersects(box, vis)) drawItem(c, o, itemPaint, imageDir, scale)
+        }
     }
 
     /**

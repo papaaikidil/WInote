@@ -42,6 +42,8 @@ import java.io.File
 import id.hananote.data.TextLists
 import id.hananote.data.EraserMode
 import id.hananote.data.TableItem
+import id.hananote.data.TapeItem
+import id.hananote.data.TapeShape
 import id.hananote.data.Align
 import id.hananote.data.MindMapItem
 import id.hananote.data.MindMaps
@@ -119,6 +121,8 @@ class InkView(context: Context) : View(context) {
     var eraseImages: Boolean = true
     var fingerDraws: Boolean = true
     var shapeKind: ShapeKind = ShapeKind.RECT
+    /** Bentuk selotip hafalan yang ditempel dengan alat Selotip. */
+    var tapeShape: TapeShape = TapeShape.STRAIGHT
     var imageDir: File? = null
     var accentColor: Int = 0xFF6E3A5E.toInt()
         set(value) {
@@ -304,7 +308,7 @@ class InkView(context: Context) : View(context) {
     private val afterBake = ArrayList<Runnable>()
 
     // ---- sentuhan ----
-    private enum class Mode { NONE, DRAW, ERASE, SHAPE, PAN, ZOOM, IGNORE, RULER, SELECT, TURN, TYPESEL, TYPEOUT, MAPNODE, MAPBLANK, CHECKTAP, TABLELINE }
+    private enum class Mode { NONE, DRAW, ERASE, SHAPE, PAN, ZOOM, IGNORE, RULER, SELECT, TURN, TYPESEL, TYPEOUT, MAPNODE, MAPBLANK, CHECKTAP, TABLELINE, TAPE, TAPETAP }
     private var mode = Mode.NONE
     private var activePointer = -1
     private var activeIsFinger = false
@@ -473,6 +477,22 @@ class InkView(context: Context) : View(context) {
     private var focusX = 0f
     private var focusY = 0f
     private var focusDist = 1f
+
+    // ---- selotip hafalan ----
+    private var tapeX0 = 0f
+    private var tapeY0 = 0f
+    private var tapeX1 = 0f
+    private var tapeY1 = 0f
+    /** Jalur selotip bebas (x, y bergantian, satuan halaman) dan panjangnya. */
+    private var tapePts = FloatArray(256)
+    private var tapeN = 0
+    private var tapeLen = 0f
+    /** Selotip yang disentuh pena saat menulis: diketuk = buka/tutup, digeser = menulis seperti biasa. */
+    private var tapeHit: TapeItem? = null
+    private var tapeDownP = 0.5f
+    private var tapeDownT = 0L
+    private val tapePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val tapeBox = RectF()
 
     // ---- bentuk ----
     private var shapeX0 = 0f
@@ -1482,6 +1502,7 @@ class InkView(context: Context) : View(context) {
                 table = item is TableItem,
                 ink = ink,
                 textSize = (item as? StickyItem)?.textSize,
+                recolor = item is TapeItem,
             )
             text != null -> SelectionInfo(
                 "Teks", null, text.text, align = text.align, grouped = grouped, arrangeable = true,
@@ -1496,7 +1517,7 @@ class InkView(context: Context) : View(context) {
                 }
                 SelectionInfo(
                     kind, null, null, multi = true, grouped = grouped, arrangeable = arrangeable,
-                    recolor = selStrokes.isNotEmpty() || selTexts.isNotEmpty(), ink = ink,
+                    recolor = selStrokes.isNotEmpty() || selTexts.isNotEmpty() || selItems.any { it is TapeItem }, ink = ink,
                 )
             }
         }
@@ -1620,7 +1641,8 @@ class InkView(context: Context) : View(context) {
         local[1] = cy + lx * s + ly * c
     }
 
-    private fun itemContains(item: PageItem, px: Float, py: Float, pad: Float): Boolean = item.containsPoint(px, py, pad)
+    private fun itemContains(item: PageItem, px: Float, py: Float, pad: Float): Boolean =
+        if (item is TapeItem) Tapes.hit(item, px, py, pad) else item.containsPoint(px, py, pad)
 
     private fun insideSelection(px: Float, py: Float, pad: Float): Boolean {
         toLocal(px, py, selRect.centerX(), selRect.centerY(), selRotation())
@@ -1822,7 +1844,7 @@ class InkView(context: Context) : View(context) {
      */
     private fun redrawWhenIdle(pageId: String, r: RectF?) {
         if (page?.id != pageId || !isAttachedToWindow) return
-        if (builder != null || mode == Mode.ERASE || mode == Mode.SHAPE || gestureActive) {
+        if (builder != null || mode == Mode.ERASE || mode == Mode.SHAPE || mode == Mode.TAPE || gestureActive) {
             postDelayed({ redrawWhenIdle(pageId, r) }, 150)
             return
         }
@@ -2472,6 +2494,13 @@ class InkView(context: Context) : View(context) {
                 InkRenderer.drawStroke(canvas, s, livePaint, livePath)
             }
         }
+        if (mode == Mode.TAPE && tapeMovedEnough()) buildTape()?.let { tp ->
+            canvas.save()
+            if (tp.rotation != 0f) canvas.rotate(tp.rotation, tp.cx, tp.cy)
+            tapePaint.reset()
+            InkRenderer.drawTape(canvas, tp, tapePaint, 0.85f)
+            canvas.restore()
+        }
         lifted?.let { l ->
             val preview = widthPreview
             if (preview != null && (dragCorner == 5 || dragCorner == 6)) {
@@ -3110,6 +3139,8 @@ class InkView(context: Context) : View(context) {
         val py = pp.y
         val audio = audioAt(px, py)
         if (audio != null) { onAudioTapped?.invoke(audio); return }
+        // Selotip hafalan diketuk (juga di mode baca): buka atau tutup.
+        tapeAt(px, py)?.let { toggleTape(it); return }
         // Mode baca: rekaman bisa diputar dan link bisa dibuka, selebihnya tidak bisa diubah.
         if (readOnly) { openLinkAt(vx, vy); return }
         if (toggleCheckboxAt(px, py)) return
@@ -4367,7 +4398,7 @@ class InkView(context: Context) : View(context) {
         val i = e.actionIndex
         val stylus = isStylus(e, i)
         when (mode) {
-            Mode.DRAW, Mode.ERASE, Mode.SHAPE -> {
+            Mode.DRAW, Mode.ERASE, Mode.SHAPE, Mode.TAPE -> {
                 if (activeIsFinger) {
                     cancelStroke()
                     if (stylus) {
@@ -4391,6 +4422,7 @@ class InkView(context: Context) : View(context) {
             }
             Mode.SELECT, Mode.TURN -> Unit
             Mode.CHECKTAP -> if (!stylus) startZoom(e, skip = -1)
+            Mode.TAPETAP -> if (!stylus) { tapeHit = null; startZoom(e, skip = -1) }
             Mode.TABLELINE -> Unit
             Mode.TYPESEL, Mode.TYPEOUT, Mode.MAPNODE, Mode.MAPBLANK -> {
                 if (!stylus) {
@@ -4447,6 +4479,18 @@ class InkView(context: Context) : View(context) {
                 val pp = toPage(e.getX(i), e.getY(i))
                 shapeX1 = pp.x; shapeY1 = pp.y
                 invalidate()
+            }
+            Mode.TAPE -> {
+                val i = e.findPointerIndex(activePointer)
+                if (i < 0) return
+                for (h in 0 until e.historySize) tapeMove(e.getHistoricalX(i, h), e.getHistoricalY(i, h))
+                tapeMove(e.getX(i), e.getY(i))
+                invalidate()
+            }
+            Mode.TAPETAP -> {
+                val i = e.findPointerIndex(activePointer)
+                if (i < 0) return
+                if (hypot(e.getX(i) - downX, e.getY(i) - downY) > touchSlop) inkFromTapeTap(e, i)
             }
             Mode.SELECT -> {
                 val i = e.findPointerIndex(activePointer)
@@ -4544,6 +4588,8 @@ class InkView(context: Context) : View(context) {
             Mode.DRAW -> if (id == activePointer) { commitStroke(); mode = Mode.IGNORE }
             Mode.ERASE -> if (id == activePointer) { commitErase(); mode = Mode.IGNORE }
             Mode.SHAPE -> if (id == activePointer) { commitShape(); mode = Mode.IGNORE }
+            Mode.TAPE -> if (id == activePointer) { commitTape(); mode = Mode.IGNORE }
+            Mode.TAPETAP -> if (id == activePointer) { tapeHit?.let { toggleTape(it) }; tapeHit = null; mode = Mode.IGNORE }
             Mode.SELECT -> if (id == activePointer) { selectUp(commit = true); mode = Mode.IGNORE }
             Mode.TURN -> if (id == activePointer) { releaseTurn(commit = true); mode = Mode.IGNORE }
             Mode.TYPESEL -> if (id == activePointer) { typeUp(); mode = Mode.IGNORE }
@@ -4589,6 +4635,11 @@ class InkView(context: Context) : View(context) {
             }
             Mode.ERASE -> commitErase()
             Mode.SHAPE -> if (commit) commitShape()
+            Mode.TAPE -> if (commit) commitTape() else invalidate()
+            Mode.TAPETAP -> {
+                if (commit) tapeHit?.let { toggleTape(it) }
+                tapeHit = null
+            }
             Mode.SELECT -> selectUp(commit)
             Mode.CHECKTAP -> if (commit) toggleCheckboxAt(checkTapX, checkTapY)
             Mode.TABLELINE -> tableLineUp(commit)
@@ -4669,6 +4720,30 @@ class InkView(context: Context) : View(context) {
             invalidate()
             return
         }
+        if (inputMode == InputMode.TAPE) {
+            mode = Mode.TAPE
+            val pp = toPage(e.getX(i), e.getY(i))
+            tapeX0 = pp.x; tapeY0 = pp.y; tapeX1 = pp.x; tapeY1 = pp.y
+            tapeN = 0
+            tapeLen = 0f
+            tapeAddPoint(pp.x, pp.y)
+            invalidate()
+            return
+        }
+        if (inputMode == InputMode.INK) {
+            // Pena di atas selotip hafalan: tunggu dulu, diketuk berarti buka/tutup, digeser berarti menulis.
+            val pp = toPage(e.getX(i), e.getY(i))
+            val hit = tapeAt(pp.x, pp.y)
+            if (hit != null) {
+                mode = Mode.TAPETAP
+                tapeHit = hit
+                downX = e.getX(i)
+                downY = e.getY(i)
+                tapeDownP = e.getPressure(i)
+                tapeDownT = e.eventTime
+                return
+            }
+        }
         if (inputMode == InputMode.SHAPE) {
             mode = Mode.SHAPE
             val pp = toPage(e.getX(i), e.getY(i))
@@ -4733,6 +4808,7 @@ class InkView(context: Context) : View(context) {
         val niAt = ArrayList<Int>()
         for (i in items.indices.reversed()) {
             val it = items[i]
+            if (it is TapeItem) continue
             InkRenderer.itemBounds(it, box)
             if (!RectF.intersects(box, m.bounds)) continue
             val local = SoftMasks.itemToLocal(it, m) ?: continue
@@ -4832,6 +4908,133 @@ class InkView(context: Context) : View(context) {
         contentChanged()
     }
 
+    // ---- selotip hafalan ----
+
+    private fun tapeAddPoint(x: Float, y: Float) {
+        if (tapeN * 2 + 2 > tapePts.size) tapePts = tapePts.copyOf(tapePts.size * 2)
+        tapePts[tapeN * 2] = x
+        tapePts[tapeN * 2 + 1] = y
+        tapeN++
+    }
+
+    private fun tapeMove(vx: Float, vy: Float) {
+        val pp = toPage(vx, vy)
+        tapeX1 = pp.x; tapeY1 = pp.y
+        if (tapeShape == TapeShape.FREE && tapeN > 0) {
+            val lx = tapePts[tapeN * 2 - 2]
+            val ly = tapePts[tapeN * 2 - 1]
+            val d = hypot(pp.x - lx, pp.y - ly)
+            if (d >= Tapes.minStep(scale)) {
+                tapeAddPoint(pp.x, pp.y)
+                tapeLen += d
+            }
+        }
+    }
+
+    /** Tarikan cukup jauh untuk jadi selotip (bukan ketukan). */
+    private fun tapeMovedEnough(): Boolean {
+        val far = if (tapeShape == TapeShape.FREE) tapeLen else hypot(tapeX1 - tapeX0, tapeY1 - tapeY0)
+        return far * scale >= 6f * density
+    }
+
+    private fun buildTape(): TapeItem? = when (tapeShape) {
+        TapeShape.STRAIGHT -> Tapes.straight(tapeX0, tapeY0, tapeX1, tapeY1, baseWidth, color)
+        TapeShape.FREE -> Tapes.free(tapePts, tapeN, baseWidth, color)
+        else -> Tapes.shape(tapeShape, tapeX0, tapeY0, tapeX1, tapeY1, max(baseWidth, 8f), color)
+    }
+
+    private fun commitTape() {
+        if (!tapeMovedEnough()) {
+            // Ketukan dengan alat Selotip: buka atau tutup selotip di titik itu.
+            tapeAt(tapeX0, tapeY0)?.let { toggleTape(it) }
+            invalidate()
+            return
+        }
+        val tp = buildTape()
+        mode = Mode.NONE
+        if (tp == null) { invalidate(); return }
+        addItem(tp, selectIt = false)
+    }
+
+    /** Selotip paling atas di titik ini (satuan halaman). */
+    private fun tapeAt(px: Float, py: Float): TapeItem? {
+        val pad = 4f / scale
+        for (k in items.indices.reversed()) {
+            val it = items[k]
+            if (it is TapeItem && Tapes.hit(it, px, py, pad)) return it
+        }
+        return null
+    }
+
+    /** Buka atau tutup satu selotip. Tidak masuk riwayat urungkan (seperti membalik kartu hafalan). */
+    private fun toggleTape(t: TapeItem) {
+        t.covered = !t.covered
+        InkRenderer.itemBounds(t, tapeBox)
+        tapeBox.inset(-3f, -3f)
+        refreshRegion(RectF(tapeBox))
+        onStrokesChanged?.invoke()
+        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    /** Pena yang menyentuh selotip ternyata digeser: tulis seperti biasa mulai dari titik sentuh pertamanya. */
+    private fun inkFromTapeTap(e: MotionEvent, i: Int) {
+        tapeHit = null
+        mode = Mode.DRAW
+        onStrokeStarted?.invoke()
+        rulerEdge = nearRulerEdge(downX, downY)
+        builder = StrokeBuilder(tool, color, baseWidth)
+        smoothP = if (activeIsFinger) 0.5f else tapeDownP.coerceIn(0.05f, 1f)
+        addPoint(downX, downY, tapeDownP, true, tapeDownT)
+        addPoint(e.getX(i), e.getY(i), e.getPressure(i), false, e.eventTime)
+        invalidate()
+    }
+
+    /** Jumlah selotip hafalan di halaman ini, dan berapa yang sedang tertutup. */
+    fun tapeCounts(): Pair<Int, Int> {
+        var all = 0
+        var closed = 0
+        for (it in items) if (it is TapeItem) { all++; if (it.covered) closed++ }
+        return all to closed
+    }
+
+    /** Tutup ([covered] true) atau buka semua selotip di halaman. Hasil: jumlah yang berubah. */
+    fun setAllTapes(covered: Boolean): Int {
+        var n = 0
+        for (it in items) if (it is TapeItem && it.covered != covered) { it.covered = covered; n++ }
+        if (n > 0) {
+            invalidateCache()
+            onStrokesChanged?.invoke()
+        }
+        return n
+    }
+
+    /** Lepas semua selotip di halaman (bisa diurungkan). Hasil: jumlahnya. */
+    fun removeAllTapes(): Int {
+        cancelInteraction()
+        val removed = ArrayList<Pair<Int, PageItem>>()
+        for (i in items.indices.reversed()) if (items[i] is TapeItem) { removed.add(i to items[i]); items.removeAt(i) }
+        if (removed.isEmpty()) return 0
+        if (selItems.any { it is TapeItem }) clearSelection()
+        pushUndo(Change(removedItems = removed))
+        contentChanged()
+        return removed.size
+    }
+
+    /** Penghapus (sebagian atau utuh) mengenai selotip: lepas selotip itu seluruhnya. */
+    private fun eraseTapesAt(px: Float, py: Float, r: Float) {
+        for (idx in items.indices.reversed()) {
+            val it = items[idx]
+            if (it is TapeItem && Tapes.hit(it, px, py, r)) {
+                items.removeAt(idx)
+                erasedItems.add(idx to it)
+                InkRenderer.itemBounds(it, box)
+                box.inset(-4f, -4f)
+                markEraseDirty(box)
+                eraseChanged = true
+            }
+        }
+    }
+
     private fun cancelStroke() {
         if (mode == Mode.ERASE) commitErase()
         builder = null
@@ -4857,9 +5060,11 @@ class InkView(context: Context) : View(context) {
             // Titik yang terlalu rapat tidak perlu diproses satu per satu: jalur penghapus berbentuk kapsul
             // dari titik terakhir yang diproses tetap menutup semuanya.
             if (!eraseLastX.isNaN() && hypot(px - eraseLastX, py - eraseLastY) < r * 0.35f) return
+            eraseTapesAt(px, py, r)
             erasePartial(px, py, r)
             return
         }
+        eraseTapesAt(px, py, r)
         var removed = false
         for (idx in strokes.indices.reversed()) {
             val s = strokes[idx]
@@ -5571,7 +5776,8 @@ class InkView(context: Context) : View(context) {
 
     /** Ganti warna coretan dan teks yang dipilih (bisa diurungkan). */
     fun recolorSelection(color: Int) {
-        if (selStrokes.isEmpty() && selTexts.isEmpty()) return
+        val selTapes = selItems.filterIsInstance<TapeItem>().toHashSet()
+        if (selStrokes.isEmpty() && selTexts.isEmpty() && selTapes.isEmpty()) return
         finishTextAnim()
         val sSet = selStrokes.toHashSet()
         val tSet = selTexts.toHashSet()
@@ -5595,14 +5801,32 @@ class InkView(context: Context) : View(context) {
             texts[i] = n
             rt.add(i to t); nt.add(n); ntAt.add(i)
         }
-        if (rs.isEmpty() && rt.isEmpty()) return
-        pushUndo(Change(removedStrokes = rs, addedStrokes = ns, addedStrokesAt = nsAt, removedTexts = rt, addedTexts = nt, addedTextsAt = ntAt))
+        // Selotip hafalan yang terpilih ikut berganti warna.
+        val ri = ArrayList<Pair<Int, PageItem>>()
+        val ni = ArrayList<PageItem>()
+        val niAt = ArrayList<Int>()
+        for (i in items.indices.reversed()) {
+            val it = items[i]
+            if (it !is TapeItem || it !in selTapes || it.color == color) continue
+            val n = it.withColor(color)
+            items[i] = n
+            ri.add(i to it); ni.add(n); niAt.add(i)
+        }
+        if (rs.isEmpty() && rt.isEmpty() && ri.isEmpty()) return
+        pushUndo(
+            Change(
+                removedStrokes = rs, addedStrokes = ns, addedStrokesAt = nsAt, removedTexts = rt, addedTexts = nt, addedTextsAt = ntAt,
+                removedItems = ri, addedItems = ni, addedItemsAt = niAt,
+            )
+        )
         contentChanged()
         val swapS = HashMap<Stroke, Stroke>()
         rs.forEachIndexed { k, (_, old) -> swapS[old] = ns[k] }
         val swapT = HashMap<TextItem, TextItem>()
         rt.forEachIndexed { k, (_, old) -> swapT[old] = nt[k] }
-        selectObjects(selItems, selTexts.map { swapT[it] ?: it }, selStrokes.map { swapS[it] ?: it }, expand = false)
+        val swapI = HashMap<PageItem, PageItem>()
+        ri.forEachIndexed { k, (_, old) -> swapI[old] = ni[k] }
+        selectObjects(selItems.map { swapI[it] ?: it }, selTexts.map { swapT[it] ?: it }, selStrokes.map { swapS[it] ?: it }, expand = false)
     }
 
     private fun transformStroke(s: Stroke, m: Matrix, widthScale: Float): Stroke {
