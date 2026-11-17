@@ -227,6 +227,47 @@ elif cmd == "gosok3":
         if k == 2:
             ev(1, 330, 0)
         syn()
+elif cmd in ("penacubit", "penaketuk2"):
+    # Pena menggores sebentar (tipe alat pena), jeda 600 ms, lalu dua jari mencubit / mengetuk:
+    # meniru jari dipakai sementara pena masih di tangan.
+    px0, py0 = W * 0.2, H * 0.75
+    down(0, 850, px0, py0)
+    ev(3, 55, 1)  # ABS_MT_TOOL_TYPE = MT_TOOL_PEN
+    ev(1, 330, 1)
+    syn()
+    for i in range(1, 16):
+        move(0, px0 + i * 12 * dp, py0)
+        syn()
+        out.append("usleep 12000")
+    up(0)
+    ev(1, 330, 0)
+    syn()
+    out.append("usleep 600000")
+    x1, y1, x2, y2 = W * 0.35, H * 0.5, W * 0.65, H * 0.5
+    down(0, 860, x1, y1)
+    ev(3, 55, 0)  # MT_TOOL_FINGER
+    ev(1, 330, 1)
+    syn()
+    out.append("usleep 40000")
+    down(1, 861, x2, y2)
+    ev(3, 55, 0)
+    syn()
+    if cmd == "penacubit":
+        out.append("usleep 40000")
+        mx = (x1 + x2) / 2
+        for i in range(1, 21):
+            f = 1 - 0.6 * i / 20
+            move(0, mx + (x1 - mx) * f, y1)
+            move(1, mx + (x2 - mx) * f, y2)
+            syn()
+            out.append("usleep 15000")
+    else:
+        out.append("usleep 80000")
+    up(0)
+    syn()
+    up(1)
+    ev(1, 330, 0)
+    syn()
 elif cmd == "angkat":
     up(0)
     ev(1, 330, 0)

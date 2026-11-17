@@ -359,6 +359,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
 
     private fun onDown(e: MotionEvent) {
         cancelHold()
+        softIgnore = false
         val stylus = isStylus(e, 0)
         if (engine.hover != null) { engine.hover = null; requestRender() }
         if (stylus) {
