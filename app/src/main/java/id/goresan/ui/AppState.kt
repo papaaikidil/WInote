@@ -2292,6 +2292,24 @@ class AppState(val app: Context) : Engine.Listener {
         prefs.putIntList("quickMenu", quickSlots.toList())
     }
 
+    private var systemHints = 0
+    private var systemHintAt = 0L
+
+    /**
+     * Sistem (HyperOS) merebut sentuhan banyak jari di tengah gestur, biasanya karena tangkapan layar tiga jari.
+     * Beri tahu cara mematikannya (paling banyak 3 kali per sesi, berjeda).
+     */
+    fun systemTookGesture() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (systemHints >= 3 || now - systemHintAt < 60_000L) return
+        systemHints++
+        systemHintAt = now
+        showFlash(
+            "Gestur jari direbut sistem. Di Setelan HyperOS › Setelan tambahan › Pintasan gerakan, matikan " +
+                "\"Ambil tangkapan layar\" (geser 3 jari) dan \"Tangkapan layar sebagian\" (tahan 3 jari)",
+        )
+    }
+
     /** Gosok tiga jari di kanvas: bersihkan layer aktif (bisa diurungkan). */
     fun scrubClear() {
         if (modalActive() || !prefs.scrubClear) { Diag.log("Gosok tiga jari diabaikan (mode lain aktif)"); return }

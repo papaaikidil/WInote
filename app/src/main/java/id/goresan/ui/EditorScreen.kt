@@ -537,7 +537,8 @@ private fun FlashOverlay(state: AppState, modifier: Modifier) {
     val msg = state.flash ?: return
     val id = state.flashId
     LaunchedEffect(id) {
-        delay(1600)
+        // Pesan panjang (mis. petunjuk setelan) tampil lebih lama supaya sempat dibaca.
+        delay((1600L + (msg.length - 40).coerceAtLeast(0) * 45L).coerceAtMost(8000L))
         if (state.flashId == id) state.flash = null
     }
     Hint(msg, modifier)

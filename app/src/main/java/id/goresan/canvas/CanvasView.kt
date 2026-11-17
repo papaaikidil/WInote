@@ -258,6 +258,35 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
 
     private fun penRecent() = SystemClock.uptimeMillis() - lastStylus < palmMs
 
+    /**
+     * Sentuhan lebih lebar dari ini dianggap telapak tangan. Diukur dalam milimeter fisik (18 mm, paling kecil 60 dp):
+     * di layar rapat seperti Xiaomi Pad 7, 60 dp hanya ±9 mm sehingga ujung jari biasa sering dikira telapak tangan.
+     */
+    private val palmPx: Float = run {
+        val dm = resources.displayMetrics
+        val dpi = if (dm.xdpi in 100f..800f) dm.xdpi else dm.densityDpi.toFloat()
+        max(60f * dm.density, 18f / 25.4f * dpi)
+    }
+
+    private fun big(e: MotionEvent, i: Int) = e.getTouchMajor(i) > palmPx
+
+    /** Jari pertama diabaikan hanya karena pena baru dipakai/melayang (bukan karena lebar): jari kedua boleh cubit. */
+    private var softIgnore = false
+    private var softIgnoreT = 0L
+
+    // ---- catatan diagnosis sentuhan (dibatasi supaya laporan tidak penuh) ----
+    private var touchLogs = 0
+    private fun touchLog(msg: String) {
+        if (touchLogs >= 40) return
+        touchLogs++
+        Diag.log("Sentuh: $msg")
+    }
+    private fun mm(px: Float): String {
+        val dm = resources.displayMetrics
+        val dpi = if (dm.xdpi in 100f..800f) dm.xdpi else dm.densityDpi.toFloat()
+        return String.format(java.util.Locale.US, "%.1f mm", px / dpi * 25.4f)
+    }
+
     /** Saat terakhir pena benar-benar menyentuh layar (melayang tidak dihitung). */
     private var lastPenTouch = 0L
 
@@ -311,7 +340,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         // Pena sedang menggores, sementara sentuhan datang dari perangkat lain sebagai aliran terpisah (Android 15+):
         // itu jari/telapak tangan. Jangan ganggu goresan pena; jari yang menyentuh saat bentuk ditahan = bentuk presisi.
         if (mode == Mode.DRAW && !drawFinger && drawDevice != -1 && e.deviceId != drawDevice) {
-            if (e.actionMasked == MotionEvent.ACTION_DOWN && !isStylus(e, 0) && e.getTouchMajor(0) <= 60f * density) {
+            if (e.actionMasked == MotionEvent.ACTION_DOWN && !isStylus(e, 0) && !big(e, 0)) {
                 constrainShape()
             }
             return true
@@ -373,7 +402,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 beginDraw(e, 0, finger = false)
                 return
             }
-            if (penRecent() || e.getTouchMajor(0) > 60f * density) {
+            if (penRecent() || big(e, 0)) {
                 mode = Mode.IGNORE
                 return
             }
@@ -391,7 +420,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         }
         if (state.xfActive) {
             // Palm saat pena baru dipakai tidak ikut menggeser kotak.
-            if (!stylus && (penRecent() || e.getTouchMajor(0) > 60f * density)) {
+            if (!stylus && (penRecent() || big(e, 0))) {
                 mode = Mode.IGNORE
                 return
             }
@@ -402,7 +431,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         if (state.fillActive) state.fillDone(true)
         val k = state.adjustKind
         if (k >= 0 && k != Adj.CLONE) {
-            val palm = !stylus && (penRecent() || e.getTouchMajor(0) > 60f * density)
+            val palm = !stylus && (penRecent() || big(e, 0))
             when {
                 palm -> mode = Mode.IGNORE
                 k == Adj.LIQUIFY || state.adjPenActive -> beginLiq(e, 0, finger = !stylus)
@@ -419,7 +448,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         }
         if (state.selTool) {
             // Alat pilihan: pena/jari membuat pilihan (telapak tangan diabaikan).
-            if (!stylus && (penRecent() || e.getTouchMajor(0) > 60f * density)) {
+            if (!stylus && (penRecent() || big(e, 0))) {
                 mode = Mode.IGNORE
                 return
             }
@@ -437,10 +466,17 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             return
         }
         // Jari menyentuh saat pena baru saja dipakai/melayang: anggap telapak tangan.
-        if (penRecent() || e.getTouchMajor(0) > 60f * density) {
+        if (penRecent() || big(e, 0)) {
             mode = Mode.IGNORE
+            softIgnore = !big(e, 0) && !penTouchRecent()
+            softIgnoreT = e.eventTime
+            touchLog(
+                "jari pertama diabaikan (" + (if (big(e, 0)) "lebar ${mm(e.getTouchMajor(0))}" else "pena baru dipakai/melayang") +
+                    ", batas ${mm(palmPx)})",
+            )
             return
         }
+        softIgnore = false
         downX = e.getX(0); downY = e.getY(0)
         if (state.prefs.fingerDraws) {
             requestUnbufferedDispatch(e)
@@ -458,7 +494,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         val i = e.actionIndex
         val stylus = isStylus(e, i)
         when (mode) {
-            Mode.DRAW -> if (!stylus && engine.shapeActive && e.getTouchMajor(i) <= 60f * density) {
+            Mode.DRAW -> if (!stylus && engine.shapeActive && !big(e, i)) {
                 // Bentuk otomatis sedang ditahan + satu jari menyentuh: jadikan presisi (seperti QuickShape Procreate).
                 constrainShape()
             } else {
@@ -483,7 +519,13 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 }
             }
             Mode.NAV -> startNav(e)
-            Mode.IGNORE -> if (stylus) {
+            Mode.IGNORE -> if (!stylus && softIgnore && !penTouchRecent() && !big(e, i) && e.eventTime - softIgnoreT < 400L &&
+                !state.modalActive()
+            ) {
+                // Dua jari hampir bersamaan saat pena hanya melayang: ini cubit/geser/putar, bukan telapak tangan.
+                softIgnore = false
+                startNav(e)
+            } else if (stylus) {
                 when {
                     state.selTool -> beginSel(e, i)
                     state.adjustKind == Adj.LIQUIFY || state.adjPenActive -> beginLiq(e, i, finger = false)
@@ -1489,8 +1531,9 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 stopRepeat()
                 mtDown.clear()
                 // Pena yang sekadar melayang tidak lagi menahan ketukan; hanya sentuhan pena yang baru terjadi.
-                mtActive = !isStylus(e, 0) && e.getTouchMajor(0) <= 60f * density &&
+                mtActive = !isStylus(e, 0) && !big(e, 0) &&
                     !penTouchRecent() && !state.xfActive
+                if (!isStylus(e, 0) && big(e, 0)) touchLog("jari lebar ${mm(e.getTouchMajor(0))} (batas ${mm(palmPx)})")
                 mtStrict = penRecent()
                 mtRepeated = false
                 mtStart = e.eventTime
@@ -1501,7 +1544,11 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                 if (!mtActive) return
                 val i = e.actionIndex
                 val spread = if (mtStrict) 250L else 400L
-                if (mtRepeated || isStylus(e, i) || e.getTouchMajor(i) > 60f * density || e.eventTime - mtStart > spread) {
+                if (mtRepeated || isStylus(e, i) || big(e, i) || e.eventTime - mtStart > spread) {
+                    if (!isStylus(e, i)) touchLog(
+                        "ketukan banyak jari batal (jari ke-${e.pointerCount}: " +
+                            (if (big(e, i)) "lebar ${mm(e.getTouchMajor(i))}" else "jeda ${e.eventTime - mtStart} ms") + ")",
+                    )
                     mtActive = false
                     stopRepeat()
                     return
@@ -1539,6 +1586,8 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             }
             MotionEvent.ACTION_CANCEL -> {
                 stopRepeat()
+                touchLog("dibatalkan sistem (${e.pointerCount} jari, ${e.eventTime - mtStart} ms)")
+                if (e.pointerCount >= 3 || sw3 || mtMax >= 2) post { state.systemTookGesture() }
                 // Sistem merebut geser tiga jari (mis. tangkapan layar HyperOS) setelah jari sempat turun: tetap buka menu.
                 if (sw3 && sw3Dy > 30f * density && state.prefs.swipe3Menu) {
                     sw3 = false

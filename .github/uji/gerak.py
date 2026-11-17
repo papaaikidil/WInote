@@ -50,11 +50,20 @@ def syn():
     out.append(f"cat /data/local/tmp/g/{name} > {dev}")
 
 
+# Lebar sentuhan jari (mm) bila JARI_MM diisi: seperti layar tablet asli (emulator bawaan melaporkan 0).
+JARI_MM = float(os.environ.get("JARI_MM", "0") or 0)
+
+
 def down(slot, tid, x, y):
     ev(3, 47, slot)
     ev(3, 57, tid)
     ev(3, 53, sx(x))
     ev(3, 54, sy(y))
+    if JARI_MM > 0:
+        px = JARI_MM / 25.4 * dens
+        raw = int(px * maxx / max(1, W - 1))
+        ev(3, 48, raw)
+        ev(3, 49, int(raw * 0.8))
     # Tanpa tekanan > 0, Android menganggap sentuhan ini "melayang".
     ev(3, 58, 600)
 
