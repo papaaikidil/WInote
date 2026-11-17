@@ -1436,7 +1436,8 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             else -> if (x < scExt) scExt = x else if (x - scExt > amp) { scTurns++; scDir = 1; scExt = x }
         }
         val dy = kotlin.math.abs(avg3(e, true) - sw3Y)
-        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 2000L) {
+        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 2500L) {
+            Diag.log("Gosok tiga jari: ${e.eventTime - sw3T} ms, $scTurns kali balik")
             endSwipe3()
             post { state.scrubClear() }
         }
@@ -1456,6 +1457,8 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                     sw3Dy = 0f
                     scDir = 0
                     scTurns = 0
+                } else if (e.pointerCount == 3) {
+                    Diag.log("Tiga jari tidak dihitung: jeda ${e.eventTime - mtStart} ms, jari=$finger")
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -1472,7 +1475,10 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
                     post { state.openClipMenu() }
                 }
             }
-            MotionEvent.ACTION_POINTER_UP -> if (e.pointerCount <= 3) sw3 = false
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (sw3 && e.pointerCount == 3 && scTurns > 0) Diag.log("Gosok tiga jari berhenti: $scTurns kali balik, ${e.eventTime - sw3T} ms")
+                if (e.pointerCount <= 3) sw3 = false
+            }
         }
     }
 

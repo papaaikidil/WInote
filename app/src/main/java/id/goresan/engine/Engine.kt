@@ -3579,7 +3579,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     fun clearLayer(id: Int) {
         val d = doc ?: return
-        if (modal || strokeActive) return
+        if (strokeActive) commitStroke()
+        if (modal) return
         val l = d.find(id) ?: return
         if (l.locked) { post { listener.onMessage("Layer ini terkunci") }; return }
         val full = IRect(0, 0, W, H)

@@ -2294,7 +2294,7 @@ class AppState(val app: Context) : Engine.Listener {
 
     /** Gosok tiga jari di kanvas: bersihkan layer aktif (bisa diurungkan). */
     fun scrubClear() {
-        if (modalActive() || !prefs.scrubClear) return
+        if (modalActive() || !prefs.scrubClear) { Diag.log("Gosok tiga jari diabaikan (mode lain aktif)"); return }
         val owner = layers.firstOrNull { it.mask?.id == activeLayerId }
         val l = layers.firstOrNull { it.id == activeLayerId } ?: owner
         val id = activeLayerId
