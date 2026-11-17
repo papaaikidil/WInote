@@ -1,0 +1,14 @@
+Starting: Intent { act=id.hananote.action.NEW_NOTE cmp=id.hananote.app/id.hananote.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.hananote.MainActivity
+TotalTime: 3153
+WaitTime: 3155
+Complete
+Starting: Intent { act=id.hananote.action.OPEN_NOTE cmp=id.hananote.app/id.hananote.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: id.hananote.app/id.hananote.MainActivity
+TotalTime: 1971
+WaitTime: 1972
+Complete

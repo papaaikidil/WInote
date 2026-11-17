@@ -1,0 +1,80 @@
+11-17 13:54:24.875  9611  9611 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:54:25.942  9611  9611 D AndroidRuntime: Shutting down VM
+11-17 13:54:29.186  9641  9641 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:54:29.189  9641  9641 I AndroidRuntime: Using default boot image
+11-17 13:54:29.189  9641  9641 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:54:29.271  9641  9641 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:54:30.331  9641  9641 D AndroidRuntime: Shutting down VM
+11-17 13:54:40.796  6261  9735 W id.hananote.app: Accessing hidden field Ljava/io/FileDescriptor;->descriptor:I (unsupported, JNI, allowed)
+11-17 13:54:43.704   517  1654 I ActivityManager: Force stopping id.hananote.app appid=10174 user=0: from pid 9752
+11-17 13:54:43.705   517  1654 I ActivityManager: Killing 6261:id.hananote.app/u0a174 (adj 700): stop id.hananote.app due to from pid 9752
+11-17 13:54:43.705   517  1654 W ActivityTaskManager: Force removing ActivityRecord{5578534 u0 id.hananote.app/id.hananote.MainActivity} t9 f}}: app died, no saved state
+11-17 13:54:43.705   517   546 W UsageStatsService: Unexpected activity event reported! (id.hananote.app/id.hananote.MainActivity event : 23 instanceId : 165277703)
+11-17 13:54:43.705   517  1654 W InputManager-JNI: Input channel object '9ae2ed7 id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-17 13:54:43.772   517  1908 V ActivityManager: Got obituary of 6261:id.hananote.app
+11-17 13:54:43.783  1067  1067 D CarrierSvcBindHelper: onHandleForceStop: [id.hananote.app]
+11-17 13:54:45.828  9759  9759 W ls      : type=1400 audit(0.0:53): avc: denied { ioctl } for path="socket:[98216]" dev="sockfs" ino=98216 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:54:45.828  9759  9759 W ls      : type=1400 audit(0.0:54): avc: denied { ioctl } for path="socket:[98216]" dev="sockfs" ino=98216 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:54:45.853   517  1908 I ActivityTaskManager: START u0 {act=id.hananote.action.OPEN_NOTE flg=0x10000000 cmp=id.hananote.app/id.hananote.MainActivity (has extras)} from uid 0
+11-17 13:54:45.828  9759  9759 W ls      : type=1400 audit(0.0:55): avc: denied { ioctl } for path="socket:[98216]" dev="sockfs" ino=98216 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:54:45.860   517   919 D CoreBackPreview: Window{2bcf168 u0 Splash Screen id.hananote.app}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@63aa26, mPriority=0}
+11-17 13:54:45.828  9759  9759 W ls      : type=1400 audit(0.0:56): avc: denied { ioctl } for path="socket:[98218]" dev="sockfs" ino=98218 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:54:45.902   517   548 I ActivityManager: Start proc 9767:id.hananote.app/u0a174 for next-top-activity {id.hananote.app/id.hananote.MainActivity}
+11-17 13:54:45.925  9767  9767 I id.hananote.app: Late-enabling -Xcheck:jni
+11-17 13:54:45.961  9767  9767 I id.hananote.app: Using CollectorTypeCC GC.
+11-17 13:54:45.962  9767  9767 W id.hananote.app: Unexpected CPU variant for x86: x86_64.
+11-17 13:54:45.962  9767  9767 W id.hananote.app: Known variants: atom, sandybridge, silvermont, kabylake, default
+11-17 13:54:46.106  9767  9767 W ziparchive: Unable to open '/data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/base.dm': No such file or directory
+11-17 13:54:46.110  9767  9767 W ziparchive: Unable to open '/data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/base.dm': No such file or directory
+11-17 13:54:46.760  9767  9767 D nativeloader: Configuring classloader-namespace for other apk /data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/lib/x86_64:/data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/id.hananote.app
+11-17 13:54:46.765  9767  9767 V GraphicsEnvironment: ANGLE Developer option for 'id.hananote.app' set to: 'default'
+11-17 13:54:46.765  9767  9767 V GraphicsEnvironment: ANGLE GameManagerService for id.hananote.app: false
+11-17 13:54:46.852   517  2686 D CoreBackPreview: Window{63da5dc u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@62375ba, mPriority=0}
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Common causes for lock verification issues are non-optimized dex code
+11-17 13:54:46.997  9767  9767 W id.hananote.app: and incorrect proguard optimizations.
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateList.conditionalUpdate$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateList.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update(boolean, kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:46.997  9767  9767 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateList.update$default(androidx.compose.runtime.snapshots.SnapshotStateList, boolean, kotlin.jvm.functions.Function1, int, java.lang.Object) failed lock verification and will run slower.
+11-17 13:54:47.826   517   536 W ziparchive: Unable to open '/data/app/~~2fPNrhxkC2avq_0SfnAt-Q==/id.hananote.app-ikbpUNBGyr5iPi21090YRQ==/base.dm': No such file or directory
+11-17 13:54:47.827   517   536 I ActivityTaskManager: Displayed id.hananote.app/id.hananote.MainActivity: +1s971ms
+11-17 13:54:47.869   517  1908 D CoreBackPreview: Window{2bcf168 u0 Splash Screen id.hananote.app EXITING}: Setting back callback null
+11-17 13:54:47.870   517  2686 W InputManager-JNI: Input channel object '2bcf168 Splash Screen id.hananote.app (client)' was disposed without first being removed with the input manager!
+11-17 13:54:47.939  9767  9767 W id.hananote.app: Method java.lang.Object androidx.compose.runtime.snapshots.SnapshotStateMap.mutate(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:47.939  9767  9767 W id.hananote.app: Method void androidx.compose.runtime.snapshots.SnapshotStateMap.update(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:47.939  9767  9767 W id.hananote.app: Method boolean androidx.compose.runtime.snapshots.SnapshotStateMap.removeIf$runtime_release(kotlin.jvm.functions.Function1) failed lock verification and will run slower.
+11-17 13:54:48.381  1620  1620 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-17 13:54:52.357  9767  9818 D ProfileInstaller: Installing profile for id.hananote.app
+11-17 13:55:00.255  9824  9824 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:55:00.258  9824  9824 I AndroidRuntime: Using default boot image
+11-17 13:55:00.258  9824  9824 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:55:00.341  9824  9824 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:55:01.441  9824  9824 D AndroidRuntime: Shutting down VM
+11-17 13:55:05.368  9857  9857 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:55:05.370  9857  9857 I AndroidRuntime: Using default boot image
+11-17 13:55:05.370  9857  9857 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:55:05.435  9857  9857 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:55:06.516  9857  9857 D AndroidRuntime: Shutting down VM
+11-17 13:55:10.759  9888  9888 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:55:10.762  9888  9888 I AndroidRuntime: Using default boot image
+11-17 13:55:10.762  9888  9888 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:55:10.845  9888  9888 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:55:11.925  9888  9888 D AndroidRuntime: Shutting down VM
+11-17 13:55:16.169  9917  9917 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:55:16.171  9917  9917 I AndroidRuntime: Using default boot image
+11-17 13:55:16.171  9917  9917 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:55:16.247  9917  9917 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:55:17.323  9917  9917 D AndroidRuntime: Shutting down VM
+11-17 13:55:21.341  9767  9775 I id.hananote.app: Compiler allocated 4355KB to compile void android.view.ViewRootImpl.performTraversals()
+11-17 13:55:23.286  9767  9775 I id.hananote.app: JIT allocated 58KB for compiled code of void id.hananote.ui.EditorScreenKt$TabletEditor$2.invoke(androidx.compose.foundation.layout.PaddingValues, androidx.compose.runtime.Composer, int)
+11-17 13:55:23.287  9767  9775 I id.hananote.app: Compiler allocated 8117KB to compile void id.hananote.ui.EditorScreenKt$TabletEditor$2.invoke(androidx.compose.foundation.layout.PaddingValues, androidx.compose.runtime.Composer, int)
+11-17 13:55:25.061 10025 10025 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-17 13:55:25.063 10025 10025 I AndroidRuntime: Using default boot image
+11-17 13:55:25.063 10025 10025 I AndroidRuntime: Leaving lock profiling enabled
+11-17 13:55:25.143 10025 10025 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-17 13:55:26.212 10025 10025 D AndroidRuntime: Shutting down VM
+11-17 13:55:31.424 10063 10063 W ls      : type=1400 audit(0.0:57): avc: denied { ioctl } for path="socket:[102164]" dev="sockfs" ino=102164 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:55:31.424 10063 10063 W ls      : type=1400 audit(0.0:58): avc: denied { ioctl } for path="socket:[102164]" dev="sockfs" ino=102164 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:55:31.424 10063 10063 W ls      : type=1400 audit(0.0:59): avc: denied { ioctl } for path="socket:[102164]" dev="sockfs" ino=102164 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-17 13:55:31.424 10063 10063 W ls      : type=1400 audit(0.0:60): avc: denied { ioctl } for path="socket:[102166]" dev="sockfs" ino=102166 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
