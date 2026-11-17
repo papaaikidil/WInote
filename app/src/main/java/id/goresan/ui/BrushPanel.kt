@@ -758,6 +758,25 @@ private fun BrushStudio(state: AppState, b: Brush) {
                         LabeledSlider("Opasitas maksimum", b.opacityMax, { up(b.copy(opacityMax = it)) })
                         LabeledSlider("Aliran (flow)", b.flow, { up(b.copy(flow = it)) }, 0.01f..1f, pct)
                         LabeledSlider("Kekuatan baur (smudge)", b.smudgeStrength, { up(b.copy(smudgeStrength = it)) })
+                        LabeledSlider(
+                            "Larut saat dibaurkan" + if (b.smudgeWet < 0f) " (otomatis)" else "",
+                            b.smudgeWetness(),
+                            { up(b.copy(smudgeWet = it)) },
+                        )
+                        if (b.smudgeWet >= 0f) {
+                            Text(
+                                "Kembalikan ke otomatis",
+                                color = Accent,
+                                fontSize = 12.sp,
+                                modifier = Modifier.clickable { up(b.copy(smudgeWet = -1f)) }.padding(vertical = 4.dp),
+                            )
+                        }
+                        SwitchRow(
+                            "Kuas pembaur",
+                            "Dengan alat Kuas pun tidak menambah warna, hanya membaurkan cat yang ada",
+                            b.blender,
+                        ) { up(b.copy(blender = it)) }
+                        Hint("Saat kuas ini dipakai alat Baur: 0% = cat terseret searah tarikan seperti digosok jari; makin tinggi, cat makin larut dan menyatu halus seperti cat air yang dibasahi lagi (tekstur kertas tetap). Otomatis: kuas cat air larut, cat basah setengah-setengah, airbrush agak lembut, lainnya menyeret.")
                     }
                     "Kuas ganda" -> {
                         val others = state.brushes.list.filter { it.id != b.id && !it.stamp }

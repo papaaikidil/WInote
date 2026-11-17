@@ -25,6 +25,7 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.hypot
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -410,6 +411,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var maskTex: Tex? = null
     private var smT: Tex? = null
     private var smCarry: Tex? = null
+    /** Salinan ber-mipmap (256, 512, 1024) area di bawah cap untuk baur larut: rata-rata sekitar tanpa bintik. */
+    private val smMip = arrayOfNulls<Tex>(3)
     private var prevTex: Tex? = null
     private var prevTex2: Tex? = null
     private var mipDirty = true
@@ -652,6 +655,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             doc = null
             comp = null; scratch = null; strokeBuf = null; predBuf = null; preview = null; dualBuf = null; dualPred = null
             backup = null; maskTex = null; smT = null; smCarry = null; prevTex = null; prevTex2 = null
+            smMip.fill(null)
             wetForget()
             undoStack.clear(); redoStack.clear()
             strokeActive = false; substitute = null
@@ -1040,6 +1044,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         listOf(comp, scratch, strokeBuf, predBuf, preview, backup, maskTex, smT, smCarry, prevTex, prevTex2, dualBuf, dualPred).forEach { it?.delete() }
         comp = null; scratch = null; strokeBuf = null; predBuf = null; preview = null; dualBuf = null; dualPred = null
         backup = null; maskTex = null; smT = null; smCarry = null; prevTex = null; prevTex2 = null
+        smMip.forEach { it?.delete() }
+        smMip.fill(null)
         listOf(wetBase, wetF[0], wetF[1], wetW[0], wetW[1], wetFs, wetWs).forEach { it?.delete() }
         wetForget()
         undoStack.clear(); redoStack.clear()
@@ -1610,6 +1616,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             ToolKind.ERASE -> ts.erase
             else -> ts.paint
         }
+        // Kuas pembaur dengan alat Kuas: tidak menambah warna, membaur seperti alat Baur (dengan ukuran/opasitas Kuas).
+        if (strokeTool == ToolKind.PAINT && set.brush.blender && !cloneActive) strokeTool = ToolKind.SMUDGE
         strokeSet = set
         strokeLayer = layer
         strokeColor = ts.color
@@ -2076,27 +2084,95 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         layerChanged(layer, notify = false)
     }
 
+    /** Tepi salinan di sekitar cap untuk baur larut: jangkauan contoh + satu blok mip (bloknya tidak tercampur isi lama). */
+    private fun smMargin(blurR: Float): Int {
+        val lod = max(0f, ln(blurR / 3f) / ln(2f))
+        return ceil(blurR).toInt() + (1 shl (ceil(lod).toInt() + 1)) + 1
+    }
+
+    /** Tekstur ber-mipmap terkecil yang muat [w]×[h] (null bila terlalu besar atau memori grafis penuh). */
+    private fun smMipFor(w: Int, h: Int): Tex? {
+        val k = when {
+            w <= 256 && h <= 256 -> 0
+            w <= 512 && h <= 512 -> 1
+            w <= 1024 && h <= 1024 -> 2
+            else -> return null
+        }
+        smMip[k]?.let { return it }
+        val n = 256 shl k
+        val t = try { Tex(n, n) } catch (e: OutOfMemoryError) { return null }
+        G.glBindTexture(G.GL_TEXTURE_2D, t.id)
+        G.glTexParameteri(G.GL_TEXTURE_2D, G.GL_TEXTURE_MIN_FILTER, G.GL_LINEAR_MIPMAP_LINEAR)
+        G.glGenerateMipmap(G.GL_TEXTURE_2D)
+        G.glBindTexture(G.GL_TEXTURE_2D, 0)
+        smMip[k] = t
+        return t
+    }
+
+    /**
+     * Alat Baur mengikuti kuas yang dipilih: bentuk ujung dan tekstur kuas menentukan bagian yang terbaur, dinamika
+     * tekanan/opasitas menentukan kuatnya, dan [Brush.smudgeWetness] menentukan caranya: menyeret cat searah tarikan
+     * (seperti digosok jari) atau melarutkan cat sehingga warna menyatu halus (kuas cat air: tekstur kertas tetap).
+     */
     private fun renderSmudge(list: DabList, set: BrushSetting) {
         val layer = strokeLayer ?: return
         val t = smT!!
         val carry = smCarry!!
+        val base = backup!!
         val brush = set.brush
         val spacing = min(brush.spacing, 0.08f)
         val strength = brush.smudgeStrength.coerceIn(0.01f, 0.995f)
+        val wet0 = brush.smudgeWetness()
+        val gt = grainTexFor(brush)
         val d = list.data
         val r = IRect()
+        val cr = IRect()
         for (k in 0 until list.size) {
             val o = k * DabList.S
             val x = d[o]; val y = d[o + 1]; val s = d[o + 2]; val a = d[o + 5]
             val rad = s * 0.71f + 1f
             r.set(floor(x - rad).toInt(), floor(y - rad).toInt(), ceil(x + rad).toInt(), ceil(y + rad).toInt())
             r.clampTo(W, H)
-            if (r.isEmpty || r.w > t.w || r.h > t.h) continue
-            blit(layer.tex.fb, r.x0, r.y0, r.x1, r.y1, t.fb, 0, 0, r.w, r.h, false)
+            if (r.isEmpty) continue
+            var wet = wet0
+            var src = t
+            var blurR = 0f
+            var lod = 0f
+            if (wet > 0.001f) {
+                blurR = (s * (0.06f + 0.2f * wet)).coerceIn(1f, 96f)
+                // Cap sangat besar: jangkauan dikecilkan supaya salinannya tetap muat di tekstur 1024.
+                val room = (1024 - max(r.w, r.h)) / 2
+                if (smMargin(blurR) > room) blurR = max(1f, room * 0.4f)
+                lod = max(0f, ln(blurR / 3f) / ln(2f))
+                val margin = smMargin(blurR)
+                cr.set(r.x0 - margin, r.y0 - margin, r.x1 + margin, r.y1 + margin)
+                cr.clampTo(W, H)
+                val m = smMipFor(cr.w, cr.h)
+                if (m == null) {
+                    wet = 0f
+                } else {
+                    blit(layer.tex.fb, cr.x0, cr.y0, cr.x1, cr.y1, m.fb, 0, 0, cr.w, cr.h, false)
+                    G.glBindTexture(G.GL_TEXTURE_2D, m.id)
+                    G.glGenerateMipmap(G.GL_TEXTURE_2D)
+                    G.glBindTexture(G.GL_TEXTURE_2D, 0)
+                    src = m
+                }
+            }
+            if (wet <= 0.001f) {
+                wet = 0f
+                if (r.w > t.w || r.h > t.h) continue
+                cr.set(r.x0, r.y0, r.x1, r.y1)
+                blit(layer.tex.fb, r.x0, r.y0, r.x1, r.y1, t.fb, 0, 0, r.w, r.h, false)
+            }
             if (smudgeFirst) {
                 blit(layer.tex.fb, r.x0, r.y0, r.x1, r.y1, carry.fb, 0, 0, carry.w, carry.h, true)
                 smudgeFirst = false
             }
+            // Kuat seret (rumus lama, ternormalkan jarak cap) dan kuat larut (tekanan/opasitas tanpa aliran kuas).
+            val pressure = max(0.05f, a * set.opacity)
+            val dragK = strength.pow(spacing * 1.5f / pressure)
+            val dyn = (a / max(0.01f, brush.flow)).coerceIn(0f, 1f) * set.opacity
+            val wetK = 1f - (1f - 0.75f * strength * dyn).coerceIn(0f, 1f).pow(spacing / 0.05f)
             G.glBindFramebuffer(G.GL_FRAMEBUFFER, layer.tex.fb)
             G.glViewport(0, 0, W, H)
             G.glDisable(G.GL_BLEND)
@@ -2104,16 +2180,32 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             pSmudge.f2("uTarget", W.toFloat(), H.toFloat())
             pSmudge.f2("uOffset", 0f, 0f)
             pSmudge.tex("uTip", 0, tipTexFor(brush))
-            pSmudge.tex("uCur", 1, t.id)
+            pSmudge.tex("uCur", 1, src.id)
             pSmudge.tex("uCarry", 2, carry.id)
-            pSmudge.f2("uRectMin", r.x0.toFloat(), r.y0.toFloat())
-            pSmudge.f2("uRectSize", r.w.toFloat(), r.h.toFloat())
-            pSmudge.f2("uTSize", t.w.toFloat(), t.h.toFloat())
-            val pressure = max(0.05f, a * set.opacity)
-            pSmudge.f("uStrength", strength.pow(spacing * 1.5f / pressure))
-            pSmudge.i("uAlphaLock", if (layer.alphaLock) 1 else 0)
             pSmudge.tex("uSel", 3, (selTex ?: t).id)
             pSmudge.i("uUseSel", if (selOn) 1 else 0)
+            if (gt != null) {
+                pSmudge.tex("uGrain", 4, gt)
+                pSmudge.f("uGrainStrength", brush.grainStrength)
+                pSmudge.f("uGrainScale", 512f * max(0.05f, brush.grainScale))
+            } else {
+                pSmudge.tex("uGrain", 4, t.id)
+                pSmudge.f("uGrainStrength", 0f)
+                pSmudge.f("uGrainScale", 512f)
+            }
+            pSmudge.tex("uBase", 5, base.id)
+            pSmudge.f2("uCurMin", cr.x0.toFloat(), cr.y0.toFloat())
+            pSmudge.f2("uValid", cr.w.toFloat(), cr.h.toFloat())
+            pSmudge.f2("uRectMin", r.x0.toFloat(), r.y0.toFloat())
+            pSmudge.f2("uRectSize", r.w.toFloat(), r.h.toFloat())
+            pSmudge.f2("uTSize", src.w.toFloat(), src.h.toFloat())
+            pSmudge.f("uStrength", dragK + (wetK - dragK) * wet)
+            pSmudge.f("uWet", wet)
+            pSmudge.f("uBlurR", blurR)
+            pSmudge.f("uLod", lod)
+            pSmudge.f("uRot", wetRnd.nextFloat() * 6.2831855f)
+            pSmudge.f("uDetail", if (wet > 0f) 1f else 0f)
+            pSmudge.i("uAlphaLock", if (layer.alphaLock) 1 else 0)
             pSmudge.f2("uCanvas", W.toFloat(), H.toFloat())
             G.glBindVertexArray(dabVao)
             G.glBindBuffer(G.GL_ARRAY_BUFFER, dabVbo)

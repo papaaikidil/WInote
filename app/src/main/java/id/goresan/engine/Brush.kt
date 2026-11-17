@@ -71,6 +71,14 @@ data class Brush(
     val roundness: Float = 1f,
     val hueJitter: Float = 0f,
     val smudgeStrength: Float = 0.8f,
+    /**
+     * Larut saat dibaurkan (alat Baur, atau kuas pembaur): 0 = cat terseret searah tarikan (seperti digosok jari),
+     * 1 = cat di bawah kuas larut dan menyatu halus seperti cat air yang dibasahi lagi. −1 = otomatis menurut jenis
+     * kuas ([smudgeWetness]).
+     */
+    val smudgeWet: Float = -1f,
+    /** Kuas pembaur: dengan alat Kuas pun tidak menambah warna, hanya membaurkan cat yang ada (seperti alat Baur). */
+    val blender: Boolean = false,
     val defaultSize: Float = 0.3f,
     val builtIn: Boolean = true,
     /** Ujung kuas dari gambar (kuas impor): nama berkas 256×256 di folder kuas; kosong = bentuk bawaan [tip]. */
@@ -232,6 +240,17 @@ data class Brush(
     /** Kuas melukis basah (Wet Mix aktif atau mode blending): cat langsung bercampur dengan cat di kanvas. */
     fun wetMix(): Boolean =
         wmDilution > 0.001f || wmPull > 0.001f || wmCharge < 0.999f || wmBlur > 0.001f || render >= 4
+
+    /**
+     * Seberapa larut cat saat kuas ini dipakai membaur. Otomatis: kuas cat air melarutkan (menyatu halus, tekstur
+     * kertas tetap), cat basah (Wet Mix) sebagian menyeret sebagian melarut, airbrush agak lembut, lainnya menyeret.
+     */
+    fun smudgeWetness(): Float = if (smudgeWet >= 0f) smudgeWet.coerceIn(0f, 1f) else when {
+        watercolor -> 0.85f
+        wetMix() -> (0.2f + wmBlur * 0.6f).coerceIn(0f, 0.7f)
+        tip == TipShape.AIRBRUSH -> 0.4f
+        else -> 0f
+    }
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id); put("name", name); put("category", category)
         put("tip", tip.name); put("grain", grain.name)
@@ -256,6 +275,8 @@ data class Brush(
         if (grainStroke) put("grainStroke", true)
         fun n(k: String, v: Float, d: Float) { if (v != d) put(k, v.toDouble()) }
         fun z(k: String, v: Boolean) { if (v) put(k, true) }
+        if (smudgeWet >= 0f) put("smudgeWet", smudgeWet.toDouble())
+        z("blender", blender)
         n("spacingJitter", spacingJitter, 0f); n("jitterLateral", jitterLateral, 0f); n("jitterLinear", jitterLinear, 0f)
         n("fallOff", fallOff, 0f); n("taperOpacity", taperOpacity, 0f); n("taperTip", taperTip, 0.1f)
         if (count != 1) put("count", count)
@@ -324,6 +345,8 @@ data class Brush(
                 roundness = f("roundness", base.roundness),
                 hueJitter = f("hueJitter", base.hueJitter),
                 smudgeStrength = f("smudgeStrength", base.smudgeStrength),
+                smudgeWet = f("smudgeWet", -1f),
+                blender = o.optBoolean("blender", false),
                 defaultSize = f("defaultSize", base.defaultSize),
                 builtIn = o.optBoolean("builtIn", false),
                 tipFile = o.optString("tipFile", ""),
@@ -518,6 +541,15 @@ object Brushes {
             sizeMax = 120f, sizeMin = 3f, spacing = 0.04f, flow = 0.5f, angleMode = AngleMode.FOLLOW,
             pressureSize = 0.4f, pressureOpacity = 0.4f, defaultSize = 0.4f,
             watercolor = true, wcDensity = 0.7f, wcEdge = 0.35f, wcSoft = 0f, wcBloom = 0.4f, wcGrain = 1f,
+        ),
+        // Pembaur cat air (seperti Wet Blender): tidak menambah warna, cat di bawahnya larut dan menyatu halus,
+        // tekstur kertas tetap. Bisa dipakai dengan alat Kuas maupun alat Baur.
+        Brush(
+            id = "wcpembaur", name = "Pembaur Cat Air", category = "Cat Air",
+            tip = TipShape.SOFT_ROUND, sizeMax = 320f, sizeMin = 8f, spacing = 0.04f, flow = 1f,
+            pressureSize = 0.35f, pressureOpacity = 0.6f, defaultSize = 0.5f,
+            watercolor = true, wcDensity = 0.5f, wcEdge = 0.4f, wcSoft = 0.6f, wcBloom = 0.5f, wcGrain = 0.45f,
+            smudgeStrength = 0.85f, smudgeWet = 1f, blender = true,
         ),
         Brush(
             id = "wcpercik", name = "Percikan Cat Air", category = "Cat Air",

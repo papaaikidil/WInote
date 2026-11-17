@@ -569,7 +569,10 @@ void main() {
 }
 """
 
-    /** Alat baur (smudge): mencampur isi layer di bawah ujung kuas dengan cat yang "terbawa". */
+    /**
+     * Alat baur (smudge): mencampur isi layer di bawah ujung kuas dengan cat yang "terbawa" (terseret), dan menurut
+     * uWet dengan rata-rata cat di sekitarnya (larut). Bentuk dan tekstur kuas ikut menentukan bagian yang terbaur.
+     */
     const val SMUDGE_FS = """#version 300 es
 precision highp float;
 in vec2 vUv;
@@ -578,22 +581,68 @@ in vec2 vPos;
 uniform sampler2D uTip;
 uniform sampler2D uCur;
 uniform sampler2D uCarry;
+uniform sampler2D uBase;
+uniform sampler2D uGrain;
+uniform float uGrainScale;
+uniform float uGrainStrength;
+uniform vec2 uCurMin;
+uniform vec2 uValid;
 uniform vec2 uRectMin;
 uniform vec2 uRectSize;
 uniform vec2 uTSize;
 uniform float uStrength;
+uniform float uWet;
+uniform float uBlurR;
+uniform float uLod;
+uniform float uRot;
+uniform float uDetail;
 uniform int uAlphaLock;
 uniform sampler2D uSel;
 uniform int uUseSel;
 uniform vec2 uCanvas;
 out vec4 o;
+// Contoh cat di sekitar (tingkat mip = rata-rata kotak kecil); tidak boleh keluar dari wilayah salinan yang sah.
+vec4 near(vec2 p) {
+    float e = exp2(uLod + 1.0);
+    vec2 lo = vec2(min(e, uValid.x * 0.5), min(e, uValid.y * 0.5));
+    vec2 q = clamp(p, lo, uValid - lo);
+    return textureLod(uCur, q / uTSize, uLod);
+}
 void main() {
-    vec2 l = vPos - uRectMin;
-    vec4 cur = texture(uCur, l / uTSize);
-    vec4 car = texture(uCarry, l / uRectSize);
-    float m = texture(uTip, vUv).r * uStrength;
+    vec2 l = vPos - uCurMin;
+    vec4 cur = textureLod(uCur, l / uTSize, 0.0);
+    vec4 car = texture(uCarry, (vPos - uRectMin) / uRectSize);
+    float m = texture(uTip, vUv).r;
+    if (uGrainStrength > 0.0) m *= mix(1.0, texture(uGrain, vPos / uGrainScale).r, uGrainStrength);
     if (uUseSel == 1) m *= texture(uSel, vPos / uCanvas).r;
-    vec4 r = mix(cur, car, m);
+    vec4 target = car;
+    if (uWet > 0.0) {
+        // Larut: cat di bawah kuas diganti rata-rata cat di sekitarnya (cakram, 11 contoh spiral emas yang
+        // diputar acak tiap cap). Cap yang saling menumpuk membuat campuran makin luas dan halus.
+        vec4 acc = near(l);
+        for (int i = 0; i < 10; i++) {
+            float fi = float(i) + 0.5;
+            float a = uRot + fi * 2.39996323;
+            acc += near(l + vec2(cos(a), sin(a)) * (sqrt(fi / 10.0) * uBlurR));
+        }
+        vec4 blur = acc / 11.0;
+        // Tekstur halus (butir kertas, granulasi) dari layer sebelum goresan tetap dipertahankan, sedangkan tepi
+        // warna yang tegas (perbedaan besar) tidak ikut, supaya tepinya benar-benar menyatu.
+        vec2 bu = vPos / uCanvas;
+        vec2 px = 1.5 / uCanvas;
+        vec4 b0 = texture(uBase, bu);
+        vec4 bm = (texture(uBase, bu + vec2(px.x, 0.0)) + texture(uBase, bu - vec2(px.x, 0.0))
+            + texture(uBase, bu + vec2(0.0, px.y)) + texture(uBase, bu - vec2(0.0, px.y))
+            + texture(uBase, bu + px) + texture(uBase, bu - px)
+            + texture(uBase, bu + vec2(px.x, -px.y)) + texture(uBase, bu + vec2(-px.x, px.y)) + b0) / 9.0;
+        vec4 det = b0 - bm;
+        float dl = length(det) / 0.15;
+        det *= exp(-dl * dl) * uDetail;
+        target = mix(car, blur + det, uWet);
+    }
+    vec4 r = mix(cur, target, m * uStrength);
+    r.a = clamp(r.a, 0.0, 1.0);
+    r.rgb = clamp(r.rgb, vec3(0.0), vec3(r.a));
     if (uAlphaLock == 1) {
         vec3 c = r.a > 0.0 ? r.rgb / r.a : vec3(0.0);
         r = vec4(c * cur.a, cur.a);
