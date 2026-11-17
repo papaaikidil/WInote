@@ -2261,64 +2261,8 @@ class AppState(val app: Context) : Engine.Listener {
         when (n) {
             2 -> undo()
             3 -> redo()
-            4 -> if (prefs.fourFingerQuick) openQuickMenu() else uiHidden = !uiHidden
+            4 -> uiHidden = !uiHidden
         }
-    }
-
-    // ================= QuickMenu =================
-
-    /** QuickMenu sedang terbuka (nilai tidak dipakai untuk posisi; menu selalu di tengah layar). */
-    var quickMenu by mutableStateOf<Offset?>(null)
-    val quickSlots = mutableStateListOf<Int>().apply {
-        val saved = prefs.getIntList("quickMenu")
-        addAll(if (saved.size == 6) saved else DefaultQuickSlots)
-    }
-
-    fun openQuickMenu() {
-        if (docW <= 0 || textEditing || guideEditing || paperEditing || xfActive) return
-        panel = Panel.NONE
-        quickMenu = Offset.Zero
-    }
-
-    fun setQuickSlot(k: Int, action: Int) {
-        if (k !in 0 until 6) return
-        quickSlots[k] = action
-        prefs.putIntList("quickMenu", quickSlots.toList())
-    }
-
-    fun resetQuickSlots() {
-        quickSlots.clear()
-        quickSlots.addAll(DefaultQuickSlots)
-        prefs.putIntList("quickMenu", quickSlots.toList())
-    }
-
-    private var systemHints = 0
-    private var systemHintAt = 0L
-
-    /**
-     * Sistem (HyperOS) merebut sentuhan banyak jari di tengah gestur, biasanya karena tangkapan layar tiga jari.
-     * Beri tahu cara mematikannya (paling banyak 3 kali per sesi, berjeda).
-     */
-    fun systemTookGesture() {
-        val now = android.os.SystemClock.uptimeMillis()
-        if (systemHints >= 3 || now - systemHintAt < 60_000L) return
-        systemHints++
-        systemHintAt = now
-        showFlash(
-            "Gestur jari direbut sistem. Di Setelan HyperOS › Setelan tambahan › Pintasan gerakan, matikan " +
-                "\"Ambil tangkapan layar\" (geser 3 jari) dan \"Tangkapan layar sebagian\" (tahan 3 jari)",
-        )
-    }
-
-    /** Gosok tiga jari di kanvas: bersihkan layer aktif (bisa diurungkan). */
-    fun scrubClear() {
-        if (modalActive() || !prefs.scrubClear) { Diag.log("Gosok tiga jari diabaikan (mode lain aktif)"); return }
-        val owner = layers.firstOrNull { it.mask?.id == activeLayerId }
-        val l = layers.firstOrNull { it.id == activeLayerId } ?: owner
-        val id = activeLayerId
-        // Masker yang digosok kembali putih (semua tampil), layer biasa jadi kosong.
-        if (owner != null) gl { it.fillWholeLayer(id, Color.WHITE) } else gl { it.clearLayer(id) }
-        showFlash("Layer dibersihkan" + (l?.let { ": ${it.name}" } ?: "") + " · ketuk dua jari untuk mengurungkan")
     }
 
     fun closePanelsFromCanvas(): Boolean {
@@ -3282,17 +3226,10 @@ class AppState(val app: Context) : Engine.Listener {
 
     // ================= potong / salin / tempel =================
 
-    /** Menu Salin & Tempel (geser tiga jari ke bawah di kanvas, atau dari panel Aksi). */
-    var clipMenu by mutableStateOf(false)
+    /** Salin & Tempel (dari panel Aksi). */
     private var clipData: id.goresan.engine.ClipImage? = null
     /** Uri salinan terakhir yang kita taruh di papan klip sistem (supaya tidak ditempel dua kali sebagai gambar luar). */
     private var clipUri: Uri? = null
-
-    fun openClipMenu() {
-        if (docW <= 0 || textEditing || guideEditing || paperEditing) return
-        panel = Panel.NONE
-        clipMenu = true
-    }
 
     /**
      * Salin isi layer aktif (atau gabungan semua layer bila [merged]) di dalam pilihan, atau seluruh isinya.
@@ -3300,7 +3237,6 @@ class AppState(val app: Context) : Engine.Listener {
      * (Duplikat / Pindahkan; papan klip tidak berubah).
      */
     fun clipCopy(merged: Boolean = false, cut: Boolean = false, thenPaste: Boolean = false) {
-        clipMenu = false
         if (docW <= 0 || modalActive()) return
         gl { e ->
             val c = e.clipCopy(merged, cut) ?: return@gl
@@ -3350,7 +3286,6 @@ class AppState(val app: Context) : Engine.Listener {
      * salinan dari WInote ditaruh di tempat asalnya.
      */
     fun clipPaste() {
-        clipMenu = false
         if (docW <= 0 || modalActive()) return
         val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         val item = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) }.getOrNull()

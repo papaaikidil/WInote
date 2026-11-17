@@ -1126,3 +1126,12 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Cubit/geser/putar kanvas tetap jalan walau pena baru saja dipakai atau sedang melayang di dekat layar.
 - Bila HyperOS merebut gestur banyak jari (tangkapan layar tiga jari), muncul petunjuk cara mematikannya.
 - Laporan teknis mencatat lebar jari asli dan alasan gestur tidak dihitung, untuk perbaikan berikutnya.
+
+## Perubahan 0.1.122: Gestur tiga jari dan QuickMenu dihapus
+
+- Atas permintaan (tidak jalan di Xiaomi Pad 7 karena HyperOS memakai sentuhan tiga jari untuk tangkapan layar):
+  **gosok tiga jari**, **geser tiga jari ke bawah** (menu Salin & Tempel), dan **QuickMenu** (tahan tombol pipet /
+  ketuk empat jari) dihapus beserta bagian **Gestur** di Preferensi.
+- Ketuk empat jari kembali untuk menyembunyikan/menampilkan alat; tombol pipet kembali hanya untuk pipet.
+- **Duplikat ke layer baru** dan **Pindahkan ke layer baru** (dulu hanya di menu tiga jari) sekarang ada di panel Aksi ›
+  Salin & tempel, bersama Potong, Salin, Salin semua, dan Tempel.

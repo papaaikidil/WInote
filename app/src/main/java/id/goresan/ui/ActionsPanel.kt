@@ -101,12 +101,18 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
 
             SectionTitle("Salin & tempel")
             Text(
-                "Juga lewat geser tiga jari ke bawah di kanvas. Dengan pilihan aktif, hanya isi pilihan yang disalin.",
+                "Dengan pilihan aktif, hanya isi pilihan yang disalin.",
                 color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
             )
             ActionRow("Potong", "Isi layer aktif dipindah ke papan klip") { state.panel = Panel.NONE; state.clipCopy(cut = true) }
             ActionRow("Salin", "Isi layer aktif ke papan klip (juga bisa ditempel di aplikasi lain)") { state.panel = Panel.NONE; state.clipCopy() }
             ActionRow("Salin semua", "Gabungan semua layer yang terlihat") { state.panel = Panel.NONE; state.clipCopy(merged = true) }
+            ActionRow("Duplikat ke layer baru", "Isi pilihan (atau seluruh layer) disalin ke layer baru di tempat yang sama") {
+                state.panel = Panel.NONE; state.clipCopy(thenPaste = true)
+            }
+            ActionRow("Pindahkan ke layer baru", "Isi pilihan dipotong ke layer baru lalu langsung bisa digeser") {
+                state.panel = Panel.NONE; state.clipCopy(cut = true, thenPaste = true)
+            }
             ActionRow("Tempel", "Jadi layer baru; gambar dari aplikasi lain bisa langsung dipindah dan diubah ukurannya") {
                 state.panel = Panel.NONE
                 state.clipPaste()
@@ -239,23 +245,6 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
             ToggleRow("Prediksi goresan", "Goresan terasa lebih menempel di ujung pena", state.prefs.prediction) { state.prefs.prediction = it; state.syncTool() }
             ToggleRow("Putar kanvas dengan dua jari", null, state.prefs.rotateCanvas) { state.prefs.rotateCanvas = it }
             ToggleRow("Bilah samping di kanan", "Untuk pengguna tangan kiri", state.prefs.sidebarRight) { state.prefs.sidebarRight = it }
-            SectionTitle("Gestur")
-            ToggleRow(
-                "Gosok tiga jari = bersihkan layer",
-                "Gosok tiga jari ke kiri-kanan di kanvas untuk mengosongkan layer aktif (bisa diurungkan)",
-                state.prefs.scrubClear,
-            ) { state.prefs.scrubClear = it }
-            ToggleRow(
-                "Geser tiga jari ke bawah = Salin & Tempel",
-                "Matikan bila bentrok dengan tangkapan layar tiga jari di HyperOS",
-                state.prefs.swipe3Menu,
-            ) { state.prefs.swipe3Menu = it }
-            ToggleRow(
-                "Ketuk empat jari = QuickMenu",
-                "Bila mati, ketuk empat jari menyembunyikan alat. QuickMenu juga terbuka dengan menahan tombol pipet",
-                state.prefs.fourFingerQuick,
-            ) { state.prefs.fourFingerQuick = it }
-            ActionRow("Buka QuickMenu", "Enam tombol aksi cepat; tahan tombolnya untuk mengganti isinya") { state.openQuickMenu() }
             LabeledSlider(
                 "Kepekaan tekanan pena",
                 2f - state.prefs.pressureGamma,
@@ -279,9 +268,8 @@ fun ActionsPanel(state: AppState, modifier: Modifier) {
                 state.showReport = true
             }
             Text(
-                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat (atau QuickMenu) · " +
-                    "geser 3 jari ke bawah = salin & tempel · gosok 3 jari = bersihkan layer · cubit cepat = pas layar · " +
-                    "tahan jari = pipet · tahan tombol pipet = QuickMenu",
+                "Gestur: ketuk 2 jari = urungkan · 3 jari = ulangi · 4 jari = sembunyikan alat · cubit cepat = pas layar · " +
+                    "tahan jari = pipet",
                 color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }

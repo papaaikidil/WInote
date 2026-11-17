@@ -271,7 +271,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
     private fun big(e: MotionEvent, i: Int) = e.getTouchMajor(i) > palmPx
 
     /**
-     * Untuk ketukan banyak jari (urungkan/ulangi/QuickMenu) batasnya lebih longgar (30 mm): telapak tangan yang
+     * Untuk ketukan banyak jari (urungkan/ulangi/sembunyikan alat) batasnya lebih longgar (30 mm): telapak tangan yang
      * bersandar tidak terangkat cepat bersamaan, jadi ketukan jari hampir tidak mungkin tertukar dengan telapak.
      */
     private val tapPalmPx: Float = run {
@@ -1455,93 +1455,7 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
         postDelayed(mtRepeat, 550L)
     }
 
-    // Geser tiga jari ke bawah = menu Salin & Tempel (seperti Procreate).
-    private var sw3 = false
-    private var sw3T = 0L
-    private var sw3X = 0f
-    private var sw3Y = 0f
-    private var sw3Dy = 0f
-
-    private fun avg3(e: MotionEvent, y: Boolean): Float {
-        var s = 0f
-        for (k in 0 until 3) s += if (y) e.getY(k) else e.getX(k)
-        return s / 3f
-    }
-
-    // Gosok tiga jari (kiri-kanan berulang) = bersihkan layer, seperti Procreate.
-    private var scDir = 0
-    private var scExt = 0f
-    private var scTurns = 0
-
-    /** Kanvas yang ikut tergeser selama gerakan tiga jari dikembalikan, sentuhan sisanya diabaikan. */
-    private fun endSwipe3() {
-        sw3 = false
-        mtActive = false
-        stopRepeat()
-        if (mode == Mode.NAV) {
-            view.set(navStart)
-            pushView()
-        }
-        mode = Mode.IGNORE
-    }
-
-    private fun trackScrub(e: MotionEvent) {
-        val x = avg3(e, false)
-        val amp = 28f * density
-        when (scDir) {
-            0 -> if (kotlin.math.abs(x - sw3X) > amp) { scDir = if (x > sw3X) 1 else -1; scExt = x }
-            1 -> if (x > scExt) scExt = x else if (scExt - x > amp) { scTurns++; scDir = -1; scExt = x }
-            else -> if (x < scExt) scExt = x else if (x - scExt > amp) { scTurns++; scDir = 1; scExt = x }
-        }
-        val dy = kotlin.math.abs(avg3(e, true) - sw3Y)
-        if (scTurns >= 3 && dy < 90f * density && e.eventTime - sw3T < 4000L) {
-            Diag.log("Gosok tiga jari: ${e.eventTime - sw3T} ms, $scTurns kali balik")
-            endSwipe3()
-            post { state.scrubClear() }
-        }
-    }
-
-    private fun trackSwipe3(e: MotionEvent) {
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { sw3 = false; sw3Dy = 0f }
-            MotionEvent.ACTION_POINTER_DOWN -> {
-                var finger = true
-                for (k in 0 until e.pointerCount) if (isStylus(e, k)) finger = false
-                sw3 = finger && e.pointerCount == 3 && e.eventTime - mtStart < 700L
-                if (sw3) {
-                    sw3T = e.eventTime
-                    sw3X = avg3(e, false)
-                    sw3Y = avg3(e, true)
-                    sw3Dy = 0f
-                    scDir = 0
-                    scTurns = 0
-                } else if (e.pointerCount == 3) {
-                    Diag.log("Tiga jari tidak dihitung: jeda ${e.eventTime - mtStart} ms, jari=$finger")
-                }
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (!sw3 || e.pointerCount < 3) return
-                val dy = avg3(e, true) - sw3Y
-                val dx = avg3(e, false) - sw3X
-                sw3Dy = dy
-                if (state.prefs.scrubClear) {
-                    trackScrub(e)
-                    if (!sw3) return
-                }
-                if (state.prefs.swipe3Menu && dy > 70f * density && kotlin.math.abs(dx) < dy * 0.7f && e.eventTime - sw3T < 1500L) {
-                    endSwipe3()
-                    post { state.openClipMenu() }
-                }
-            }
-            MotionEvent.ACTION_POINTER_UP -> {
-                if (sw3 && e.pointerCount == 3 && scTurns > 0) Diag.log("Gosok tiga jari berhenti: $scTurns kali balik, ${e.eventTime - sw3T} ms")
-                if (e.pointerCount <= 3) sw3 = false
-            }
-        }
-    }
-
     private fun trackMultiTap(e: MotionEvent) {
-        trackSwipe3(e)
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 stopRepeat()
@@ -1609,14 +1523,6 @@ class CanvasView(ctx: Context, private val state: AppState) : GLSurfaceView(ctx)
             MotionEvent.ACTION_CANCEL -> {
                 stopRepeat()
                 touchLog("dibatalkan sistem (${e.pointerCount} jari, ${e.eventTime - mtStart} ms)")
-                if (e.pointerCount >= 3 || sw3 || mtMax >= 2) post { state.systemTookGesture() }
-                // Sistem merebut geser tiga jari (mis. tangkapan layar HyperOS) setelah jari sempat turun: tetap buka menu.
-                if (sw3 && sw3Dy > 30f * density && state.prefs.swipe3Menu) {
-                    sw3 = false
-                    mtActive = false
-                    post { state.openClipMenu() }
-                    return
-                }
                 // HyperOS memakai sentuhan tiga jari untuk tangkapan layar dan merebut sentuhannya;
                 // bila dua jari atau lebih baru saja mendarat diam, anggap ketukan tiga jari.
                 if (mtActive && !mtRepeated && mtMax >= 2 && SystemClock.uptimeMillis() - mtStart < 700L && !penTouchRecent()) {

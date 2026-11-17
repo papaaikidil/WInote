@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Uji gestur kanvas dengan jari selebar jari asli (11 mm): ketuk 2/3/4 jari, cubit, gosok tiga jari, QuickMenu.
+# Uji gestur kanvas dengan jari selebar jari asli: ketuk 2/3/4 jari, cubit; gestur tiga jari dan QuickMenu sudah dihapus.
 set -x
 PKG=id.hananote.app
 OUT=uji-hasil
@@ -177,28 +177,12 @@ read A B < <(echo $((W * 40 / 100)) $((H * 50 / 100)))
 gerak cubit $((W * 25 / 100)) $((H * 50 / 100)) $((W * 65 / 100)) $((H * 50 / 100)) 40
 sleep 2
 shot cubit-perkecil
-gerak gosok3
-sleep 3
-shot gosok3
-gerak ketuk 2
-sleep 2
-shot gosok-diurungkan
 gerak ketuk 4
 sleep 2
 shot ketuk4-sembunyi
 gerak ketuk 4
 sleep 2
-tahan "Pipet"
-shot quickmenu-pipet
-adb shell input tap $((W * 90 / 100)) $((H * 90 / 100)); sleep 2
-aksi "Ketuk empat jari = QuickMenu"
-tap_node "Aksi" 2 || true
-gerak ketuk 4
-sleep 2
-shot ketuk4-quickmenu
-adb shell run-as $PKG cat shared_prefs/goresan.xml 2>/dev/null | grep -i "fourFinger" > $OUT/prefs.txt
-tap_node "Tampilkan alat" 2 || gerak ketuk 4
-sleep 2
+shot ketuk4-tampil
 # Pena dipakai, lalu dua jari mencubit/mengetuk 0,6 detik kemudian (pena masih "baru dipakai").
 aksi "Pas ke layar"
 tap_node "Aksi" 2 || true
