@@ -149,46 +149,59 @@ warna FFB300
 for y in $ROWS; do for dy in 0 4 8; do gerak garis 48 $((y+dy)) 84 $((y+dy)) 0; done; done
 sleep 9
 shot sebelum-baur
+# Pastikan Studio kuas Baur (Cat Air Utama) terbuka / semua panel tertutup, apa pun keadaan sebelumnya.
+ada() { [ -n "$(find_bounds "$1")" ]; }
+studio_baur() {
+  for k in 1 2 3 4; do
+    ada "Studio Kuas" && return 0
+    if ada "Cari kuas atau daftar…"; then
+      tap_node "Cat Air" 2 || true
+      tap_node "Cat Air Utama" 3 || true
+    else
+      tap_node "Baur" 3 || true
+    fi
+  done
+  echo "STUDIO TIDAK TERBUKA"
+}
+tutup() {
+  for k in 1 2 3 4; do
+    if ada "Studio Kuas"; then tap_node "Kembali" 2 || true; continue; fi
+    if ada "Cari kuas atau daftar…"; then tap_node "Baur" 2 || tap_node "Kuas" 2 || true; continue; fi
+    return 0
+  done
+}
+baur() { local y=$1; for dy in 0 2 4 6 8 10; do
+  if [ $((dy % 4)) -eq 0 ]; then gerak garis 36 $((y+dy)) 64 $((y+dy)) 0; else gerak garis 64 $((y+dy)) 36 $((y+dy)) 0; fi
+done; }
 # Baris 1: alat Baur + Cat Air Utama (otomatis larut).
 tap_node "Baur" 2 || true
-tap_node "Baur" 3 || true
-tap_node "Cat Air" 2 || true
-tap_node "Cat Air Utama" 3 || true
-shot pustaka-baur
-tap_node "Cat Air Utama" 4 || true
+studio_baur
 properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 shot studio-properti
 nilai "Larut saat dibaurkan"
-tap_node "Kembali" 2 || true
-tap_node "Baur" 3 || true
-baur() { local y=$1; for dy in 0 2 4 6 8 10; do
-  if [ $((dy % 4)) -eq 0 ]; then gerak garis 36 $((y+dy)) 64 $((y+dy)) 0; else gerak garis 64 $((y+dy)) 36 $((y+dy)) 0; fi
-done; }
+tutup
+shot siap-baris1
 baur 19
 shot baris1-larut
 # Baris 2: larut 0% (menyeret, seperti sebelumnya) untuk pembanding.
-tap_node "Baur" 3 || true
-tap_node "Cat Air Utama" 4 || true
+studio_baur
 properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 slide "Larut saat dibaurkan (otomatis)" 0.0 396 2
 nilai "Larut saat dibaurkan"
 shot studio-larut-0
-tap_node "Kembali" 2 || true
-tap_node "Baur" 3 || true
+tutup
 baur 44
 shot baris2-seret
 # Kembalikan ke otomatis.
-tap_node "Baur" 3 || true
-tap_node "Cat Air Utama" 4 || true
+studio_baur
 properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 tap_node "Kembalikan ke otomatis" 2 || true
 nilai "Larut saat dibaurkan"
 shot studio-otomatis
-tap_node "Kembali" 2 || true
-tap_node "Baur" 3 || true
+tutup
 # Baris 3: kuas Pembaur Cat Air dengan alat Kuas (tidak menambah warna).
 tap_node "Kuas" 2 || true
 tap_node "Kuas" 3 || true
