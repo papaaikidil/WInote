@@ -104,7 +104,7 @@ gerak() {
 # Pesan singkat (flash) yang sedang tampil, dicatat ke berkas.
 for k in $(seq 1 60); do adb shell service check activity 2>/dev/null | grep -q "found" && break; sleep 3; done
 for k in 1 2 3; do
-  adb shell am start -W -n $PKG/id.goresan.DrawActivity --ez uji_buat true --es uji_warna FF7043 2>&1 | tee -a $OUT/start.txt | grep -q "Status: ok" && break
+  adb shell am start -W -n $PKG/id.goresan.DrawActivity --ez uji_buat true --es uji_warna D81B60 2>&1 | tee -a $OUT/start.txt | grep -q "Status: ok" && break
   sleep 10
 done
 sleep 20
@@ -124,15 +124,27 @@ else:
     print(want, '= TIDAK ADA')
 PY
 }
+ketik() { local s="$1"; for ((i=0; i<${#s}; i++)); do adb shell input text "${s:$i:1}"; sleep 0.4; done; }
+# Tab Properti ada di bawah daftar tab Studio: gulir daftar tab dulu, lalu gulir isinya ke bawah.
+properti() {
+  tap_node "Properti" 2 || { adb shell input swipe $((W*61/100)) $((H*70/100)) $((W*61/100)) $((H*30/100)) 600; sleep 2; tap_node "Properti" 2; } || true
+}
+# Pilih kuas lewat kotak cari di pustaka (pustaka sudah terbuka).
+cari_kuas() {
+  tap_node "Cari kuas atau daftar…" 2 || return 1
+  ketik "$1"; sleep 3
+  adb shell input keyevent KEYCODE_ENTER; sleep 2
+  tap_node "$2" 3 || echo "TIDAK KETEMU KUAS: $2"
+}
 warna_btn() { adb shell input tap $((W - $(dp 30))) $(dp 25); sleep 2; }
 warna() { warna_btn; tap_node "Warna #$1" 2 || true; shot "warna-$1"; warna_btn; }
 pilih() { tap_node "Kuas" 3 || true; tap_node "Cat Air" 2 || true; tap_node "$1" 3 || true; shot "pustaka-$(echo $1 | tr ' ' '-')"; tap_node "Kuas" 3 || true; }
-# Tiga baris, masing-masing: oranye di kiri, merah muda di kanan, bertemu di tengah (x ≈ 50%).
+# Tiga baris, masing-masing: merah muda di kiri, kuning jingga di kanan, bertemu di tengah (x ≈ 50%).
 ROWS="20 45 70"
 pilih "Cat Air Utama"
 for y in $ROWS; do for dy in 0 4 8; do gerak garis 16 $((y+dy)) 52 $((y+dy)) 0; done; done
 sleep 9
-warna D81B60
+warna FFB300
 for y in $ROWS; do for dy in 0 4 8; do gerak garis 48 $((y+dy)) 84 $((y+dy)) 0; done; done
 sleep 9
 shot sebelum-baur
@@ -143,7 +155,7 @@ tap_node "Cat Air" 2 || true
 tap_node "Cat Air Utama" 3 || true
 shot pustaka-baur
 tap_node "Cat Air Utama" 4 || true
-tap_node "Properti" 2 || true
+properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 shot studio-properti
 nilai "Larut saat dibaurkan"
@@ -157,7 +169,7 @@ shot baris1-larut
 # Baris 2: larut 0% (menyeret, seperti sebelumnya) untuk pembanding.
 tap_node "Baur" 3 || true
 tap_node "Cat Air Utama" 4 || true
-tap_node "Properti" 2 || true
+properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 slide "Larut saat dibaurkan (otomatis)" 0.0 396 2
 nilai "Larut saat dibaurkan"
@@ -169,7 +181,7 @@ shot baris2-seret
 # Kembalikan ke otomatis.
 tap_node "Baur" 3 || true
 tap_node "Cat Air Utama" 4 || true
-tap_node "Properti" 2 || true
+properti
 adb shell input swipe $((W*70/100)) $((H*75/100)) $((W*70/100)) $((H*35/100)) 600; sleep 2
 tap_node "Kembalikan ke otomatis" 2 || true
 nilai "Larut saat dibaurkan"
@@ -178,7 +190,10 @@ tap_node "Kembali" 2 || true
 tap_node "Baur" 3 || true
 # Baris 3: kuas Pembaur Cat Air dengan alat Kuas (tidak menambah warna).
 tap_node "Kuas" 2 || true
-pilih "Pembaur Cat Air"
+tap_node "Kuas" 3 || true
+cari_kuas pembaur "Pembaur Cat Air"
+shot pustaka-pembaur
+tap_node "Kuas" 3 || true
 baur 69
 shot baris3-pembaur
 # Urungkan satu goresan pembaur lalu ulangi (urungkan harus berfungsi).

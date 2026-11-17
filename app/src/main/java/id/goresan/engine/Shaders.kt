@@ -596,6 +596,7 @@ uniform float uBlurR;
 uniform float uLod;
 uniform float uRot;
 uniform float uDetail;
+uniform float uDetR;
 uniform int uAlphaLock;
 uniform sampler2D uSel;
 uniform int uUseSel;
@@ -626,19 +627,25 @@ void main() {
             acc += near(l + vec2(cos(a), sin(a)) * (sqrt(fi / 10.0) * uBlurR));
         }
         vec4 blur = acc / 11.0;
-        // Tekstur halus (butir kertas, granulasi) dari layer sebelum goresan tetap dipertahankan, sedangkan tepi
-        // warna yang tegas (perbedaan besar) tidak ikut, supaya tepinya benar-benar menyatu.
+        // Tekstur cat (pigmen yang mengendap di butir kertas, granulasi) dari layer sebelum goresan tetap
+        // dipertahankan: hanya kepekatannya (alfa) yang diambil, jadi beda warna tetap menyatu; tepi cat yang
+        // tegas (beda kepekatan besar, mis. tepi sapuan ke kertas kosong) tidak ikut.
         vec2 bu = vPos / uCanvas;
-        vec2 px = 1.5 / uCanvas;
         vec4 b0 = texture(uBase, bu);
-        vec4 bm = (texture(uBase, bu + vec2(px.x, 0.0)) + texture(uBase, bu - vec2(px.x, 0.0))
-            + texture(uBase, bu + vec2(0.0, px.y)) + texture(uBase, bu - vec2(0.0, px.y))
-            + texture(uBase, bu + px) + texture(uBase, bu - px)
-            + texture(uBase, bu + vec2(px.x, -px.y)) + texture(uBase, bu + vec2(-px.x, px.y)) + b0) / 9.0;
-        vec4 det = b0 - bm;
-        float dl = length(det) / 0.15;
-        det *= exp(-dl * dl) * uDetail;
-        target = mix(car, blur + det, uWet);
+        float bm = b0.a;
+        for (int i = 0; i < 12; i++) {
+            float fi = float(i);
+            float rr = i < 6 ? uDetR * 0.5 : uDetR;
+            float a = fi * 1.04719755 + (i < 6 ? 0.0 : 0.52359878);
+            bm += texture(uBase, bu + vec2(cos(a), sin(a)) * rr / uCanvas).a;
+        }
+        bm /= 13.0;
+        float dA = b0.a - bm;
+        float q = dA / 0.35;
+        dA *= exp(-q * q) * uDetail;
+        vec4 wetT = blur;
+        if (blur.a > 0.002) wetT = blur * (clamp(blur.a + dA, 0.0, 1.0) / blur.a);
+        target = mix(car, wetT, uWet);
     }
     vec4 r = mix(cur, target, m * uStrength);
     r.a = clamp(r.a, 0.0, 1.0);

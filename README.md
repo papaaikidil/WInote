@@ -1145,3 +1145,16 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   bisa diatur halus. Nilai dibulatkan ke persen bulat.
 - Kuas ABR yang jarak capnya di atas 150% (Photoshop membolehkan sampai 1000%) kini diimpor apa adanya.
 - Kuas campur (smudge) dan cat basah tetap memakai jarak rapat agar warnanya mengalir.
+
+## Perubahan 0.1.124: Baur mengikuti kuas, cat air bisa dibaurkan halus
+
+- **Alat Baur sekarang mengikuti kuas yang dipilih.** Bentuk ujung dan tekstur kuas ikut menentukan bagian yang
+  terbaur (kuas bertekstur menghasilkan baur bertekstur). Kuas **cat air** tidak lagi menyeret cat seperti digosok:
+  cat di bawah kuas larut dan menyatu halus dengan warna di sekitarnya, tepinya melembut, dan tekstur kertas/granulasi
+  tetap ada (seperti Wet Blender di Procreate).
+- Pengaturan baru di Studio Kuas › Properti: **Larut saat dibaurkan** (0% = menyeret seperti dulu, 100% = larut penuh).
+  Bawaannya otomatis menurut jenis kuas: cat air 85%, cat basah (Wet Mix) sebagian, airbrush 40%, kuas lain menyeret.
+  Ada tombol **Kembalikan ke otomatis**.
+- **Kuas pembaur** (sakelar di Properti): dengan alat Kuas pun kuas itu tidak menambah warna, hanya membaurkan.
+- Kuas baru **Pembaur Cat Air** (kategori Cat Air): larut penuh dan sudah berupa kuas pembaur, jadi bisa dipakai
+  langsung dari alat Kuas maupun alat Baur untuk menyatukan dua warna cat air dengan halus.

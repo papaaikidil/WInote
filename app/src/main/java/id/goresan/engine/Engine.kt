@@ -2205,6 +2205,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             pSmudge.f("uLod", lod)
             pSmudge.f("uRot", wetRnd.nextFloat() * 6.2831855f)
             pSmudge.f("uDetail", if (wet > 0f) 1f else 0f)
+            pSmudge.f("uDetR", (s * 0.08f).coerceIn(5f, 16f))
             pSmudge.i("uAlphaLock", if (layer.alphaLock) 1 else 0)
             pSmudge.f2("uCanvas", W.toFloat(), H.toFloat())
             G.glBindVertexArray(dabVao)
