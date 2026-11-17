@@ -131,7 +131,21 @@ cari() { # kata kunci, nama kuas persis
 depan() {
   adb shell dumpsys activity activities | grep -q "ResumedActivity.*$PKG" && return 0
   shot keluar; echo "APLIKASI TIDAK DI DEPAN"
-  adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
+  adb shell run-as $PKG cat shared_prefs/goresan.xml 2>/dev/null | grep -i "fourFinger" > $OUT/prefs.txt
+tap_node "Tampilkan alat" 2 || gerak ketuk 4
+sleep 2
+# Pena dipakai, lalu dua jari mencubit/mengetuk 0,6 detik kemudian (pena masih "baru dipakai").
+tap_node "Pas ke layar" 2 || true
+aksi "Pas ke layar"
+tap_node "Aksi" 2 || true
+shot sebelum-pena-cubit
+gerak penacubit
+sleep 2
+shot pena-lalu-cubit
+gerak penaketuk2
+sleep 2
+shot pena-lalu-ketuk2
+adb shell run-as $PKG cat files/laporan.txt > $OUT/laporan.txt 2>&1
   adb logcat -d -t 1500 | grep -i "goresan\|hananote\|AndroidRuntime" | tail -120 > $OUT/logcat.txt
   exit 0
 }
