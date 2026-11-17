@@ -4892,9 +4892,24 @@ class InkView(context: Context) : View(context) {
         } else {
             cellTapId = 0L
         }
-        drawIntoCache(s)
-        onStrokesChanged?.invoke()
+        if (touchesTape(s.bounds)) {
+            // Selotip selalu di atas tulisan: bagian yang tertimpa digambar ulang lengkap, bukan sekadar ditambah.
+            contentChanged()
+        } else {
+            drawIntoCache(s)
+            onStrokesChanged?.invoke()
+        }
         onStrokeAdded?.invoke(s)
+    }
+
+    /** Ada selotip hafalan yang bersinggungan dengan kotak [r] (satuan halaman). */
+    private fun touchesTape(r: RectF): Boolean {
+        for (it in items) {
+            if (it !is TapeItem) continue
+            InkRenderer.itemBounds(it, box)
+            if (RectF.intersects(box, r)) return true
+        }
+        return false
     }
 
     private fun commitShape() {

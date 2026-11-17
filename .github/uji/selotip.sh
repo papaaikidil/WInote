@@ -141,6 +141,7 @@ tap_node "Pena" 2 || true
 adb shell input tap $((W*22/100)) $((H*56/100)); sleep 2
 shot pena-ketuk
 gerak garis 58 64 82 68 4
+sleep 2
 shot pena-tulis
 # Tutup semua / buka semua.
 tap_node "Selotip" 3 || true
@@ -168,7 +169,7 @@ tap_node "Urungkan" 3 || echo "URUNGKAN TIDAK KETEMU"
 shot urungkan
 # Penghapus menghapus selotip yang tersapu.
 tap_node "Penghapus" 2 || true
-gerak garis 10 66 50 66 0
+gerak garis 22 66 50 66 0
 shot penghapus
 # Pilih: selotip bisa dipilih, digeser, dan diganti warnanya.
 tap_node "Pilih" 2 || true
