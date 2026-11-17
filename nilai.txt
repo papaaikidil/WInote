@@ -1,0 +1,9 @@
+Jarak antar cap = 3%
+Jarak antar cap = 869%
+Jarak antar cap = 95%
+Jarak antar cap = 10%
+Jarak antar cap = 1%
+Jarak antar cap = 869%
+Jarak antar cap = 1000%
+Jarak antar cap = 1000%
+Jarak antar cap = 32%

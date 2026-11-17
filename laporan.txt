@@ -1,0 +1,38 @@
+03:37:19.812  === Aplikasi dibuka · WInote Gambar 0.1.29 (29) · Google sdk_gphone64_x86_64 · Android 13
+03:37:19.888  Aktivitas: lanjut
+03:37:20.609  Buka karya kmwk55uyv0f1f
+03:37:20.995  Permukaan kanvas dibuat
+03:37:21.291  Permukaan kanvas: sRGB
+03:37:21.307  GL: konteks dibuat
+03:37:22.621  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:37:22.690  GL: siap (1372 ms)
+03:37:22.691  GL: ukuran permukaan 2560x1800
+03:37:22.703  Karya dibuka 1600x1200, 1 layer, batas 110 layer (13 ms)
+03:37:25.834  !!! Kanvas macet 3144 ms. Posisi thread kanvas:
+03:37:25.835      android.opengl.GLES20.glGenTextures(Native Method)
+03:37:25.836      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:37:25.836      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:37:25.836      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4316)
+03:37:25.836      id.goresan.engine.Engine.onDrawFrame(Engine.kt:878)
+03:37:25.836      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:37:25.837      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:37:25.838      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:37:26.914  Frame lambat: 4223 ms
+03:37:27.428  Kanvas kembali merespons
+03:37:31.868  Sistem minta hemat memori (level 5)
+03:37:35.584  Sistem minta hemat memori (level 5)
+03:37:41.726  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+03:37:42.016  Frame lambat: 287 ms
+03:37:45.609  Frame lambat: 292 ms
+03:37:48.614  Frame lambat: 315 ms
+03:37:49.572  Simpan: 1 layer dibaca dari GPU (14 ms)
+03:37:53.806  Frame lambat: 520 ms
+03:38:47.251  Frame lambat: 281 ms
+03:38:47.602  Frame lambat: 153 ms
+03:39:00.431  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+03:39:04.344  Frame lambat: 85 ms
+03:39:05.853  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+03:39:10.015  Frame lambat: 216 ms
+03:39:13.836  Simpan: 1 layer dibaca dari GPU (28 ms)
+03:39:44.414  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+03:39:48.048  Frame lambat: 107 ms
