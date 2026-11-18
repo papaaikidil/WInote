@@ -1,0 +1,40 @@
+11-18 23:22:52.801  9046  9047 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-18 23:22:54.379  9049  9049 I AndroidRuntime: Using default boot image
+11-18 23:22:54.379  9049  9049 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:22:54.463  9049  9049 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:22:55.504  9049  9049 D AndroidRuntime: Shutting down VM
+11-18 23:22:59.416  9074  9074 I AndroidRuntime: Using default boot image
+11-18 23:22:59.416  9074  9074 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:22:59.479  9074  9074 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:00.524  9074  9074 D AndroidRuntime: Shutting down VM
+11-18 23:23:01.409  9094  9094 I AndroidRuntime: Using default boot image
+11-18 23:23:01.409  9094  9094 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:01.486  9094  9094 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:02.526  9094  9094 D AndroidRuntime: Shutting down VM
+11-18 23:23:03.476  1624  1634 I putmethod.latin: JIT allocated 52KB for compiled code of mzo hod.d(java.util.List)
+11-18 23:23:13.527  9155  9155 I AndroidRuntime: Using default boot image
+11-18 23:23:13.527  9155  9155 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:13.588  9155  9155 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:14.634  9155  9155 D AndroidRuntime: Shutting down VM
+11-18 23:23:18.540  9181  9181 I AndroidRuntime: Using default boot image
+11-18 23:23:18.540  9181  9181 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:18.615  9181  9181 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:19.657  9181  9181 D AndroidRuntime: Shutting down VM
+11-18 23:23:23.561  9207  9207 I AndroidRuntime: Using default boot image
+11-18 23:23:23.562  9207  9207 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:23.625  9207  9207 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:24.687  9207  9207 D AndroidRuntime: Shutting down VM
+11-18 23:23:27.638  9234  9235 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-18 23:23:28.797  9237  9237 I AndroidRuntime: Using default boot image
+11-18 23:23:28.797  9237  9237 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:28.873  9237  9237 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:29.950  9237  9237 D AndroidRuntime: Shutting down VM
+11-18 23:23:32.900  9265  9266 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-18 23:23:34.074  9268  9268 I AndroidRuntime: Using default boot image
+11-18 23:23:34.074  9268  9268 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:34.153  9268  9268 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:35.224  9268  9268 D AndroidRuntime: Shutting down VM
+11-18 23:23:38.134  9292  9292 I AndroidRuntime: Using default boot image
+11-18 23:23:38.134  9292  9292 I AndroidRuntime: Leaving lock profiling enabled
+11-18 23:23:38.209  9292  9292 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-18 23:23:39.252  9292  9292 D AndroidRuntime: Shutting down VM
