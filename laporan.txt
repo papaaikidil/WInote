@@ -1,0 +1,45 @@
+13:50:13.970  === Aplikasi dibuka · WInote Gambar 0.1.39 (39) · Google sdk_gphone64_x86_64 · Android 13
+13:50:14.033  Aktivitas: lanjut
+13:50:14.692  Buka karya kmwm6hwqx650d
+13:50:15.091  Permukaan kanvas dibuat
+13:50:15.181  Permukaan kanvas: sRGB
+13:50:15.184  GL: konteks dibuat
+13:50:16.241  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+13:50:16.308  GL: siap (1123 ms)
+13:50:16.308  GL: ukuran permukaan 2560x1800
+13:50:16.323  Karya dibuka 1600x1200, 1 layer, batas 110 layer (14 ms)
+13:50:18.988  !!! Kanvas macet 2679 ms. Posisi thread kanvas:
+13:50:18.988      android.opengl.GLES20.glGenTextures(Native Method)
+13:50:18.989      id.goresan.engine.Tex.<init>(GL.kt:49)
+13:50:18.989      id.goresan.engine.Tex.<init>(GL.kt:43)
+13:50:18.989      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4445)
+13:50:18.989      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+13:50:18.990      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+13:50:18.990      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+13:50:18.990      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+13:50:20.412  Frame lambat: 4104 ms
+13:50:21.016  Kanvas kembali merespons
+13:50:21.222  Sistem minta hemat memori (level 10)
+13:50:24.098  Sistem minta hemat memori (level 10)
+13:50:38.203  Frame lambat: 982 ms
+13:50:46.297  Frame lambat: 1879 ms
+13:51:07.197  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:10.505  Frame lambat: 219 ms
+13:51:10.947  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:14.860  Frame lambat: 245 ms
+13:51:16.196  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:19.879  Frame lambat: 105 ms
+13:51:21.366  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:25.076  Frame lambat: 90 ms
+13:51:26.564  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:30.096  Frame lambat: 105 ms
+13:51:31.548  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:51:35.247  Frame lambat: 196 ms
+13:51:39.217  Simpan: 1 layer dibaca dari GPU (108 ms)
+13:51:39.483  Frame lambat: 375 ms
+13:52:08.666  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:52:12.410  Frame lambat: 221 ms
+13:52:13.720  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+13:52:17.417  Frame lambat: 190 ms
+13:52:22.260  Frame lambat: 114 ms
+13:52:27.066  Frame lambat: 111 ms
