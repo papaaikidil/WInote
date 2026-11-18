@@ -205,6 +205,13 @@ data class Brush(
     /** Tepi terbakar: tepi goresan yang menimpa cat lain digelapkan dengan [burntMode]. */
     val burntEdges: Float = 0f,
     val burntMode: Int = 3,
+    /**
+     * Garis tepi menyatu (huruf gelembung): tebal garis tepi sebagai pecahan ukuran kuas (0 = mati). Goresan diisi
+     * [outlineFill] dan diberi garis tepi berwarna kuas. Garis tepi tidak tampil di dalam bentuk yang sudah ada di
+     * layer, dan isinya menutup garis tepi lama, jadi goresan yang bersilangan menyatu tanpa garis bertabrakan.
+     */
+    val outline: Float = 0f,
+    val outlineFill: Int = 0xFFFFFFFF.toInt(),
     /** Mode campur goresan (indeks sama dengan mode campur layer; 0 = Normal). */
     val blendMode: Int = 0,
     /** Campur luminans: hanya terang-gelap goresan yang dipakai, rona/saturasi cat di bawahnya tetap. */
@@ -275,6 +282,8 @@ data class Brush(
         if (grainStroke) put("grainStroke", true)
         fun n(k: String, v: Float, d: Float) { if (v != d) put(k, v.toDouble()) }
         fun z(k: String, v: Boolean) { if (v) put(k, true) }
+        n("outline", outline, 0f)
+        if (outlineFill != 0xFFFFFFFF.toInt()) put("outlineFill", outlineFill)
         if (smudgeWet >= 0f) put("smudgeWet", smudgeWet.toDouble())
         z("blender", blender)
         n("spacingJitter", spacingJitter, 0f); n("jitterLateral", jitterLateral, 0f); n("jitterLinear", jitterLinear, 0f)
@@ -408,6 +417,8 @@ data class Brush(
                 orientScreen = o.optBoolean("orientScreen", false),
                 render = o.optInt("render", 0).coerceIn(0, 5),
                 wetEdges = f("wetEdges", 0f),
+                outline = f("outline", 0f).coerceIn(0f, 0.45f),
+                outlineFill = o.optInt("outlineFill", 0xFFFFFFFF.toInt()),
                 burntEdges = f("burntEdges", 0f),
                 burntMode = o.optInt("burntMode", 3).coerceIn(0, 25),
                 blendMode = o.optInt("blendMode", 0).coerceIn(0, 25),
@@ -724,6 +735,17 @@ object Brushes {
             id = "monoletter", name = "Monoline Lettering", category = "Lettering",
             tip = TipShape.HARD_ROUND, sizeMax = 40f, spacing = 0.02f, pressureSize = 0f,
             streamline = 0.6f, taperStart = 0.04f, taperEnd = 0.04f, taperTip = 0.4f, defaultSize = 0.35f,
+        ),
+        // Huruf gelembung: goresan berisi putih dengan garis tepi warna kuas; goresan yang bersilangan menyatu.
+        Brush(
+            id = "gelembung", name = "Huruf Gelembung", category = "Lettering",
+            tip = TipShape.HARD_ROUND, sizeMax = 140f, sizeMin = 4f, spacing = 0.03f, pressureSize = 0.15f,
+            streamline = 0.5f, outline = 0.12f, defaultSize = 0.35f,
+        ),
+        Brush(
+            id = "gelembungtebal", name = "Gelembung Garis Tebal", category = "Lettering",
+            tip = TipShape.HARD_ROUND, sizeMax = 160f, sizeMin = 6f, spacing = 0.03f, pressureSize = 0.1f,
+            streamline = 0.5f, outline = 0.22f, defaultSize = 0.35f,
         ),
         Brush(
             id = "kuasletter", name = "Kuas Lettering", category = "Lettering",

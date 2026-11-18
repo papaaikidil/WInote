@@ -1191,3 +1191,12 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   menipis. Tekanan pena sedikit menambah tebal. Warna dan ukuran diatur seperti pena lain.
 - **Gambar:** kategori kuas baru **Khat Arab**: Qalam Naskhi, Qalam Tsuluts (besar), Qalam Tinta Basah (tepi tinta
   sedikit kasar), dan Spidol Khat. Semua memakai sudut ujung yang sama (±70°).
+
+## Perubahan 0.1.128: Garis tepi menyatu (huruf gelembung)
+
+- Kuas baru di kategori **Lettering**: **Huruf Gelembung** dan **Gelembung Garis Tebal**. Goresan diisi putih dan
+  diberi garis tepi berwarna kuas; goresan yang bersilangan (mis. huruf X atau T) **menyatu tanpa garis tepi yang
+  saling bertabrakan**. Garis tepi goresan baru tidak tampil di dalam bentuk yang sudah ada, dan isinya menutup
+  garis tepi lama.
+- Bisa dipasang di kuas mana pun: Studio Kuas › Rendering › **Garis tepi menyatu** (tebal garis tepi) dan **Warna
+  isi** (putih, krem, kuning, merah muda, biru muda, hijau muda, abu-abu).

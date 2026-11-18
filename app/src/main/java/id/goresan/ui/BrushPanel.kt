@@ -46,6 +46,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import id.goresan.engine.AngleMode
 import id.goresan.engine.Brush
 import id.goresan.engine.Grain
@@ -642,6 +645,30 @@ private fun BrushStudio(state: AppState, b: Brush) {
                         SwitchRow("Campuran luminans", "Goresan hanya mengubah terang-gelap cat di bawahnya", b.lumBlend) { up(b.copy(lumBlend = it)) }
                         LabeledSlider("Ambang alfa", b.alphaThreshold, { up(b.copy(alphaThreshold = it)) }, display = pctNone)
                         Hint("Tepi basah melunakkan tepi goresan; tepi terbakar menggelapkan bagian yang menimpa cat lain. Ambang alfa membuat tepi tegas tanpa semi-transparan.")
+                        LabeledSlider("Garis tepi menyatu", b.outline, { up(b.copy(outline = it)) }, 0f..0.4f, display = pctNone)
+                        if (b.outline > 0f) {
+                            Text("Warna isi", color = Color(0xFFB8B8C0), fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                OutlineFills.forEach { (c, name) ->
+                                    val on = b.outlineFill == c
+                                    Box(
+                                        Modifier
+                                            .size(30.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(Color(if (on) 0xFF4C8DFF.toInt() else 0x33FFFFFF))
+                                            .padding(if (on) 3.dp else 1.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(Color(c))
+                                            .clickable { up(b.copy(outlineFill = c)) }
+                                            .semantics { contentDescription = "Isi $name" },
+                                    )
+                                }
+                            }
+                        }
+                        Hint("Garis tepi menyatu (huruf gelembung): goresan diisi warna isi dan diberi garis tepi berwarna kuas. Goresan yang bersilangan menyatu tanpa garis yang bertabrakan.")
                     }
                     "Wet Mix" -> {
                         LabeledSlider("Pengenceran", b.wmDilution, { up(b.copy(wmDilution = it)) }, display = pctNone)
@@ -919,3 +946,14 @@ private const val SPACING_MAX = 10f
 /** Posisi geser 0..1 → jarak antar cap (pecahan diameter), dibulatkan ke persen bulat. */
 private fun spacingAtSlider(t: Float): Float =
     ((SPACING_MIN * (SPACING_MAX / SPACING_MIN).pow(t.coerceIn(0f, 1f)) * 100f).roundToInt() / 100f).coerceIn(SPACING_MIN, SPACING_MAX)
+
+/** Pilihan warna isi untuk garis tepi menyatu. */
+private val OutlineFills: List<Pair<Int, String>> = listOf(
+    0xFFFFFFFF.toInt() to "putih",
+    0xFFFFF4DC.toInt() to "krem",
+    0xFFFFE680.toInt() to "kuning",
+    0xFFFFC2D6.toInt() to "merah muda",
+    0xFFBFE3FF.toInt() to "biru muda",
+    0xFFC4EFC8.toInt() to "hijau muda",
+    0xFFD9D9DE.toInt() to "abu-abu",
+)
