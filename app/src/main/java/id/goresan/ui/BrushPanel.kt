@@ -549,8 +549,10 @@ private fun BrushStudio(state: AppState, main: Brush) {
     // Seperti Procreate: 0% ditulis "Tidak ada".
     val pctNone: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${(it * 100).roundToInt()}%" }
     val pctSigned: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${if (it > 0) "+" else ""}${(it * 100).roundToInt()}%" }
-    val tabs = if (sec) studioTabs.filter { it in SecondTabs } else studioTabs
-    var picked by remember { mutableStateOf(state.studioOpenTab?.takeIf { it in studioTabs } ?: studioTabs[0]) }
+    // Kuas gabungan: bagian Kuas ganda paling atas supaya cara gabung langsung terlihat.
+    val allTabs = if (main.dual != null) listOf("Kuas ganda") + studioTabs.filter { it != "Kuas ganda" } else studioTabs
+    val tabs = if (sec) allTabs.filter { it in SecondTabs } else allTabs
+    var picked by remember { mutableStateOf(state.studioOpenTab?.takeIf { it in studioTabs } ?: allTabs[0]) }
     LaunchedEffect(Unit) { state.studioOpenTab = null }
     // Bagian yang tidak berlaku untuk kuas kedua: tampilkan bagian pertama (pilihan semula kembali saat ke kuas utama).
     val tab = if (picked in tabs) picked else tabs.first()
