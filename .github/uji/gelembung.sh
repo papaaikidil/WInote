@@ -37,15 +37,18 @@ for m in re.finditer(r'<node [^>]*>', xml):
             print(*map(int, b.groups()))
             break
 PY
+}
 find_node() {
   local b; b=$(find_bounds "$1")
   [ -z "$b" ] && return 0
   set -- $b
   echo $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+}
 tap_node() {
   local p; p=$(find_node "$1")
   if [ -z "$p" ]; then echo "TIDAK KETEMU: $1"; return 1; fi
   adb shell input tap $p; sleep ${2:-2}
+}
 # Ketuk penggeser berlabel $1 pada posisi $2 (0..1). Lebar area penggeser $3 dp (panel), tepi kirinya = tepi kiri label.
 slide() {
   local b; b=$(find_bounds "$1")
@@ -56,6 +59,7 @@ slide() {
   local xl=$(( $1 + $(dp 10) )) xr=$(( $1 + $(dp $wd) - $(dp 10) ))
   local x; x=$(python3 -c "print(int($xl + ($xr - $xl) * $f))")
   adb shell input tap $x $y; sleep $sl
+}
 menu() {
   tap_node "Penyesuaian" 2 || return 1
   if ! tap_node "$1" 4; then
@@ -63,6 +67,7 @@ menu() {
     adb shell input swipe $(dp 200) $((H*80/100)) $(dp 200) $((H*30/100)) 600; sleep 2
     tap_node "$1" 4 || return 1
   fi
+}
 terapkan() { tap_node "Terapkan" 4 || true; }
 batal() { tap_node "Batal" 3 || true; }
 # sendevent perlu akses root ke /dev/input (citra google_apis mengizinkan adb root).
@@ -95,6 +100,7 @@ gerak() {
   adb push /tmp/g /data/local/tmp/ >/dev/null 2>&1
   adb shell sh /data/local/tmp/g/run.sh
   sleep 1.5
+}
 for k in $(seq 1 60); do adb shell service check activity 2>/dev/null | grep -q "found" && break; sleep 3; done
 ketik() { local s="$1"; for ((i=0; i<${#s}; i++)); do adb shell input text "${s:$i:1}"; sleep 0.4; done; }
 adb shell am start -W -n $PKG/id.goresan.DrawActivity --ez uji_buat true --es uji_warna 111111 >/dev/null 2>&1
