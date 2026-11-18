@@ -56,6 +56,24 @@ object Procedural {
         return sum / total
     }
 
+    /** fBm dengan koordinat pecahan (untuk pembengkokan ruang), tetap berulang pada gambar berukuran [n]. */
+    private fun fbmF(x: Float, y: Float, n: Int, basePeriod: Int, octaves: Int, seed: Int): Float {
+        var sum = 0f
+        var amp = 1f
+        var total = 0f
+        var p = basePeriod
+        for (o in 0 until octaves) {
+            sum += amp * vnoise(x * p / n, y * p / n, p, seed + o * 31)
+            total += amp
+            amp *= 0.55f
+            p *= 2
+        }
+        return sum / total
+    }
+
+    /** Derau berulang melingkar (sudut 0..1 → nilai), untuk tepi bercak yang bergelombang. */
+    private fun ring(t: Float, period: Int, seed: Int): Float = vnoise(t * period, 0.5f, period, seed)
+
     fun tip(shape: TipShape, n: Int = 256): ByteArray {
         val out = ByteArray(n * n)
         val c = (n - 1) / 2f
@@ -99,10 +117,53 @@ object Procedural {
                     val nz = vnoise(x / 5f, y / 5f, 1000, 21) * 0.6f + hash(x, y, 23) * 0.4f + 0.15f
                     (1f - smooth(0.65f, 1f, d)) * smooth(0.35f, 0.65f, nz)
                 }
+                TipShape.WC_BLOB -> {
+                    // Bercak cat air: tepi bergelombang seperti kembang kol (beberapa lekuk besar dan kecil), bagian
+                    // dalam belang, dan pinggiran sedikit lebih pekat (pigmen berkumpul di tepi).
+                    val t = atan2(dy, dx) / (2f * PI.toFloat()) + 0.5f
+                    val rr = 0.7f + 0.13f * (ring(t, 5, 41) - 0.5f) * 2f + 0.07f * (ring(t, 13, 43) - 0.5f) * 2f +
+                        0.035f * (ring(t, 31, 47) - 0.5f) * 2f
+                    val edge = 1f - smooth(rr - 0.05f, rr, d)
+                    val inner = 0.72f + 0.28f * smooth(0.25f, 0.75f, fbm(x, y, n, 4, 4, 51))
+                    val rim = smooth(rr - 0.22f, rr - 0.05f, d)
+                    edge * (inner + (1f - inner) * rim)
+                }
             }
             out[y * n + x] = (a.coerceIn(0f, 1f) * 255f + 0.5f).toInt().toByte()
         }
         return out
+    }
+
+    /**
+     * Tekstur latar cat air (kepekatan pigmen 0..1): awan besar terang-gelap yang ruangnya dibengkokkan supaya
+     * bentuknya mengalir, bercak "backrun" (bagian dalam pucat dengan garis tepi gelap yang tipis) di sebagian tempat,
+     * dan serat pigmen halus. Berulang mulus pada gambar [n]×[n].
+     */
+    private fun wcCloud(x: Int, y: Int, n: Int): Float {
+        val fx = x.toFloat()
+        val fy = y.toFloat()
+        // Pembengkokan ruang: koordinat digeser oleh dua fBm berfrekuensi rendah.
+        val qx = fbmF(fx, fy, n, 3, 4, 301) - 0.5f
+        val qy = fbmF(fx + 37f, fy - 91f, n, 3, 4, 307) - 0.5f
+        val wx = fx + qx * n * 0.22f
+        val wy = fy + qy * n * 0.22f
+        // Awan: bagian pekat dan pucat yang besar.
+        val f = fbmF(wx, wy, n, 3, 6, 311)
+        var v = 0.3f + 0.7f * smooth(0.3f, 0.7f, f)
+        // Bercak backrun di sebagian tempat: dalamnya lebih pucat, tepinya garis gelap tipis.
+        val mask = smooth(0.42f, 0.62f, fbmF(fx, fy, n, 2, 3, 331))
+        val b = fbmF(wx * 1.0f + 13f, wy * 1.0f + 29f, n, 5, 5, 337)
+        val inside = 1f - smooth(0.38f, 0.5f, b)
+        val line = 1f - smooth(0f, 0.022f, abs(b - 0.5f))
+        v *= 1f - 0.42f * inside * mask
+        v += (1f - v) * 0.6f * line * mask
+        // Garis-garis air tipis di bagian pucat (seperti urat pada contoh): kontur kedua yang lebih halus.
+        val c = fbmF(wx * 1.0f - 51f, wy * 1.0f + 17f, n, 8, 4, 349)
+        val vein = 1f - smooth(0f, 0.012f, abs(c - 0.5f))
+        v += (1f - v) * 0.28f * vein * (1f - smooth(0.35f, 0.75f, f))
+        // Serat pigmen halus.
+        v *= 0.88f + 0.12f * fbm(x, y, n, 64, 3, 353)
+        return v
     }
 
     private fun splatterDots(): List<FloatArray> {
@@ -134,6 +195,7 @@ object Procedural {
                 }
                 Grain.ROUGH -> smooth(0.32f, 0.68f, fbm(x, y, n, 32, 4, 203))
                 Grain.NOISE -> hash(x, y, 99)
+                Grain.WC_CLOUD -> wcCloud(x, y, n)
             }
             out[y * n + x] = (v.coerceIn(0f, 1f) * 255f + 0.5f).toInt().toByte()
         }

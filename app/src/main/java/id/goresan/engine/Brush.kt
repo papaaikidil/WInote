@@ -13,6 +13,7 @@ enum class TipShape(val label: String) {
     FLAT("Bulu pipih"),
     SPLATTER("Percikan"),
     CHALK("Kapur"),
+    WC_BLOB("Bercak cat air"),
 }
 
 enum class Grain(val label: String) {
@@ -21,6 +22,7 @@ enum class Grain(val label: String) {
     CANVAS("Kanvas"),
     ROUGH("Kasar"),
     NOISE("Bintik"),
+    WC_CLOUD("Awan cat air"),
 }
 
 enum class AngleMode(val label: String) {
@@ -596,6 +598,25 @@ object Brushes {
             tip = TipShape.SPLATTER, sizeMax = 260f, spacing = 0.55f, flow = 1f,
             scatter = 0.7f, sizeJitter = 0.6f, angleJitter = 1f, pressureSize = 0.3f, defaultSize = 0.4f,
             watercolor = true, wcDensity = 0.6f, wcEdge = 0.8f, wcSoft = 0f, wcBloom = 0.3f, wcGrain = 0.5f,
+        ),
+        // Latar cat air (seperti kuas "background" cat air Procreate): kuas sangat besar berujung bercak bertepi
+        // kembang kol dengan tekstur awan cat air yang menyatu di kanvas (awan pekat-pucat, bercak backrun, urat air),
+        // diolah sebagai cat air (tepi gelap, granulasi kertas, lapisan menumpuk). Beberapa sapuan menutup kanvas.
+        Brush(
+            id = "wclatar", name = "Latar Cat Air", category = "Cat Air",
+            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.8f, grainScale = 2.6f, grainStroke = true,
+            sizeMax = 2400f, sizeMin = 40f, spacing = 0.1f, flow = 0.45f,
+            angleJitter = 1f, sizeJitter = 0.2f, scatter = 0.1f,
+            pressureSize = 0.25f, pressureOpacity = 0.35f, streamline = 0.1f, defaultSize = 0.6f,
+            watercolor = true, wcDensity = 0.72f, wcEdge = 0.85f, wcSoft = 0.12f, wcBloom = 0.7f, wcGrain = 0.6f,
+        ),
+        Brush(
+            id = "wcbercak", name = "Bercak Cat Air", category = "Cat Air",
+            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.7f, grainScale = 1.6f, grainStroke = true,
+            sizeMax = 900f, sizeMin = 10f, spacing = 0.12f, flow = 0.4f,
+            angleJitter = 1f, sizeJitter = 0.25f, scatter = 0.12f,
+            pressureSize = 0.4f, pressureOpacity = 0.4f, streamline = 0.1f, defaultSize = 0.45f,
+            watercolor = true, wcDensity = 0.68f, wcEdge = 0.85f, wcSoft = 0.1f, wcBloom = 0.65f, wcGrain = 0.6f,
         ),
         Brush(
             id = "gouache", name = "Gouache", category = "Melukis",
