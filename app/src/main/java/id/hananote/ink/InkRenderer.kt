@@ -71,6 +71,7 @@ object InkRenderer {
         Tool.MARKER, Tool.HIGHLIGHTER, Tool.ERASER, Tool.LINE -> base
         Tool.WATERCOLOR -> base * (0.45f + 0.85f * p)
         Tool.TAPE -> base
+        Tool.QALAM -> base * (0.72f + 0.4f * p)
     }
 
     private val darkenMode = PorterDuffXfermode(PorterDuff.Mode.DARKEN)
@@ -191,6 +192,10 @@ object InkRenderer {
             drawWatercolor(canvas, color, width, xs, ys, ps, n, paint)
             return
         }
+        if (tool == Tool.QALAM) {
+            drawQalam(canvas, color, width, xs, ys, ps, n, paint, path)
+            return
+        }
         paint.reset()
         paint.isAntiAlias = true
         paint.isDither = true
@@ -252,6 +257,58 @@ object InkRenderer {
             paint.strokeWidth = (widthAt(tool, width, ps[i - 1]) + widthAt(tool, width, ps[i])) / 2f
             canvas.drawLine(xs[i - 1], ys[i - 1], xs[i], ys[i], paint)
         }
+    }
+
+    // ---------- qalam (khat Arab) ----------
+
+    /** Arah tepi ujung qalam: ±70° dari garis tulis, condong ke kanan atas (sumbu y halaman ke bawah). */
+    private const val QALAM_DEG = 70.0
+    private val qalamCos = kotlin.math.cos(Math.toRadians(QALAM_DEG)).toFloat()
+    private val qalamSin = kotlin.math.sin(Math.toRadians(QALAM_DEG)).toFloat()
+
+    /**
+     * Goresan qalam: jejak ujung pipih yang disapukan. Tiap ruas jadi segi empat antara tepi ujung di titik awal dan
+     * akhirnya, ditambah bentuk ujung (pipih, sedikit tebal) di tiap titik; semuanya disatukan dalam satu jalur
+     * supaya warna transparan tetap rata. Tebal tarikan mengikuti arahnya terhadap tepi ujung, seperti qalam asli.
+     */
+    private fun drawQalam(
+        canvas: Canvas, color: Int, width: Float, xs: FloatArray, ys: FloatArray, ps: FloatArray, n: Int,
+        paint: Paint, path: Path,
+    ) {
+        paint.color = color
+        paint.style = Paint.Style.FILL
+        path.rewind()
+        path.fillType = Path.FillType.WINDING
+        // Setengah tepi ujung (ex, ey) dan setengah tebal ujung (tx, ty) per titik.
+        fun half(i: Int) = widthAt(Tool.QALAM, width, ps[i]) / 2f
+        fun poly(ax: Float, ay: Float, bx: Float, by: Float, cx: Float, cy: Float, dx: Float, dy: Float) {
+            // Semua segi empat searah jarum jam supaya gabungannya tidak berlubang.
+            val area = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay) + (cx - ax) * (dy - ay) - (dx - ax) * (cy - ay)
+            path.moveTo(ax, ay)
+            if (area >= 0f) { path.lineTo(bx, by); path.lineTo(cx, cy); path.lineTo(dx, dy) }
+            else { path.lineTo(dx, dy); path.lineTo(cx, cy); path.lineTo(bx, by) }
+            path.close()
+        }
+        val ux = qalamCos
+        val uy = -qalamSin
+        for (i in 0 until n) {
+            val h = half(i)
+            val ex = ux * h; val ey = uy * h
+            // Ujung qalam punya tebal kecil (±12% lebarnya) supaya tarikan searah tepi tidak hilang.
+            val t = max(h * 0.12f, 0.25f)
+            val tx = -uy * t; val ty = ux * t
+            poly(
+                xs[i] - ex - tx, ys[i] - ey - ty, xs[i] + ex - tx, ys[i] + ey - ty,
+                xs[i] + ex + tx, ys[i] + ey + ty, xs[i] - ex + tx, ys[i] - ey + ty,
+            )
+            if (i == 0) continue
+            val h0 = half(i - 1)
+            poly(
+                xs[i - 1] - ux * h0, ys[i - 1] - uy * h0, xs[i - 1] + ux * h0, ys[i - 1] + uy * h0,
+                xs[i] + ex, ys[i] + ey, xs[i] - ex, ys[i] - ey,
+            )
+        }
+        canvas.drawPath(path, paint)
     }
 
     // ---------- cat air ----------

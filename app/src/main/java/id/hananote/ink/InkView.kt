@@ -2391,7 +2391,7 @@ class InkView(context: Context) : View(context) {
      */
     private fun drawPrediction(canvas: Canvas, b: StrokeBuilder) {
         if (mode != Mode.DRAW || activeIsFinger || rulerEdge != null || b.size < 2) return
-        if (b.tool != Tool.PEN && b.tool != Tool.BRUSH) return
+        if (b.tool != Tool.PEN && b.tool != Tool.BRUSH && b.tool != Tool.QALAM) return
         val pr = predictor ?: return
         // Pena berhenti (tidak ada gerakan baru): jangan tinggalkan ekor yang menjorok ke depan.
         if (SystemClock.uptimeMillis() - lastInkMove > 30) return

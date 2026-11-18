@@ -1183,3 +1183,11 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - Pesan yang jelas bila berkasnya bukan font (PDF, gambar, RAR, WOFF2, ZIP tanpa font) atau tidak bisa dibaca
   Android, dan rinciannya dicatat di laporan teknis untuk pemeriksaan.
 - Di catatan, font yang ternyata tidak bisa dibaca Android tidak lagi "berhasil" ditambahkan diam-diam.
+
+## Perubahan 0.1.127: Kuas khat Arab
+
+- **Catatan:** alat baru **Qalam** di baki alat (setelah Kuas), untuk menulis huruf Arab. Ujungnya pipih dan
+  miring ±70° seperti qalam bambu: tarikan mendatar tebal, alif lebih ramping, dan tarikan miring ke kiri bawah
+  menipis. Tekanan pena sedikit menambah tebal. Warna dan ukuran diatur seperti pena lain.
+- **Gambar:** kategori kuas baru **Khat Arab**: Qalam Naskhi, Qalam Tsuluts (besar), Qalam Tinta Basah (tepi tinta
+  sedikit kasar), dan Spidol Khat. Semua memakai sudut ujung yang sama (±70°).

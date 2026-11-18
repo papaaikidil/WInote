@@ -20,22 +20,24 @@ enum class Tool(val label: String) {
     LINE("Bentuk"),
     WATERCOLOR("Cat air"),
     /** Selotip hafalan: bukan goresan, hanya menyimpan warna dan ketebalan alat Selotip. */
-    TAPE("Selotip");
+    TAPE("Selotip"),
+    /** Qalam untuk khat Arab: ujung pipih ±70°, tarikan mendatar tebal dan alif ramping. */
+    QALAM("Qalam");
 
     val minWidth: Float
         get() = when (this) {
             PEN -> 0.8f; PENCIL -> 0.6f; BRUSH -> 2f; MARKER -> 2f; HIGHLIGHTER -> 6f; ERASER -> 4f; LINE -> 0.8f
-            WATERCOLOR -> 4f; TAPE -> 4f
+            WATERCOLOR -> 4f; TAPE -> 4f; QALAM -> 2f
         }
     val maxWidth: Float
         get() = when (this) {
             PEN -> 8f; PENCIL -> 6f; BRUSH -> 24f; MARKER -> 16f; HIGHLIGHTER -> 30f; ERASER -> 40f; LINE -> 12f
-            WATERCOLOR -> 48f; TAPE -> 60f
+            WATERCOLOR -> 48f; TAPE -> 60f; QALAM -> 30f
         }
     val defaultWidth: Float
         get() = when (this) {
             PEN -> 2f; PENCIL -> 1.6f; BRUSH -> 6f; MARKER -> 5f; HIGHLIGHTER -> 14f; ERASER -> 12f; LINE -> 2f
-            WATERCOLOR -> 16f; TAPE -> 16f
+            WATERCOLOR -> 16f; TAPE -> 16f; QALAM -> 7f
         }
     /** Tiga ukuran cepat yang ditampilkan di bilah alat. */
     val presets: List<Float>
@@ -49,6 +51,7 @@ enum class Tool(val label: String) {
             LINE -> listOf(1.2f, 2f, 4f)
             WATERCOLOR -> listOf(8f, 16f, 30f)
             TAPE -> listOf(10f, 16f, 28f)
+            QALAM -> listOf(4f, 7f, 12f)
         }
 
     /** Alat yang digambar di bawah teks dan tulisan (seperti cat di atas kertas). */
@@ -59,7 +62,7 @@ enum class Tool(val label: String) {
 
     companion object {
         /** Alat yang tampil di baki, berurutan. */
-        val tray = listOf(PEN, PENCIL, BRUSH, WATERCOLOR, MARKER, HIGHLIGHTER, ERASER)
+        val tray = listOf(PEN, PENCIL, BRUSH, QALAM, WATERCOLOR, MARKER, HIGHLIGHTER, ERASER)
     }
 }
 

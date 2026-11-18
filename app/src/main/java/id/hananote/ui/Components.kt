@@ -233,6 +233,19 @@ private fun DrawScope.drawTool(tool: Tool, ink: Color) {
                 close()
             }, ink.copy(alpha = 0.85f))
         }
+        Tool.QALAM -> {
+            // Qalam bambu: batang cokelat muda, ujung dipotong miring dengan tinta di ujungnya.
+            val bw = d(8f)
+            drawRoundRect(Color(0xFFC9A46A), Offset(cx - bw / 2, d(14f)), Size(bw, h), CornerRadius(d(2.5f)))
+            drawRect(Color(0xFFA9844C), Offset(cx - d(1f), d(18f)), Size(d(1.6f), h))
+            drawRect(Color(0xFF8C6A3A), Offset(cx - bw / 2, d(30f)), Size(bw, d(1.6f)))
+            drawPath(Path().apply {
+                moveTo(cx - bw / 2, d(14f)); lineTo(cx + bw / 2, d(14f)); lineTo(cx + bw / 2, d(7f)); lineTo(cx - bw / 2, d(2f)); close()
+            }, Color(0xFFE2C898))
+            drawPath(Path().apply {
+                moveTo(cx - bw / 2, d(2f)); lineTo(cx + bw / 2, d(7f)); lineTo(cx + bw / 2, d(9.5f)); lineTo(cx - bw / 2, d(4.5f)); close()
+            }, ink)
+        }
         Tool.LINE -> Unit // bentuk punya ikon sendiri (ShapeGlyph)
         Tool.TAPE -> Unit // selotip punya ikon sendiri (TapeGlyph)
     }

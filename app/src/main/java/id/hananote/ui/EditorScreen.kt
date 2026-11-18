@@ -2866,7 +2866,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
         const val AUTO_TEXT_HOVER_EXTRA_MS = 2000L
 
         fun defaultColor(t: Tool): Int = when (t) {
-            Tool.PEN, Tool.BRUSH, Tool.LINE -> 0xFF1F2430.toInt()
+            Tool.PEN, Tool.BRUSH, Tool.LINE, Tool.QALAM -> 0xFF1F2430.toInt()
             Tool.PENCIL -> 0xFF4A4D55.toInt()
             Tool.MARKER -> 0xFF2F43B5.toInt()
             Tool.HIGHLIGHTER -> 0xFFFFE14D.toInt()

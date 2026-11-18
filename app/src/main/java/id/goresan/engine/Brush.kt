@@ -433,7 +433,7 @@ data class Brush(
 object Brushes {
     val categories = listOf(
         "Sketsa", "Tinta", "Pena", "Spidol", "Melukis", "Cat Air", "Pastel & Arang", "Airbrush", "Tekstur",
-        "Kaligrafi", "Lettering", "Komik", "Desain", "Grunge", "Kreatif",
+        "Kaligrafi", "Khat Arab", "Lettering", "Komik", "Desain", "Grunge", "Kreatif",
     )
 
     val builtIn: List<Brush> = listOf(
@@ -612,6 +612,33 @@ object Brushes {
             tip = TipShape.INK_ROUGH, roundness = 0.25f, angle = 40f,
             sizeMax = 60f, spacing = 0.03f, flow = 0.9f, pressureSize = 0.7f, streamline = 0.3f,
             taperStart = 0.2f, taperEnd = 0.2f, defaultSize = 0.4f,
+        ),
+
+        // ---- Khat Arab ----
+        // Ujung qalam pipih yang dipotong miring, dipegang ±70° terhadap garis tulis (tepinya condong ke kanan
+        // atas): tarikan mendatar paling tebal, alif lebih ramping, dan tarikan miring ke kiri bawah menipis,
+        // seperti khat Naskhi dan Tsuluts. Sudut -70° di kanvas (sumbu y ke bawah).
+        Brush(
+            id = "qalamnaskhi", name = "Qalam Naskhi", category = "Khat Arab",
+            tip = TipShape.HARD_ROUND, roundness = 0.16f, angle = -70f,
+            sizeMax = 40f, sizeMin = 2f, spacing = 0.02f, pressureSize = 0.3f, streamline = 0.35f, defaultSize = 0.45f,
+        ),
+        Brush(
+            id = "qalamtsuluts", name = "Qalam Tsuluts", category = "Khat Arab",
+            tip = TipShape.HARD_ROUND, roundness = 0.13f, angle = -70f,
+            sizeMax = 90f, sizeMin = 4f, spacing = 0.015f, pressureSize = 0.35f, streamline = 0.45f,
+            taperEnd = 0.08f, defaultSize = 0.45f,
+        ),
+        Brush(
+            id = "qalambasah", name = "Qalam Tinta Basah", category = "Khat Arab",
+            tip = TipShape.INK_ROUGH, roundness = 0.2f, angle = -70f,
+            sizeMax = 60f, sizeMin = 3f, spacing = 0.02f, flow = 0.95f, pressureSize = 0.45f, pressureOpacity = 0.15f,
+            streamline = 0.35f, taperStart = 0.05f, taperEnd = 0.12f, defaultSize = 0.45f,
+        ),
+        Brush(
+            id = "spidolkhat", name = "Spidol Khat", category = "Khat Arab",
+            tip = TipShape.HARD_ROUND, roundness = 0.25f, angle = -70f,
+            sizeMax = 30f, sizeMin = 2f, spacing = 0.02f, streamline = 0.3f, defaultSize = 0.5f,
         ),
 
         // ---- Pena ----
