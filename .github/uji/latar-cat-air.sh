@@ -124,7 +124,7 @@ cari_kuas() {
   cari "$1"
   tap_node "$2" 3 || echo "KUAS TIDAK KETEMU: $2"
 }
-cari_kuas "cat air" "Latar Cat Air"
+cari_kuas latar "Latar Cat Air"
 shot pustaka
 tap_node "Kuas" 2 || true
 # Satu bercak di tengah, seperti awal video.
@@ -138,13 +138,13 @@ shot latar-penuh
 gerak jalur 20 30 40 50 60 40 80 60
 shot latar-lapis-dua
 # Kuas Bercak Cat Air untuk menambah awan gelap.
-cari_kuas "cat air" "Bercak Cat Air"
+cari_kuas bercak "Bercak Cat Air"
 tap_node "Kuas" 2 || true
 gerak jalur 70 30 76 36 72 44
 gerak jalur 25 70 30 78 22 82
 shot bercak-tambahan
 # Pengaturan: bentuk dan tekstur baru.
-cari_kuas "cat air" "Latar Cat Air"
+cari_kuas latar "Latar Cat Air"
 tap_node "Latar Cat Air" 3 || true
 tap_node "Bentuk" 2 || true
 shot studio-bentuk
