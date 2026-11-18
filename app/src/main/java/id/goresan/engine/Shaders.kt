@@ -270,6 +270,10 @@ uniform float uBurnt;
 uniform int uBurntMode;
 uniform int uBlendMode;
 uniform float uEdgeR;
+// Garis tepi menyatu: tebal garis tepi (piksel) dan warna isi.
+uniform int uOutline;
+uniform float uOutlineR;
+uniform vec3 uOutlineFill;
 // Kuas ganda: topeng kuas kedua (alfa) dan cara menggabungnya.
 uniform int uDual;
 // Cat air hidup: cat basah sesi (rgb = warna tanpa premultiply, a = sebaran cat) ikut digabung dengan goresan.
@@ -484,6 +488,25 @@ void main() {
             if (uThreshold > 0.0) a = a >= uThreshold ? 1.0 : 0.0;
             s = vec4(col * a, a);
         }
+        if (uOutline == 1 && uOp == 0) {
+            // Garis tepi menyatu: bagian dalam goresan (lebih dari uOutlineR dari tepinya) diisi uOutlineFill dan
+            // menutup apa pun di bawahnya; pita tepinya berwarna kuas tetapi digambar DI BELAKANG cat yang sudah ada,
+            // jadi hanya tampil di luar bentuk lama. Hasilnya garis tepi gabungan seluruh goresan.
+            float S = clamp(s.a, 0.0, 1.0);
+            vec3 oc = S > 0.0 ? s.rgb / S : vec3(0.0);
+            float mn = S;
+            for (int k = 0; k < 16; k++) {
+                float ang = float(k) * 0.3926991;
+                vec2 dir = vec2(cos(ang), sin(ang));
+                mn = min(mn, strokeAlpha(vPos + dir * uOutlineR));
+                if (k % 2 == 0) mn = min(mn, strokeAlpha(vPos + dir * uOutlineR * 0.5));
+            }
+            float g = uOpacity * strokeGrain();
+            float f = smoothstep(0.3, 0.7, mn) * g;
+            float band = clamp(S * g - f, 0.0, 1.0);
+            vec4 behind = d + vec4(oc * band, band) * (1.0 - d.a);
+            r = vec4(uOutlineFill * f, f) + behind * (1.0 - f);
+        } else {
         s *= uOpacity * strokeGrain();
         if (uOp == 0 && uGlaze == 1) {
             // Lapisan menumpuk (multiply): cat di atas cat jadi lebih pekat, seperti lapisan cat air.
@@ -499,6 +522,7 @@ void main() {
             r = vec4(a * (1.0 - ab) * cs + a * ab * bl + (1.0 - a) * d.rgb, a + ab * (1.0 - a));
         } else {
             r = (uOp == 0) ? (s + d * (1.0 - s.a)) : (d * (1.0 - s.a));
+        }
         }
     } else if (uOp == 2) {
         float m = (uUseMask == 1) ? texture(uMask, uv).r : 1.0;

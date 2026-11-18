@@ -1217,3 +1217,14 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   goresan terisi warna kuas kedua: misalnya garis tepi merah dengan isi kuning.
 - Pratinjau kuas di daftar menampilkan dua warnanya. Saat kuas gabungan dipisah, kuas utama tetap berwarna sendiri
   dan bisa dikembalikan ke warna aktif di Studio › Properti.
+
+## Perubahan 0.1.131: Garis tepi menyatu kembali, dengan warna garis tepi dan warna isi sendiri-sendiri
+
+- Kuas **Huruf Gelembung** dan **Gelembung Garis Tebal** (kategori Lettering) dan pengaturan **Garis tepi menyatu**
+  dikembalikan: goresan yang bertemu atau bersilangan, walau digambar terpisah (mis. huruf X atau T dari dua goresan),
+  garis tepinya menyambung dan tidak bertumpuk. Gabung kuas (0.1.129–0.1.130) tetap ada.
+- Pengaturannya sekarang di bagian Studio Kuas sendiri, **Garis tepi** (paling atas untuk kuas yang memakainya):
+  tebal garis tepi, **Warna garis tepi** (ikut warna aktif atau warna sendiri), dan **Warna isi** (ikut warna aktif
+  atau warna sendiri dari palet warna muda dan warna tegas). Jadi garis tepi dan isinya bisa dibuat berbeda warna,
+  misalnya garis tepi merah dengan isi kuning.
+- Pratinjau kuas di daftar menampilkan garis tepi dan warna isinya.

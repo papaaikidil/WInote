@@ -438,6 +438,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var strokeSet: BrushSetting? = null
     private var strokeLayer: Layer? = null
     private var strokeColor = 0
+    /** Warna aktif saat goresan dimulai (warna isi garis tepi menyatu yang mengikuti warna aktif). */
+    private var strokeActiveColor = 0
     /** Kuas kedua goresan ini ikut mewarnai, dengan warna [strokeDualColor]. */
     private var strokeDualPaint = false
     private var strokeDualColor = 0
@@ -1631,6 +1633,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         strokeLayer = layer
         // Kuas berwarna sendiri (bagian kuas gabungan) memakai warnanya, bukan warna aktif.
         strokeColor = if (strokeTool == ToolKind.PAINT && !cloneActive && set.brush.fixedColor != 0) set.brush.fixedColor or 0xFF000000.toInt() else ts.color
+        strokeActiveColor = ts.color
         strokeFlags = r.flags
         strokeGamma = ts.gamma
         rawN = 0
@@ -1699,7 +1702,11 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             )
         }
         val rb = set.brush
-        rendPad = if (strokeTool == ToolKind.PAINT && !strokeDirect && (rb.wetEdges > 0f || rb.burntEdges > 0f)) ceil(edgeRadius(set.sizePx)).toInt() + 2 else 0
+        rendPad = if (strokeTool == ToolKind.PAINT && !strokeDirect && (rb.wetEdges > 0f || rb.burntEdges > 0f || rb.outline > 0f)) {
+            ceil(max(edgeRadius(set.sizePx), if (rb.outline > 0f) outlineRadius(set) else 0f)).toInt() + 2
+        } else {
+            0
+        }
         if (strokeDirect) {
             if (backup == null) backup = Tex(W, H)
             if (smT == null) smT = Tex(1024, 1024)
@@ -1743,6 +1750,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     /** Jari-jari pembacaan sekitar titik untuk tepi basah/terbakar (piksel kanvas). */
     private fun edgeRadius(sizePx: Float) = max(1.5f, sizePx * 0.12f).coerceAtMost(60f)
+
+    /** Tebal garis tepi menyatu (piksel kanvas) untuk kuas di [set]. */
+    private fun outlineRadius(set: BrushSetting) = (set.sizePx * set.brush.outline).coerceIn(1f, 80f)
 
     /**
      * Gambar ulang cap stempel: ketukan = cap seukuran kuas di titik itu; tarikan = cap membentang dari titik awal
@@ -2320,6 +2330,17 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pPreview.i("uDualPaint", if (dualOn && strokeDualPaint) 1 else 0)
         val dc = strokeDualColor
         pPreview.f3("uDualPaintColor", Color.red(dc) / 255f, Color.green(dc) / 255f, Color.blue(dc) / 255f)
+        val outlineOn = fx != null && fb != null && fb.outline > 0f && op == 0
+        pPreview.i("uOutline", if (outlineOn) 1 else 0)
+        if (outlineOn) {
+            pPreview.f("uOutlineR", outlineRadius(fx!!))
+            // Warna isi: warna sendiri, atau 0 = ikut warna aktif.
+            val fc = if (fb!!.outlineFill == 0) strokeActiveColor else fb.outlineFill
+            pPreview.f3("uOutlineFill", Color.red(fc) / 255f, Color.green(fc) / 255f, Color.blue(fc) / 255f)
+        } else {
+            pPreview.f("uOutlineR", 1f)
+            pPreview.f3("uOutlineFill", 1f, 1f, 1f)
+        }
         val rendOn = fb != null && (fb.wetEdges > 0f || fb.burntEdges > 0f || fb.render == 2 || fb.render == 3 ||
             fb.alphaThreshold > 0f || fb.blendMode != 0 || fb.lumBlend)
         pPreview.i("uRend", if (rendOn) 1 else 0)
@@ -7160,6 +7181,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         }
         val out = previewWet(previewGrain(buf, w, h, pb), w, h, pb, size)
         share?.let { sh -> previewTwoTone(out, sh, w, h, b, dual) }
+        if (b.outline > 0f) previewOutline(out, w, h, b, size)
         val bmp = toBitmap(out, w, h)
         val id = b.id
         post { listener.onBrushPreview(id, bmp) }
@@ -7169,14 +7191,65 @@ class Engine(private val ctx: Context, private val listener: Listener) {
      * Pratinjau kuas gabungan yang kedua kuasnya berwarna: bagian kuas kedua diwarnai beda dari kuas utama. Warna sendiri
      * dipakai bila cukup terang di latar gelap pratinjau; warna aktif digambar putih (kuas utama) atau abu-abu (kuas kedua).
      */
-    private fun previewTwoTone(buf: ByteBuffer, share: FloatArray, w: Int, h: Int, b: Brush, dual: Brush?) {
-        fun tone(c: Int, fallback: Int): FloatArray {
-            val v = if (c == 0) fallback else c
-            var r = Color.red(v) / 255f; var g = Color.green(v) / 255f; var bl = Color.blue(v) / 255f
-            val lum = 0.3f * r + 0.59f * g + 0.11f * bl
-            if (lum < 0.25f) { r += (1f - r) * 0.35f; g += (1f - g) * 0.35f; bl += (1f - bl) * 0.35f }
-            return floatArrayOf(r, g, bl)
+    /** Warna untuk pratinjau di latar gelap: [c] (0 = [fallback]); warna yang terlalu gelap diterangkan sedikit. */
+    private fun previewTone(c: Int, fallback: Int): FloatArray {
+        val v = if (c == 0) fallback else c
+        var r = Color.red(v) / 255f; var g = Color.green(v) / 255f; var bl = Color.blue(v) / 255f
+        val lum = 0.3f * r + 0.59f * g + 0.11f * bl
+        if (lum < 0.25f) { r += (1f - r) * 0.35f; g += (1f - g) * 0.35f; bl += (1f - bl) * 0.35f }
+        return floatArrayOf(r, g, bl)
+    }
+
+    /**
+     * Pratinjau garis tepi menyatu: bagian dalam goresan (lebih dari tebal garis tepi dari tepinya) diberi warna isi,
+     * pita tepinya warna garis tepi (seperti PREVIEW_FS). Warna yang mengikuti warna aktif tampil putih (garis tepi)
+     * atau abu-abu (isi); bila keduanya hampir sama, isinya digelapkan supaya garis tepinya tetap terlihat.
+     */
+    private fun previewOutline(buf: ByteBuffer, w: Int, h: Int, b: Brush, size: Float) {
+        val n = w * h
+        val al = FloatArray(n) { (buf.get(it * 4 + 3).toInt() and 0xFF) / 255f }
+        val rad = max(1.5f, size * b.outline)
+        val dirs = 16
+        val fill = previewTone(b.outlineFill, Color.rgb(140, 140, 146))
+        val line0 = if (b.fixedColor != 0) previewTone(b.fixedColor, Color.WHITE) else null
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            val S = al[i]
+            if (S <= 0f) continue
+            var mn = S
+            for (k in 0 until dirs) {
+                val ang = k * (2.0 * Math.PI / dirs)
+                val cx = cos(ang).toFloat(); val cy = sin(ang).toFloat()
+                for (q in 0..1) {
+                    if (q == 1 && k % 2 != 0) continue
+                    val rr = if (q == 0) rad else rad * 0.5f
+                    val sx = (x + cx * rr).roundToInt(); val sy = (y + cy * rr).roundToInt()
+                    val v = if (sx < 0 || sy < 0 || sx >= w || sy >= h) 0f else al[sy * w + sx]
+                    if (v < mn) mn = v
+                }
+            }
+            val t = ((mn - 0.3f) / 0.4f).coerceIn(0f, 1f)
+            val f = t * t * (3f - 2f * t) * S
+            val band = (S - f).coerceAtLeast(0f)
+            // Warna pita: warna sendiri, atau warna piksel yang sudah ada (putih / dua warna kuas gabungan).
+            val line = line0 ?: floatArrayOf(
+                (buf.get(i * 4).toInt() and 0xFF) / 255f / S,
+                (buf.get(i * 4 + 1).toInt() and 0xFF) / 255f / S,
+                (buf.get(i * 4 + 2).toInt() and 0xFF) / 255f / S,
+            )
+            var fr = fill[0]; var fg = fill[1]; var fbl = fill[2]
+            if (abs(fr - line[0]) + abs(fg - line[1]) + abs(fbl - line[2]) < 0.25f) { fr = line[0] * 0.4f; fg = line[1] * 0.4f; fbl = line[2] * 0.4f }
+            val a = (f + band).coerceAtMost(1f)
+            buf.put(i * 4, ((fr * f + line[0].coerceAtMost(1f) * band) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte())
+            buf.put(i * 4 + 1, ((fg * f + line[1].coerceAtMost(1f) * band) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte())
+            buf.put(i * 4 + 2, ((fbl * f + line[2].coerceAtMost(1f) * band) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte())
+            buf.put(i * 4 + 3, (a * 255f + 0.5f).toInt().coerceIn(0, 255).toByte())
         }
+        buf.position(0)
+    }
+
+    private fun previewTwoTone(buf: ByteBuffer, share: FloatArray, w: Int, h: Int, b: Brush, dual: Brush?) {
+        val tone = ::previewTone
         val p = tone(b.fixedColor, Color.WHITE)
         var q = tone(dual?.fixedColor ?: 0, Color.rgb(140, 140, 146))
         if (abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) < 0.25f) q = floatArrayOf(p[0] * 0.5f, p[1] * 0.5f, p[2] * 0.5f)

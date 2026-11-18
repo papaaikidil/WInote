@@ -53,6 +53,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import id.goresan.engine.AngleMode
 import id.goresan.engine.Brush
 import id.goresan.engine.Grain
@@ -528,7 +531,7 @@ private fun SwitchRow(title: String, hint: String, on: Boolean, onChange: (Boole
 /** Bagian Studio Kuas (seperti tab di kiri Brush Studio Procreate). */
 private val studioTabs = listOf(
     "Jalur goresan", "Stabilisasi", "Runcing", "Bentuk", "Tekstur", "Rendering", "Wet Mix", "Cat air",
-    "Dinamika", "Dinamika warna", "Pena", "Properti", "Kuas ganda",
+    "Dinamika", "Dinamika warna", "Pena", "Properti", "Garis tepi", "Kuas ganda",
 )
 
 /** Mode rendering seperti Procreate (indeks = Brush.render). */
@@ -554,8 +557,9 @@ private fun BrushStudio(state: AppState, main: Brush) {
     // Seperti Procreate: 0% ditulis "Tidak ada".
     val pctNone: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${(it * 100).roundToInt()}%" }
     val pctSigned: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${if (it > 0) "+" else ""}${(it * 100).roundToInt()}%" }
-    // Kuas gabungan: bagian Kuas ganda paling atas supaya cara gabung langsung terlihat.
-    val allTabs = if (main.dual != null) listOf("Kuas ganda") + studioTabs.filter { it != "Kuas ganda" } else studioTabs
+    // Kuas gabungan / kuas garis tepi menyatu: bagiannya paling atas supaya pengaturannya langsung terlihat.
+    val first = listOfNotNull("Garis tepi".takeIf { main.outline > 0f }, "Kuas ganda".takeIf { main.dual != null })
+    val allTabs = first + studioTabs.filter { it !in first }
     val tabs = if (sec) allTabs.filter { it in SecondTabs } else allTabs
     var picked by remember { mutableStateOf(state.studioOpenTab?.takeIf { it in studioTabs } ?: allTabs[0]) }
     LaunchedEffect(Unit) { state.studioOpenTab = null }
@@ -739,6 +743,27 @@ private fun BrushStudio(state: AppState, main: Brush) {
                         LabeledSlider("Ambang alfa", b.alphaThreshold, { up(b.copy(alphaThreshold = it)) }, display = pctNone)
                         Hint("Tepi basah melunakkan tepi goresan; tepi terbakar menggelapkan bagian yang menimpa cat lain. Ambang alfa membuat tepi tegas tanpa semi-transparan.")
                     }
+                    "Garis tepi" -> {
+                        // Garis tepi menyatu (huruf gelembung): goresan yang bertemu, walau terpisah, garis tepinya
+                        // menyambung. Warna garis tepi dan warna isi diatur sendiri-sendiri.
+                        LabeledSlider("Garis tepi menyatu", b.outline, { up(b.copy(outline = it)) }, 0f..0.4f, display = pctNone)
+                        if (b.outline > 0f) {
+                            PartColorRow(
+                                state, "Warna garis tepi", listOf("Ikut warna aktif", "Warna sendiri"),
+                                if (b.fixedColor != 0) 1 else 0, b.fixedColor,
+                                { i -> up(b.copy(fixedColor = if (i == 1) b.fixedColor.takeIf { it != 0 } ?: state.color else 0)) },
+                                { c -> up(b.copy(fixedColor = c)) },
+                            )
+                            PartColorRow(
+                                state, "Warna isi", listOf("Ikut warna aktif", "Warna sendiri"),
+                                if (b.outlineFill != 0) 1 else 0, b.outlineFill,
+                                { i -> up(b.copy(outlineFill = if (i == 1) b.outlineFill.takeIf { it != 0 } ?: 0xFFFFFFFF.toInt() else 0)) },
+                                { c -> up(b.copy(outlineFill = c)) },
+                                palette = FillColors,
+                            )
+                        }
+                        Hint("Garis tepi menyatu (huruf gelembung): goresan diisi warna isi dan diberi garis tepi. Goresan yang bertemu atau bersilangan, walau digambar terpisah, menyatu tanpa garis tepi yang bertumpuk. Warna garis tepi dan warna isi bisa dibuat berbeda: masing-masing ikut warna aktif atau warna sendiri dari palet.")
+                    }
                     "Wet Mix" -> {
                         LabeledSlider("Pengenceran", b.wmDilution, { up(b.copy(wmDilution = it)) }, display = pctNone)
                         LabeledSlider("Muatan cat", b.wmCharge, { up(b.copy(wmCharge = it)) }, display = pctNone)
@@ -844,7 +869,7 @@ private fun BrushStudio(state: AppState, main: Brush) {
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                        if (!sec && main.dual == null && b.fixedColor != 0) {
+                        if (!sec && main.dual == null && b.outline <= 0f && b.fixedColor != 0) {
                             // Kuas berwarna sendiri (mis. bekas bagian kuas gabungan yang dipisah).
                             PartColorRow(
                                 state, "Warna kuas", listOf("Ikut warna aktif", "Warna sendiri"), 1, b.fixedColor,
@@ -968,6 +993,7 @@ private fun PartColorRow(
     color: Int,
     onSelect: (Int) -> Unit,
     onColor: (Int) -> Unit,
+    palette: List<Pair<Int, String>> = BrushColors,
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(title, color = Color(0xFFDADAE0), fontSize = 13.sp)
@@ -999,7 +1025,7 @@ private fun PartColorRow(
                 )
                 TextButton(onClick = { onColor(state.color) }) { Text("Pakai warna aktif", fontSize = 12.sp) }
             }
-            BrushColors.chunked(6).forEach { row ->
+            palette.chunked(6).forEach { row ->
                 Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { (c, n) ->
                         val on = c == color
@@ -1160,3 +1186,10 @@ private const val SPACING_MAX = 10f
 /** Posisi geser 0..1 → jarak antar cap (pecahan diameter), dibulatkan ke persen bulat. */
 private fun spacingAtSlider(t: Float): Float =
     ((SPACING_MIN * (SPACING_MAX / SPACING_MIN).pow(t.coerceIn(0f, 1f)) * 100f).roundToInt() / 100f).coerceIn(SPACING_MIN, SPACING_MAX)
+
+/** Palet warna isi garis tepi menyatu: warna muda dulu, lalu warna tegas. */
+private val FillColors: List<Pair<Int, String>> = listOf(
+    0xFFFFFFFF to "Putih", 0xFFFFF4DC to "Krem", 0xFFFFE680 to "Kuning muda", 0xFFFFC2D6 to "Merah muda",
+    0xFFBFE3FF to "Biru muda", 0xFFC4EFC8 to "Hijau muda", 0xFFE0E0E4 to "Abu-abu muda", 0xFFFDD835 to "Kuning",
+    0xFFFB8C00 to "Oranye", 0xFFE53935 to "Merah", 0xFF1E88E5 to "Biru", 0xFF111111 to "Hitam",
+).map { (c, n) -> c.toInt() to n }
