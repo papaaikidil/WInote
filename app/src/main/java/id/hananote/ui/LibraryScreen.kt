@@ -1475,8 +1475,16 @@ private fun ThemeDialog(repo: Repository, onDismiss: () -> Unit) {
     val pickFont =rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
-                val entry = withContext(Dispatchers.IO) { runCatching { repo.importFont(context.applicationContext, uri) }.getOrNull() }
-                fontMessage = if (entry != null) "Font “${entry.name}” ditambahkan." else "Berkas itu bukan font yang bisa dipakai."
+                val r = withContext(Dispatchers.IO) {
+                    runCatching { repo.importFont(context.applicationContext, uri) }
+                        .getOrElse { Repository.FontImport(emptyList(), "Berkas itu tidak bisa dibaca.") }
+                }
+                val entry = r.added.firstOrNull()
+                fontMessage = when {
+                    entry == null -> r.error ?: "Berkas itu bukan font yang bisa dipakai."
+                    r.added.size == 1 -> "Font “${entry.name}” ditambahkan."
+                    else -> "${r.added.size} font ditambahkan: ${r.added.joinToString { it.name }}."
+                }
             }
         }
     }
@@ -1528,7 +1536,7 @@ private fun ThemeDialog(repo: Repository, onDismiss: () -> Unit) {
                 val imported = fonts.filter { it.imported }
                 if (imported.isEmpty()) {
                     Text(
-                        "Belum ada. Tambahkan berkas font .ttf atau .otf, misalnya hasil unduhan dari Google Fonts.",
+                        "Belum ada. Tambahkan berkas font .ttf atau .otf (juga .woff, atau ZIP unduhan Google Fonts).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1543,7 +1551,7 @@ private fun ThemeDialog(repo: Repository, onDismiss: () -> Unit) {
                     Text(fontMessage!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
                 FilledTonalButton(onClick = {
-                    pickFont.launch(arrayOf("font/ttf", "font/otf", "font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream"))
+                    pickFont.launch(arrayOf("*/*"))
                 }) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(Modifier.width(6.dp))

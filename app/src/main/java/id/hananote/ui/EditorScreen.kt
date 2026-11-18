@@ -1353,9 +1353,16 @@ class EditorController(private val repo: Repository, val noteId: String) {
 
     fun importFont(context: Context, uri: Uri, done: (FontEntry?) -> Unit) {
         main.launch {
-            val entry = withContext(Dispatchers.IO) { runCatching { repo.importFont(context.applicationContext, uri) }.getOrNull() }
-            if (entry == null) notice = "Berkas itu bukan font yang bisa dipakai. Pilih berkas .ttf atau .otf."
-            else notice = "Font “${entry.name}” ditambahkan."
+            val r = withContext(Dispatchers.IO) {
+                runCatching { repo.importFont(context.applicationContext, uri) }
+                    .getOrElse { Repository.FontImport(emptyList(), "Berkas itu tidak bisa dibaca.") }
+            }
+            val entry = r.added.firstOrNull()
+            notice = when {
+                entry == null -> r.error ?: "Berkas itu bukan font yang bisa dipakai. Pilih berkas .ttf atau .otf."
+                r.added.size == 1 -> "Font “${entry.name}” ditambahkan."
+                else -> "${r.added.size} font ditambahkan: ${r.added.joinToString { it.name }}."
+            }
             done(entry)
         }
     }
@@ -3104,7 +3111,9 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
     val pickFont = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) c.importFont(context, uri) { entry -> if (entry != null) addedFont = entry.id }
     }
-    val addFont = { pickFont.launch(arrayOf("font/ttf", "font/otf", "font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream")) }
+    // Semua jenis berkas: di beberapa perangkat .otf dilaporkan sebagai dokumen sehingga tidak bisa dipilih bila
+    // disaring menurut jenis. Isinya diperiksa saat ditambahkan.
+    val addFont = { pickFont.launch(arrayOf("*/*")) }
 
     val canvas: @Composable (Modifier) -> Unit = { m ->
         Box(m) {

@@ -2195,15 +2195,22 @@ class AppState(val app: Context) : Engine.Listener {
         bg.execute {
             val r = runCatching {
                 val name = runCatching { nameOf(uri) }.getOrNull() ?: "Font.ttf"
-                val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Berkas tidak bisa dibaca")
-                if (bytes.size > 40 shl 20) error("Berkas font terlalu besar")
-                id.goresan.engine.Fonts.importFont(app, name, bytes)
+                val input = app.contentResolver.openInputStream(uri) ?: error("Berkas tidak bisa dibaca")
+                val bytes = input.use { id.goresan.engine.FontFiles.readLimited(it) }
+                    ?: error("Berkas font terlalu besar (lebih dari 40 MB)")
+                try {
+                    id.goresan.engine.Fonts.importFont(app, name, bytes)
+                } catch (e: Exception) {
+                    Diag.log("Impor font gagal: $name, ${bytes.size} bait, awal ${id.goresan.engine.FontFiles.head(bytes)}: ${e.message}")
+                    throw e
+                }
             }
             main.post {
                 fontsVersion++
-                r.onSuccess { d ->
+                r.onSuccess { ds ->
+                    val d = ds.first()
                     if (textEditing) updateText(textSpec.copy(font = d.id))
-                    showFlash("Font \"${d.name}\" ditambahkan")
+                    showFlash(if (ds.size == 1) "Font \"${d.name}\" ditambahkan" else "${ds.size} font ditambahkan: ${ds.joinToString { it.name }}")
                 }.onFailure { showFlash(it.message ?: "Font tidak bisa diimpor") }
             }
         }

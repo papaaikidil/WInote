@@ -12,6 +12,8 @@ on:
       - "app/src/main/java/id/goresan/engine/Tiff.kt"
       - "app/src/main/java/id/goresan/engine/Palettes.kt"
       - "app/src/main/java/id/goresan/engine/Apng.kt"
+      - "app/src/main/java/id/goresan/engine/FontFiles.kt"
+      - ".github/uji/font/**"
       - ".github/uji/impor/**"
       - ".github/workflows/uji-jvm.yml"
 
@@ -31,7 +33,7 @@ jobs:
       - name: Alat
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick liblzo2-dev > /dev/null
-          pip install -q python-lzo lz4 pillow numpy
+          pip install -q python-lzo lz4 pillow numpy fonttools
           if ! command -v kotlinc >/dev/null; then
             curl -sSL -o k.zip https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
             unzip -q k.zip -d $HOME && echo "$HOME/kotlinc/bin" >> $GITHUB_PATH
@@ -47,6 +49,13 @@ jobs:
           mkdir -p uji-hasil/keluar
           java -jar t.jar uji-hasil/fixtures uji-hasil/keluar 2>&1 | tee uji-hasil/laporan.txt
           python3 .github/uji/impor/banding.py uji-hasil/fixtures uji-hasil/keluar 2>&1 | tee -a uji-hasil/laporan.txt
+      - name: Uji impor font
+        run: |
+          set -o pipefail
+          python3 .github/uji/font/buat.py app/src/main/assets/fonts/italiana.ttf uji-hasil/font
+          kotlinc app/src/main/java/id/goresan/engine/FontFiles.kt .github/uji/font/FontTest.kt -include-runtime -d f.jar 2>&1 | grep -v "^warning" || true
+          java -jar f.jar uji-hasil/font uji-hasil/font-keluar | tee uji-hasil/font.txt
+          python3 .github/uji/font/periksa.py uji-hasil/font.txt uji-hasil/font-keluar uji-hasil/font | tee -a uji-hasil/font.txt
       - name: Simpan hasil
         if: always()
         run: |

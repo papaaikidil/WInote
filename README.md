@@ -1171,3 +1171,15 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - **Tutup semua / Buka semua / Lepas semua** selotip di halaman. Lepas semua bisa diurungkan.
 - Selotip bisa dipilih (alat Pilih) untuk digeser, diputar, diubah ukurannya, diganti warnanya, atau dihapus;
   penghapus juga melepas selotip yang tersapu. Keadaan buka/tutup tiap selotip ikut tersimpan.
+
+## Perubahan 0.1.126: Impor font lebih andal
+
+- **Semua jenis berkas bisa dipilih** saat menambah font di catatan (dulu dipilih menurut jenis berkas, sehingga di
+  sebagian perangkat berkas .otf tampil abu-abu dan tidak bisa diketuk).
+- Font **dikenali dari isinya**, bukan dari nama berkas: nama ganda seperti `NanaFont-Regular.ttf.otf`, berkas
+  tanpa ekstensi, atau .otf yang isinya TrueType tetap terbaca. Catatan dan gambar memakai pengenal yang sama.
+- **Font web WOFF** diubah otomatis ke TTF/OTF. **ZIP** (mis. unduhan Google Fonts) dibuka langsung: bila ada folder
+  `static`, yang diambil gaya dasar (Regular, Bold, Italic, BoldItalic).
+- Pesan yang jelas bila berkasnya bukan font (PDF, gambar, RAR, WOFF2, ZIP tanpa font) atau tidak bisa dibaca
+  Android, dan rinciannya dicatat di laporan teknis untuk pemeriksaan.
+- Di catatan, font yang ternyata tidak bisa dibaca Android tidak lagi "berhasil" ditambahkan diam-diam.

@@ -98,36 +98,55 @@ class Repository private constructor(context: Context) {
     private fun scanFonts(): List<FontEntry> {
         FontRegistry.dir = fontsDir
         val imported = (fontsDir.listFiles() ?: emptyArray())
-            .filter { it.isFile && (it.name.endsWith(".ttf", true) || it.name.endsWith(".otf", true)) }
+            .filter { it.isFile && it.extension.lowercase() in setOf("ttf", "otf", "ttc") }
             .sortedBy { it.name.lowercase() }
             .map { FontEntry("file:" + it.name, it.nameWithoutExtension.replace('_', ' '), imported = true) }
         return FontRegistry.builtIn + imported
     }
 
-    /** Salin berkas font (.ttf / .otf) ke aplikasi. Hasilnya null bila berkas bukan font yang bisa dipakai. */
-    fun importFont(context: Context, uri: Uri): FontEntry? {
+    /** Hasil menambah font: font yang berhasil ditambahkan, atau [error] (siap ditampilkan) bila tidak ada. */
+    class FontImport(val added: List<FontEntry>, val error: String?)
+
+    /**
+     * Tambahkan font dari berkas pilihan pengguna. Isinya dikenali dari bait awalnya, bukan dari nama berkas:
+     * TTF/OTF/TTC, font web WOFF (diubah ke TTF/OTF), atau ZIP berisi font (lihat [id.goresan.engine.FontFiles]).
+     * Tiap font diperiksa dulu bisa dibaca Android sebelum disimpan.
+     */
+    fun importFont(context: Context, uri: Uri): FontImport {
         val cr = context.contentResolver
-        var display = runCatching {
+        val display = runCatching {
             cr.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                 if (c.moveToFirst()) c.getString(0) else null
             }
         }.getOrNull() ?: "Font"
-        val ext = if (display.endsWith(".otf", true)) ".otf" else ".ttf"
-        display = display.substringBeforeLast('.')
-        val safe = display.replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifEmpty { "Font" }.replace(' ', '_')
-        var target = File(fontsDir, safe + ext)
-        var k = 2
-        while (target.exists()) target = File(fontsDir, "${safe}_$k$ext").also { k++ }
-        val input = cr.openInputStream(uri) ?: return null
-        input.use { inp -> FileOutputStream(target).use { inp.copyTo(it) } }
-        // Pastikan berkasnya benar-benar font.
-        val ok = target.length() > 100 && runCatching { android.graphics.Typeface.createFromFile(target) }.isSuccess
-        if (!ok) {
-            target.delete()
-            return null
+        val input = runCatching { cr.openInputStream(uri) }.getOrNull()
+            ?: return FontImport(emptyList(), "Berkas itu tidak bisa dibuka.")
+        val bytes = input.use { id.goresan.engine.FontFiles.readLimited(it) }
+            ?: return FontImport(emptyList(), "Berkas font terlalu besar (lebih dari 40 MB).")
+        val fonts = try {
+            id.goresan.engine.FontFiles.extract(display, bytes)
+        } catch (e: id.goresan.engine.FontFiles.NotFont) {
+            CrashLog.note("impor font gagal: $display, ${bytes.size} bait, awal ${id.goresan.engine.FontFiles.head(bytes)}: ${e.message}")
+            return FontImport(emptyList(), e.message)
+        }
+        val saved = ArrayList<String>()
+        for (f in fonts) {
+            val safe = f.name.replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifEmpty { "Font" }.replace(' ', '_')
+            val ext = "." + f.ext
+            var target = File(fontsDir, safe + ext)
+            var k = 2
+            while (target.exists()) target = File(fontsDir, "${safe}_$k$ext").also { k++ }
+            runCatching { target.writeBytes(f.bytes) }.onFailure { target.delete(); return@onFailure }
+            val ok = target.exists() && runCatching { android.graphics.Typeface.Builder(target).build() }.getOrNull() != null
+            if (ok) saved.add(target.name) else target.delete()
         }
         _fonts.value = scanFonts()
-        return _fonts.value.firstOrNull { it.id == "file:" + target.name }
+        if (saved.isEmpty()) {
+            CrashLog.note("impor font ditolak Android: $display, ${bytes.size} bait, awal ${id.goresan.engine.FontFiles.head(bytes)}")
+            return FontImport(emptyList(), "Font ini tidak bisa dibaca Android. Berkasnya mungkin rusak atau tidak lengkap.")
+        }
+        val names = saved.map { "file:$it" }.toSet()
+        return FontImport(_fonts.value.filter { it.id in names }, null)
     }
 
     fun deleteFont(entry: FontEntry) {

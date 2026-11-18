@@ -84,29 +84,27 @@ object Fonts {
     }
 
     /**
-     * Simpan font impor [bytes] bernama [name] (TTF/OTF/TTC). Mengembalikan font itu, atau melempar galat bila
-     * berkasnya bukan font yang bisa dibaca Android.
+     * Simpan font impor [bytes] bernama [name]. Isinya dikenali dari bait awalnya (TTF/OTF/TTC, font web WOFF, atau
+     * ZIP berisi font), lihat [FontFiles]. Mengembalikan font yang ditambahkan, atau melempar galat berpesan jelas
+     * bila tidak ada font yang bisa dibaca Android.
      */
-    fun importFont(ctx: Context, name: String, bytes: ByteArray): Def {
-        val ext = name.substringAfterLast('.', "").lowercase()
-        val sig = if (bytes.size >= 4) String(bytes, 0, 4, Charsets.ISO_8859_1) else ""
-        val okSig = sig == "OTTO" || sig == "true" || sig == "ttcf" || (bytes.size >= 4 && bytes[0].toInt() == 0 && bytes[1].toInt() == 1 && bytes[2].toInt() == 0 && bytes[3].toInt() == 0)
-        if (!okSig) error("Bukan berkas font TTF/OTF")
-        val e = if (ext in setOf("ttf", "otf", "ttc")) ext else if (sig == "OTTO") "otf" else if (sig == "ttcf") "ttc" else "ttf"
-        val base = name.substringBeforeLast('.').replace(Regex("[^A-Za-z0-9 _-]"), "_").trim().ifBlank { "Font" }
+    fun importFont(ctx: Context, name: String, bytes: ByteArray): List<Def> {
+        val fonts = FontFiles.extract(name, bytes)
         val d = dir(ctx).apply { mkdirs() }
-        var f = java.io.File(d, "$base.$e")
-        var k = 2
-        while (f.exists()) f = java.io.File(d, "$base $k.$e").also { k++ }
-        f.writeBytes(bytes)
-        val tf = runCatching { Typeface.Builder(f).build() }.getOrNull()
-        if (tf == null) {
-            f.delete()
-            error("Font ini tidak bisa dibaca")
+        val saved = ArrayList<java.io.File>()
+        for (ff in fonts) {
+            val base = ff.name.replace(Regex("[^A-Za-z0-9 _-]"), "_").trim().ifBlank { "Font" }
+            var f = java.io.File(d, "$base.${ff.ext}")
+            var k = 2
+            while (f.exists()) f = java.io.File(d, "$base $k.${ff.ext}").also { k++ }
+            f.writeBytes(ff.bytes)
+            val tf = runCatching { Typeface.Builder(f).build() }.getOrNull()
+            if (tf == null) f.delete() else saved.add(f)
         }
+        if (saved.isEmpty()) error("Font ini tidak bisa dibaca Android. Berkasnya mungkin rusak atau tidak lengkap.")
         refresh(ctx)
         synchronized(cache) { cache.keys.removeAll { it.startsWith("user:") } }
-        return def("user:" + f.name)
+        return saved.map { def("user:" + it.name) }
     }
 
     /** Hapus font impor [id]. Teks yang memakainya beralih ke Sans saat digambar ulang. */
