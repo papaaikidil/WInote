@@ -35,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,11 +45,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import id.goresan.engine.AngleMode
 import id.goresan.engine.Brush
 import id.goresan.engine.Grain
@@ -112,7 +111,44 @@ private fun BrushLibrary(state: AppState) {
     var query by remember { mutableStateOf("") }
     var newSet by remember { mutableStateOf(false) }
     var moveBrush by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    // Gabung kuas (seperti Combine di Procreate): pilih dua kuas; yang pertama jadi kuas utama.
+    var combining by remember { mutableStateOf(false) }
+    val chosen = remember { mutableStateListOf<String>() }
+    fun toggleChosen(b: Brush) {
+        if (b.id in chosen) { chosen.remove(b.id); return }
+        val other = chosen.firstOrNull()?.let { id -> state.brushes.list.firstOrNull { it.id == id } }
+        val why = if (b.stamp) "Kuas stempel tidak bisa digabung" else if (b.dual != null || b.dualId.isNotEmpty()) {
+            "\"${b.name}\" sudah kuas ganda, jadi tidak bisa digabung lagi"
+        } else other?.let { state.combineProblem(it, b) }
+        if (why != null) { state.showFlash(why); return }
+        if (chosen.size >= 2) chosen.removeAt(1)
+        chosen.add(b.id)
+    }
     Column(Modifier.padding(12.dp)) {
+        if (combining) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when (chosen.size) { 0 -> "Pilih kuas utama"; 1 -> "Pilih kuas kedua"; else -> "2 kuas dipilih" },
+                    color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 17.sp,
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { combining = false; chosen.clear() }) { Text("Batal") }
+                TextButton(
+                    enabled = chosen.size == 2,
+                    onClick = {
+                        val a = chosen[0]
+                        val b2 = chosen[1]
+                        combining = false
+                        chosen.clear()
+                        state.combineBrushes(a, b2)
+                    },
+                ) { Text("Gabungkan", fontWeight = FontWeight.SemiBold) }
+            }
+            Text(
+                "Ketuk dua kuas: yang pertama jadi kuas utama, yang kedua jadi kuas kedua. Kuas buatan sendiri yang digabung menjadi satu kuas gabungan (seperti Procreate); kuas bawaan tetap ada. Untuk garis tepi: duplikat Monoline dua kali, lalu gabungkan kedua salinannya.",
+                color = Muted, fontSize = 12.sp,
+            )
+        } else {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(toolLabel(state.tool), color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
             Spacer(Modifier.weight(1f))
@@ -122,11 +158,13 @@ private fun BrushLibrary(state: AppState) {
                 state.selectBrush(nb.id)
                 state.studioBrushId = nb.id
             }) { Text("Duplikat kuas ini") }
+            TextButton(onClick = { chosen.clear(); combining = true }) { Text("Gabung kuas") }
         }
         Text(
             "Ketuk kuas yang sedang dipilih untuk membuka pengaturannya. Impor: .brush/.brushset Procreate, .abr Photoshop (bentuk, tekstur, dinamika), pola .pat, gambar PNG/JPG, atau daftar .wkuas WInote.",
             color = Muted, fontSize = 12.sp,
         )
+        }
         Spacer(Modifier.height(6.dp))
         // Cari kuas di semua daftar (seperti Brush Search Procreate).
         val focus = androidx.compose.ui.platform.LocalFocusManager.current
@@ -216,24 +254,40 @@ private fun BrushLibrary(state: AppState) {
                 items(list, key = { it.id }) { b ->
                     LaunchedEffect(b.id, state.previews.containsKey(b.id)) { state.requestPreview(b) }
                     val sel = b.id == current
+                    val order = if (combining) chosen.indexOf(b.id) else -1
                     Box {
                     Column(
                         Modifier
                             .fillMaxWidth()
                             .padding(vertical = 3.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (sel) Color(0x553D8BFF) else Color(0x14FFFFFF))
+                            .background(
+                                when {
+                                    order == 0 -> Color(0x803D8BFF)
+                                    order == 1 -> Color(0x4D3D8BFF)
+                                    combining -> Color(0x14FFFFFF)
+                                    sel -> Color(0x553D8BFF)
+                                    else -> Color(0x14FFFFFF)
+                                },
+                            )
                             .combinedClickable(
-                                onClick = { if (sel) state.studioBrushId = b.id else state.selectBrush(b.id) },
-                                onLongClick = { brushMenu = b.id },
+                                onClick = {
+                                    if (combining) toggleChosen(b) else if (sel) state.studioBrushId = b.id else state.selectBrush(b.id)
+                                },
+                                onLongClick = { if (!combining) brushMenu = b.id },
                             )
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text(b.name, color = Color.White, fontSize = 14.sp, fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
                             if (searching) Text("  · ${b.category}", color = Muted, fontSize = 12.sp)
                             if (state.brushes.isModified(b)) {
                                 Text("  · diubah", color = Muted, fontSize = 12.sp)
+                            }
+                            b.dual?.let { d -> Text("  · gabungan + ${d.name}", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)) }
+                            if (order >= 0) {
+                                Spacer(Modifier.weight(1f))
+                                Text(if (order == 0) "Utama" else "Kedua", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         val img = state.previews[b.id]
@@ -254,6 +308,16 @@ private fun BrushLibrary(state: AppState) {
                             val nb = state.brushes.duplicate(b)
                             state.selectBrush(nb.id)
                         })
+                        if (b.dual != null) {
+                            DropdownMenuItem(text = { Text("Pisahkan kuas") }, onClick = { brushMenu = null; state.uncombineBrush(b.id) })
+                        } else if (!b.stamp && b.dualId.isEmpty()) {
+                            DropdownMenuItem(text = { Text("Gabungkan dengan kuas lain…") }, onClick = {
+                                brushMenu = null
+                                chosen.clear()
+                                chosen.add(b.id)
+                                combining = true
+                            })
+                        }
                         if (!b.builtIn) {
                             DropdownMenuItem(text = { Text("Pindahkan ke daftar…") }, onClick = { brushMenu = null; moveBrush = b.id to true })
                         }
@@ -468,14 +532,28 @@ private val RenderNames = listOf("Glaze ringan", "Glaze merata", "Glaze intens",
 /** Cara menggabung kuas ganda (indeks = Brush.dualMode). */
 private val DualNames = listOf("Irisan (kali)", "Gabung (tambah)", "Kurangi", "Selisih", "Gelapkan", "Terangkan")
 
+/** Bagian Studio yang berlaku untuk kuas kedua dari kuas gabungan (sisanya mengikuti kuas utama). */
+private val SecondTabs = setOf("Jalur goresan", "Runcing", "Bentuk", "Tekstur", "Dinamika", "Pena", "Properti", "Kuas ganda")
+
 @Composable
-private fun BrushStudio(state: AppState, b: Brush) {
-    fun up(nb: Brush) = state.updateBrush(nb)
+private fun BrushStudio(state: AppState, main: Brush) {
+    // Kuas gabungan: seperti Brush Studio Procreate, yang diatur bisa kuas utama atau kuas kedua.
+    var second by remember(main.id) { mutableStateOf(false) }
+    val sec = second && main.dual != null
+    val b = if (sec) main.dual!! else main
+    fun upMain(nb: Brush) = state.updateBrush(nb)
+    fun up(nb: Brush) {
+        if (sec) upMain(main.copy(dual = nb.copy(dual = null, dualId = "", stamp = false))) else upMain(nb)
+    }
     val pct: (Float) -> String = { "${(it * 100).roundToInt()}%" }
     // Seperti Procreate: 0% ditulis "Tidak ada".
     val pctNone: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${(it * 100).roundToInt()}%" }
     val pctSigned: (Float) -> String = { if (abs(it) < 0.005f) "Tidak ada" else "${if (it > 0) "+" else ""}${(it * 100).roundToInt()}%" }
-    var tab by remember { mutableStateOf(0) }
+    val tabs = if (sec) studioTabs.filter { it in SecondTabs } else studioTabs
+    var picked by remember { mutableStateOf(state.studioOpenTab?.takeIf { it in studioTabs } ?: studioTabs[0]) }
+    LaunchedEffect(Unit) { state.studioOpenTab = null }
+    // Bagian yang tidak berlaku untuk kuas kedua: tampilkan bagian pertama (pilihan semula kembali saat ke kuas utama).
+    val tab = if (picked in tabs) picked else tabs.first()
     Column(Modifier.padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { state.studioBrushId = null }) {
@@ -483,15 +561,15 @@ private fun BrushStudio(state: AppState, b: Brush) {
             }
             Text("Studio Kuas", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
             Spacer(Modifier.weight(1f))
-            if (b.builtIn) {
-                TextButton(onClick = { state.brushes.reset(b.id); state.previews.remove(b.id); state.requestPreview(state.brushes.get(b.id)); state.syncTool() }) {
+            if (main.builtIn) {
+                TextButton(onClick = { state.brushes.reset(main.id); state.previews.remove(main.id); state.requestPreview(state.brushes.get(main.id)); state.syncTool() }) {
                     Text("Kembalikan bawaan")
                 }
             } else {
-                TextButton(onClick = { state.deleteBrush(b.id) }) { Text("Hapus kuas", color = Color(0xFFFF8A80)) }
+                TextButton(onClick = { state.deleteBrush(main.id) }) { Text("Hapus kuas", color = Color(0xFFFF8A80)) }
             }
         }
-        val img = state.previews[b.id]
+        val img = state.previews[main.id]
         Box(
             Modifier
                 .fillMaxWidth()
@@ -502,6 +580,14 @@ private fun BrushStudio(state: AppState, b: Brush) {
         ) {
             if (img != null) Image(img, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().height(70.dp))
         }
+        main.dual?.let { d ->
+            // Dua bagian kuas gabungan (seperti daftar kuas di atas Brush Studio Procreate): ketuk untuk mengatur.
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PartChip("Kuas utama", main.name, !sec, Modifier.weight(1f)) { second = false }
+                PartChip("Kuas kedua", d.name, sec, Modifier.weight(1f)) { second = true }
+            }
+        }
         Spacer(Modifier.height(6.dp))
         Row(Modifier.heightIn(max = 470.dp)) {
             Column(
@@ -510,8 +596,8 @@ private fun BrushStudio(state: AppState, b: Brush) {
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState()),
             ) {
-                studioTabs.forEachIndexed { i, t ->
-                    val sel = i == tab
+                tabs.forEach { t ->
+                    val sel = t == tab
                     Text(
                         t,
                         color = if (sel) Color.White else Color(0xFFB8B8C0),
@@ -521,7 +607,7 @@ private fun BrushStudio(state: AppState, b: Brush) {
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (sel) Color(0x333D8BFF) else Color.Transparent)
-                            .clickable { tab = i }
+                            .clickable { picked = t }
                             .padding(horizontal = 10.dp, vertical = 9.dp),
                     )
                 }
@@ -533,9 +619,9 @@ private fun BrushStudio(state: AppState, b: Brush) {
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState()),
             ) {
-                when (studioTabs[tab]) {
+                when (tab) {
                     "Jalur goresan" -> {
-                        StampRow(b.stamp) { up(b.copy(stamp = it)) }
+                        if (!sec) StampRow(b.stamp) { up(b.copy(stamp = it)) }
                         // 1%..1000% berskala logaritmik: 1–10%, 10–100%, dan 100–1000% masing-masing sepertiga geseran,
                         // jadi jarak rapat tetap mudah diatur halus sementara cap bisa direnggangkan sampai 10× diameter.
                         LabeledSlider(
@@ -645,30 +731,6 @@ private fun BrushStudio(state: AppState, b: Brush) {
                         SwitchRow("Campuran luminans", "Goresan hanya mengubah terang-gelap cat di bawahnya", b.lumBlend) { up(b.copy(lumBlend = it)) }
                         LabeledSlider("Ambang alfa", b.alphaThreshold, { up(b.copy(alphaThreshold = it)) }, display = pctNone)
                         Hint("Tepi basah melunakkan tepi goresan; tepi terbakar menggelapkan bagian yang menimpa cat lain. Ambang alfa membuat tepi tegas tanpa semi-transparan.")
-                        LabeledSlider("Garis tepi menyatu", b.outline, { up(b.copy(outline = it)) }, 0f..0.4f, display = pctNone)
-                        if (b.outline > 0f) {
-                            Text("Warna isi", color = Color(0xFFB8B8C0), fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-                            Row(
-                                Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                OutlineFills.forEach { (c, name) ->
-                                    val on = b.outlineFill == c
-                                    Box(
-                                        Modifier
-                                            .size(30.dp)
-                                            .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .background(Color(if (on) 0xFF4C8DFF.toInt() else 0x33FFFFFF))
-                                            .padding(if (on) 3.dp else 1.dp)
-                                            .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .background(Color(c))
-                                            .clickable { up(b.copy(outlineFill = c)) }
-                                            .semantics { contentDescription = "Isi $name" },
-                                    )
-                                }
-                            }
-                        }
-                        Hint("Garis tepi menyatu (huruf gelembung): goresan diisi warna isi dan diberi garis tepi berwarna kuas. Goresan yang bersilangan menyatu tanpa garis yang bertabrakan.")
                     }
                     "Wet Mix" -> {
                         LabeledSlider("Pengenceran", b.wmDilution, { up(b.copy(wmDilution = it)) }, display = pctNone)
@@ -766,7 +828,7 @@ private fun BrushStudio(state: AppState, b: Brush) {
                     }
                     "Properti" -> {
                         if (!b.builtIn) {
-                            var name by remember(b.id) { mutableStateOf(b.name) }
+                            var name by remember(b.id, sec) { mutableStateOf(b.name) }
                             OutlinedTextField(
                                 value = name,
                                 onValueChange = { name = it; up(b.copy(name = it.ifBlank { "Kuas" })) },
@@ -780,10 +842,16 @@ private fun BrushStudio(state: AppState, b: Brush) {
                             "Bentuk kuas tetap menghadap ke atas layar walau kanvas diputar",
                             b.orientScreen,
                         ) { up(b.copy(orientScreen = it)) }
-                        LabeledSlider("Ukuran maksimum", b.sizeMax, { up(b.copy(sizeMax = it)) }, 2f..1000f, { "${it.roundToInt()} px" })
-                        LabeledSlider("Ukuran minimum", b.sizeMin, { up(b.copy(sizeMin = it)) }, 0.5f..50f, { "${"%.1f".format(it)} px" })
+                        if (sec) {
+                            // Ukuran kuas kedua mengikuti ukuran kuas utama (penggeser ukuran di kanvas).
+                            LabeledSlider("Ukuran dibanding kuas utama", main.dualSize, { upMain(main.copy(dualSize = it)) }, 0.1f..4f, { "×${"%.2f".format(it)}" })
+                        } else {
+                            LabeledSlider("Ukuran maksimum", b.sizeMax, { up(b.copy(sizeMax = it)) }, 2f..1000f, { "${it.roundToInt()} px" })
+                            LabeledSlider("Ukuran minimum", b.sizeMin, { up(b.copy(sizeMin = it)) }, 0.5f..50f, { "${"%.1f".format(it)} px" })
+                        }
                         LabeledSlider("Opasitas maksimum", b.opacityMax, { up(b.copy(opacityMax = it)) })
                         LabeledSlider("Aliran (flow)", b.flow, { up(b.copy(flow = it)) }, 0.01f..1f, pct)
+                        if (!sec) {
                         LabeledSlider("Kekuatan baur (smudge)", b.smudgeStrength, { up(b.copy(smudgeStrength = it)) })
                         LabeledSlider(
                             "Larut saat dibaurkan" + if (b.smudgeWet < 0f) " (otomatis)" else "",
@@ -804,24 +872,63 @@ private fun BrushStudio(state: AppState, b: Brush) {
                             b.blender,
                         ) { up(b.copy(blender = it)) }
                         Hint("Saat kuas ini dipakai alat Baur: 0% = cat terseret searah tarikan seperti digosok jari; makin tinggi, cat makin larut dan menyatu halus seperti cat air yang dibasahi lagi (tekstur kertas tetap). Otomatis: kuas cat air larut, cat basah setengah-setengah, airbrush agak lembut, lainnya menyeret.")
+                        }
                     }
                     "Kuas ganda" -> {
-                        val others = state.brushes.list.filter { it.id != b.id && !it.stamp }
-                        val ids = listOf("") + others.map { it.id }
-                        val cur = if (others.any { it.id == b.dualId }) b.dualId else ""
-                        Choice("Kuas kedua", cur, ids, { id -> if (id.isEmpty()) "Tidak ada" else others.firstOrNull { it.id == id }?.name ?: "?" }) {
-                            up(b.copy(dualId = it))
+                        val d = main.dual
+                        if (d != null) {
+                            // Kuas gabungan (Gabung kuas di daftar kuas, seperti Combine di Procreate).
+                            Text(
+                                "Gabungan \"${main.name}\" + \"${d.name}\"",
+                                color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
+                            Choice("Cara gabung", main.dualMode, DualNames.indices.toList(), { DualNames[it] }) { upMain(main.copy(dualMode = it)) }
+                            LabeledSlider("Ukuran kuas kedua", main.dualSize, { upMain(main.copy(dualSize = it)) }, 0.1f..4f, { "×${"%.2f".format(it)}" })
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { second = !sec }) { Text(if (sec) "Atur kuas utama" else "Atur kuas kedua", fontSize = 13.sp) }
+                                TextButton(onClick = { upMain(main.copy(dualMode = 2, dualSize = 0.7f)) }) { Text("Jadikan garis tepi", fontSize = 13.sp) }
+                            }
+                            TextButton(onClick = { state.uncombineBrush(main.id) }) { Text("Pisahkan kuas", color = Color(0xFFFF8A80), fontSize = 13.sp) }
+                            Hint("Kuas kedua menggores di jalur yang sama dan menjadi topeng bagi kuas utama. Garis tepi seperti di Procreate: gabungkan dua Monoline (duplikat dulu), pilih Cara gabung \"Kurangi\", lalu kecilkan Ukuran kuas kedua: bagian tengah goresan jadi kosong, tinggal garis tepinya, dan garis yang bersilangan dalam satu goresan menyatu. \"Pisahkan kuas\" mengembalikan keduanya jadi dua kuas.")
+                        } else {
+                            val others = state.brushes.list.filter { it.id != b.id && !it.stamp }
+                            val ids = listOf("") + others.map { it.id }
+                            val cur = if (others.any { it.id == b.dualId }) b.dualId else ""
+                            Choice("Gabung dengan kuas", cur, ids, { id -> if (id.isEmpty()) "Tidak ada" else others.firstOrNull { it.id == id }?.name ?: "?" }) { id ->
+                                // Kuas yang dipilih disalin ke dalam kuas ini (jadi kuas gabungan yang bisa diatur sendiri).
+                                val o = others.firstOrNull { it.id == id }
+                                up(b.copy(dualId = "", dual = o?.copy(dual = null, dualId = "", builtIn = false, stamp = false)))
+                            }
+                            if (cur.isNotEmpty()) {
+                                Choice("Cara gabung", b.dualMode, DualNames.indices.toList(), { DualNames[it] }) { up(b.copy(dualMode = it)) }
+                                LabeledSlider("Ukuran kuas kedua", b.dualSize, { up(b.copy(dualSize = it)) }, 0.1f..4f, { "×${"%.2f".format(it)}" })
+                            }
+                            Hint("Kuas kedua menggores di jalur yang sama dan menjadi topeng: \"Irisan\" hanya menampakkan bagian yang tertutup kedua kuas (mis. kuas bulat + tekstur kasar). Tidak berlaku untuk goresan cat basah (Wet Mix). Bisa juga dari daftar kuas: ketuk \"Gabung kuas\", pilih dua kuas, lalu \"Gabungkan\".")
                         }
-                        if (cur.isNotEmpty()) {
-                            Choice("Cara gabung", b.dualMode, DualNames.indices.toList(), { DualNames[it] }) { up(b.copy(dualMode = it)) }
-                            LabeledSlider("Ukuran kuas kedua", b.dualSize, { up(b.copy(dualSize = it)) }, 0.1f..4f, { "×${"%.2f".format(it)}" })
-                        }
-                        Hint("Kuas kedua menggores di jalur yang sama dan menjadi topeng: \"Irisan\" hanya menampakkan bagian yang tertutup kedua kuas (mis. kuas bulat + tekstur kasar). Tidak berlaku untuk goresan cat basah (Wet Mix).")
                     }
                 }
                 Spacer(Modifier.height(12.dp))
             }
         }
+    }
+}
+
+/** Pilihan bagian kuas gabungan di Studio Kuas (kuas utama / kuas kedua). */
+@Composable
+private fun PartChip(label: String, name: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) Color(0x553D8BFF) else Color(0x14FFFFFF))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(label, color = if (selected) Color.White else Muted, fontSize = 11.sp)
+        Text(
+            name, color = Color.White, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        )
     }
 }
 
@@ -946,14 +1053,3 @@ private const val SPACING_MAX = 10f
 /** Posisi geser 0..1 → jarak antar cap (pecahan diameter), dibulatkan ke persen bulat. */
 private fun spacingAtSlider(t: Float): Float =
     ((SPACING_MIN * (SPACING_MAX / SPACING_MIN).pow(t.coerceIn(0f, 1f)) * 100f).roundToInt() / 100f).coerceIn(SPACING_MIN, SPACING_MAX)
-
-/** Pilihan warna isi untuk garis tepi menyatu. */
-private val OutlineFills: List<Pair<Int, String>> = listOf(
-    0xFFFFFFFF.toInt() to "putih",
-    0xFFFFF4DC.toInt() to "krem",
-    0xFFFFE680.toInt() to "kuning",
-    0xFFFFC2D6.toInt() to "merah muda",
-    0xFFBFE3FF.toInt() to "biru muda",
-    0xFFC4EFC8.toInt() to "hijau muda",
-    0xFFD9D9DE.toInt() to "abu-abu",
-)

@@ -1693,11 +1693,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             )
         }
         val rb = set.brush
-        rendPad = if (strokeTool == ToolKind.PAINT && !strokeDirect && (rb.wetEdges > 0f || rb.burntEdges > 0f || rb.outline > 0f)) {
-            ceil(max(edgeRadius(set.sizePx), if (rb.outline > 0f) outlineRadius(set) else 0f)).toInt() + 2
-        } else {
-            0
-        }
+        rendPad = if (strokeTool == ToolKind.PAINT && !strokeDirect && (rb.wetEdges > 0f || rb.burntEdges > 0f)) ceil(edgeRadius(set.sizePx)).toInt() + 2 else 0
         if (strokeDirect) {
             if (backup == null) backup = Tex(W, H)
             if (smT == null) smT = Tex(1024, 1024)
@@ -1741,9 +1737,6 @@ class Engine(private val ctx: Context, private val listener: Listener) {
 
     /** Jari-jari pembacaan sekitar titik untuk tepi basah/terbakar (piksel kanvas). */
     private fun edgeRadius(sizePx: Float) = max(1.5f, sizePx * 0.12f).coerceAtMost(60f)
-
-    /** Tebal garis tepi menyatu (piksel kanvas) untuk kuas di [set]. */
-    private fun outlineRadius(set: BrushSetting) = (set.sizePx * set.brush.outline).coerceIn(1f, 80f)
 
     /**
      * Gambar ulang cap stempel: ketukan = cap seukuran kuas di titik itu; tarikan = cap membentang dari titik awal
@@ -2318,16 +2311,6 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pPreview.i("uDualMode", fb?.dualMode ?: 0)
         val sc = strokeColor
         pPreview.f3("uDualColor", Color.red(sc) / 255f, Color.green(sc) / 255f, Color.blue(sc) / 255f)
-        val outlineOn = fx != null && fb != null && fb.outline > 0f && op == 0
-        pPreview.i("uOutline", if (outlineOn) 1 else 0)
-        if (outlineOn) {
-            pPreview.f("uOutlineR", outlineRadius(fx!!))
-            val fc = fb!!.outlineFill
-            pPreview.f3("uOutlineFill", Color.red(fc) / 255f, Color.green(fc) / 255f, Color.blue(fc) / 255f)
-        } else {
-            pPreview.f("uOutlineR", 1f)
-            pPreview.f3("uOutlineFill", 1f, 1f, 1f)
-        }
         val rendOn = fb != null && (fb.wetEdges > 0f || fb.burntEdges > 0f || fb.render == 2 || fb.render == 3 ||
             fb.alphaThreshold > 0f || fb.blendMode != 0 || fb.lumBlend)
         pPreview.i("uRend", if (rendOn) 1 else 0)

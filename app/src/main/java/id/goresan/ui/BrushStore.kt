@@ -116,6 +116,57 @@ class BrushStore(ctx: Context) {
         return nb
     }
 
+    /**
+     * Gabungkan dua kuas jadi satu kuas ganda, seperti Combine di Brush Library Procreate: [primary] jadi kuas utama
+     * dan [secondary] tersimpan di dalamnya sebagai kuas kedua (bisa diatur sendiri di Studio Kuas). Seperti Procreate,
+     * kuas buatan sendiri yang digabung diganti kuas gabungannya; kuas bawaan tetap ada (yang dipakai salinannya).
+     */
+    fun combine(primary: Brush, secondary: Brush): Brush {
+        val cat = when {
+            !primary.builtIn -> primary.category
+            !secondary.builtIn -> secondary.category
+            else -> "Kuasku"
+        }
+        val nb = primary.copy(
+            id = "k" + System.currentTimeMillis().toString(36),
+            category = cat,
+            builtIn = false,
+            dualId = "",
+            dualMode = 0,
+            dualSize = 1f,
+            dual = secondary.copy(dual = null, dualId = "", builtIn = false, stamp = false),
+        )
+        var at = list.indexOfFirst { it.id == primary.id && !it.builtIn }
+        if (at < 0) at = list.indexOfFirst { it.id == secondary.id && !it.builtIn }
+        if (at >= 0) list.add(at, nb) else list.add(nb)
+        list.removeAll { !it.builtIn && it.id != nb.id && (it.id == primary.id || it.id == secondary.id) }
+        if (cat !in Brushes.categories && cat !in customSets) customSets.add(cat)
+        save()
+        return nb
+    }
+
+    /**
+     * Pisahkan kuas gabungan jadi dua kuas lagi (Uncombine di Procreate): kuas utama tetap di tempatnya (id sama),
+     * kuas kedua muncul tepat di bawahnya. Mengembalikan kuas kedua, atau null bila [b] bukan kuas gabungan.
+     */
+    fun uncombine(b: Brush): Brush? {
+        val d = b.dual ?: return null
+        val i = list.indexOfFirst { it.id == b.id }
+        if (i < 0) return null
+        val second = d.copy(
+            id = "k" + System.currentTimeMillis().toString(36) + "b",
+            category = if (b.builtIn) "Kuasku" else b.category,
+            builtIn = false,
+            dual = null,
+            dualId = "",
+        )
+        list[i] = b.copy(dual = null, dualId = "", dualMode = 0, dualSize = 1f)
+        list.add(i + 1, second)
+        if (second.category !in Brushes.categories && second.category !in customSets) customSets.add(second.category)
+        save()
+        return second
+    }
+
     fun delete(id: String) {
         val b = list.firstOrNull { it.id == id } ?: return
         if (b.builtIn) return
@@ -126,9 +177,13 @@ class BrushStore(ctx: Context) {
 
     /** Gambar ujung dan tekstur kuas impor ikut dihapus bila tidak dipakai kuas lain (salinannya, atau pola bersama). */
     private fun dropFiles(b: Brush) {
-        if (b.tipFile.isNotEmpty() && list.none { it.tipFile == b.tipFile }) BrushImport.deleteFile(b.tipFile)
-        if (b.grainFile.isNotEmpty() && list.none { it.grainFile == b.grainFile }) BrushImport.deleteFile(b.grainFile)
+        val files = listOfNotNull(b.tipFile, b.grainFile, b.dual?.tipFile, b.dual?.grainFile).filter { it.isNotEmpty() }.toSet()
+        for (f in files) if (list.none { usesFile(it, f) }) BrushImport.deleteFile(f)
     }
+
+    /** Kuas [b] (atau kuas kedua di dalamnya) memakai berkas gambar [f]. */
+    private fun usesFile(b: Brush, f: String): Boolean =
+        b.tipFile == f || b.grainFile == f || b.dual?.let { it.tipFile == f || it.grainFile == f } == true
 
     /** Daftar yang isinya kuas buatan sendiri/impor saja (bukan daftar bawaan), jadi boleh dihapus atau diganti nama. */
     fun isCustomCategory(c: String): Boolean = c !in Brushes.categories && list.none { it.category == c && it.builtIn }

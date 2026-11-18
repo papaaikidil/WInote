@@ -320,8 +320,10 @@ object BrushImport {
             zip.closeEntry()
             val files = LinkedHashSet<String>()
             for (b in brushes) {
-                if (b.tipFile.isNotEmpty()) files.add(b.tipFile)
-                if (b.grainFile.isNotEmpty()) files.add(b.grainFile)
+                for (x in listOfNotNull(b, b.dual)) {
+                    if (x.tipFile.isNotEmpty()) files.add(x.tipFile)
+                    if (x.grainFile.isNotEmpty()) files.add(x.grainFile)
+                }
             }
             for (f in files) {
                 val src = d?.let { File(it, f) } ?: continue
@@ -373,6 +375,7 @@ object BrushImport {
                     category = b.category.ifBlank { base }.take(40),
                     tipFile = file(b.tipFile),
                     grainFile = file(b.grainFile),
+                    dual = b.dual?.let { d -> d.copy(tipFile = file(d.tipFile), grainFile = file(d.grainFile)) },
                 ),
             )
         }

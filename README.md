@@ -1192,11 +1192,18 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
 - **Gambar:** kategori kuas baru **Khat Arab**: Qalam Naskhi, Qalam Tsuluts (besar), Qalam Tinta Basah (tepi tinta
   sedikit kasar), dan Spidol Khat. Semua memakai sudut ujung yang sama (±70°).
 
-## Perubahan 0.1.128: Garis tepi menyatu (huruf gelembung)
+## Perubahan 0.1.129: Gabung kuas (seperti Combine di Procreate)
 
-- Kuas baru di kategori **Lettering**: **Huruf Gelembung** dan **Gelembung Garis Tebal**. Goresan diisi putih dan
-  diberi garis tepi berwarna kuas; goresan yang bersilangan (mis. huruf X atau T) **menyatu tanpa garis tepi yang
-  saling bertabrakan**. Garis tepi goresan baru tidak tampil di dalam bentuk yang sudah ada, dan isinya menutup
-  garis tepi lama.
-- Bisa dipasang di kuas mana pun: Studio Kuas › Rendering › **Garis tepi menyatu** (tebal garis tepi) dan **Warna
-  isi** (putih, krem, kuning, merah muda, biru muda, hijau muda, abu-abu).
+- Kuas **Huruf Gelembung**, **Gelembung Garis Tebal**, dan pengaturan **Garis tepi menyatu** dari 0.1.128 dihapus,
+  diganti fitur **Gabung kuas** seperti di Procreate.
+- Di daftar kuas ketuk **Gabung kuas** (atau tahan lama sebuah kuas → **Gabungkan dengan kuas lain…**), ketuk dua
+  kuas, lalu **Gabungkan**. Kuas pertama jadi kuas utama, kuas kedua tersimpan di dalamnya. Seperti Procreate, kuas
+  buatan sendiri yang digabung menjadi satu kuas gabungan; kuas bawaan tetap ada.
+- Studio Kuas untuk kuas gabungan punya pilihan **Kuas utama / Kuas kedua**: kuas kedua bisa diatur sendiri (jalur,
+  runcing, bentuk, tekstur, dinamika, pena, properti), dengan **Cara gabung** (Irisan, Gabung, Kurangi, Selisih,
+  Gelapkan, Terangkan) dan **Ukuran kuas kedua** dibanding kuas utama.
+- **Kuas garis tepi** seperti di video Procreate: duplikat Monoline dua kali, gabungkan kedua salinannya, pilih Cara
+  gabung **Kurangi**, lalu kecilkan ukuran kuas kedua (atau ketuk **Jadikan garis tepi**). Garis yang bersilangan
+  dalam satu goresan menyatu.
+- **Pisahkan kuas** (di Studio bagian Kuas ganda, atau tahan lama kuasnya) mengembalikan kuas gabungan jadi dua kuas.
+- Kuas gabungan ikut tersimpan, diekspor (.wkuas), dan diimpor lengkap dengan gambar ujung/tekstur kuas keduanya.

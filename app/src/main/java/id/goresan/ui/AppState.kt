@@ -150,6 +150,8 @@ class AppState(val app: Context) : Engine.Listener {
     // Panel & mode
     var panel by mutableStateOf(Panel.NONE)
     var studioBrushId by mutableStateOf<String?>(null)
+    /** Bagian Studio Kuas yang dibuka saat Studio berikutnya muncul (sekali pakai). */
+    var studioOpenTab: String? = null
     var uiHidden by mutableStateOf(false)
     var pickArmed by mutableStateOf(false)
     var loupe by mutableStateOf<Loupe?>(null)
@@ -1801,9 +1803,7 @@ class AppState(val app: Context) : Engine.Listener {
 
     private fun setting(t: Int): BrushSetting {
         val b = brushes.get(brushIdFor(t))
-        // Kuas ganda: kuas kedua dari pustaka (bukan dirinya sendiri, dan bukan kuas stempel).
-        val dual = if (b.dualId.isNotEmpty() && b.dualId != b.id) brushes.list.firstOrNull { it.id == b.dualId && !it.stamp } else null
-        return BrushSetting(b, sizePx(t), opacitySlider(t) * b.opacityMax, dual)
+        return BrushSetting(b, sizePx(t), opacitySlider(t) * b.opacityMax, dualOf(b))
     }
 
     fun syncTool() {
@@ -1872,6 +1872,45 @@ class AppState(val app: Context) : Engine.Listener {
         if (studioBrushId in ids) studioBrushId = null
         for (id in ids) previews.remove(id)
         syncTool()
+    }
+
+    /** Alasan dua kuas tidak bisa digabung, atau null bila bisa. */
+    fun combineProblem(a: Brush, b: Brush): String? = when {
+        a.id == b.id -> "Pilih dua kuas yang berbeda"
+        a.stamp || b.stamp -> "Kuas stempel tidak bisa digabung"
+        a.dual != null || a.dualId.isNotEmpty() -> "\"${a.name}\" sudah kuas ganda, jadi tidak bisa digabung lagi"
+        b.dual != null || b.dualId.isNotEmpty() -> "\"${b.name}\" sudah kuas ganda, jadi tidak bisa digabung lagi"
+        else -> null
+    }
+
+    /**
+     * Gabungkan kuas [aId] (utama) dan [bId] (kedua) jadi satu kuas ganda seperti Combine di Procreate, lalu pilih dan
+     * buka pengaturannya di bagian Kuas ganda. Mengembalikan kuas gabungannya, atau null bila tidak bisa.
+     */
+    fun combineBrushes(aId: String, bId: String): Brush? {
+        val a = brushes.list.firstOrNull { it.id == aId } ?: return null
+        val b = brushes.list.firstOrNull { it.id == bId } ?: return null
+        combineProblem(a, b)?.let { showFlash(it); return null }
+        val gone = listOf(a, b).filter { !it.builtIn }.map { it.id }
+        val nb = brushes.combine(a, b)
+        forgetBrushes(gone)
+        selectBrush(nb.id)
+        requestPreview(nb)
+        studioOpenTab = "Kuas ganda"
+        studioBrushId = nb.id
+        showFlash("Kuas digabung: \"${a.name}\" + \"${b.name}\"")
+        return nb
+    }
+
+    /** Pisahkan kuas gabungan [id] jadi dua kuas lagi. */
+    fun uncombineBrush(id: String) {
+        val b = brushes.list.firstOrNull { it.id == id } ?: return
+        val second = brushes.uncombine(b) ?: return
+        previews.remove(id)
+        requestPreview(brushes.get(id))
+        requestPreview(second)
+        syncTool()
+        showFlash("Kuas dipisah: \"${b.name}\" dan \"${second.name}\"")
     }
 
     fun deleteBrush(id: String) {
@@ -1949,6 +1988,15 @@ class AppState(val app: Context) : Engine.Listener {
         }
     }
 
+    /**
+     * Kuas kedua untuk kuas ganda: yang tersimpan di dalam kuas gabungan, atau (kuas lama/bawaan) kuas lain di pustaka
+     * menurut [Brush.dualId] (bukan dirinya sendiri, dan bukan kuas stempel).
+     */
+    fun dualOf(b: Brush): Brush? {
+        b.dual?.let { return it }
+        return if (b.dualId.isNotEmpty() && b.dualId != b.id) brushes.list.firstOrNull { it.id == b.dualId && !it.stamp } else null
+    }
+
     fun updateBrush(b: Brush) {
         brushes.update(b)
         previews.remove(b.id)
@@ -1958,7 +2006,7 @@ class AppState(val app: Context) : Engine.Listener {
 
     fun requestPreview(b: Brush) {
         if (previews.containsKey(b.id)) return
-        val d = if (b.dualId.isNotEmpty() && b.dualId != b.id) brushes.list.firstOrNull { it.id == b.dualId && !it.stamp } else null
+        val d = dualOf(b)
         gl { it.brushPreview(b, d) }
     }
 

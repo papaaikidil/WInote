@@ -3,6 +3,7 @@
 Membuat skrip sendevent (multi-sentuh protokol B) untuk emulator: goresan jari bergetar, ketukan/tahan 2-3 jari.
 Pemakaian: gerak.py <perangkat> <maxX> <maxY> <W> <H> <dens> <perintah> [argumen...]
   garis x0 y0 x1 y1 getar   — satu jari dari (x0,y0) ke (x1,y1) (persen layar), getaran tangan `getar` dp
+  jalur x0 y0 x1 y1 ...     — satu jari melewati titik-titik (persen layar), dibelokkan halus
   ketuk n                   — ketukan n jari di tengah kanvas
   geser3 persen             — tiga jari bergeser ke bawah (menu Salin & Tempel)
   tahan n ms                — n jari ditahan diam selama ms
@@ -105,6 +106,28 @@ if cmd == "garis":
         up(0)
         ev(1, 330, 0)
         syn()
+elif cmd == "jalur":
+    # Satu jari melewati titik-titik (persen layar) x0 y0 x1 y1 ... dengan interpolasi halus (Catmull-Rom).
+    v = list(map(float, a))
+    P = [(W * v[i] / 100, H * v[i + 1] / 100) for i in range(0, len(v) - 1, 2)]
+    pts = [P[0]]
+    for k in range(len(P) - 1):
+        p0 = P[max(k - 1, 0)]; p1 = P[k]; p2 = P[k + 1]; p3 = P[min(k + 2, len(P) - 1)]
+        seg = max(4, int(math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / (6 * dp)))
+        for i in range(1, seg + 1):
+            t = i / seg
+            t2 = t * t; t3 = t2 * t
+            pts.append(tuple(0.5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2
+                                    + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in (0, 1)))
+    down(0, 520, *pts[0])
+    ev(1, 330, 1)
+    syn()
+    for p in pts[1:]:
+        move(0, *p)
+        syn()
+    up(0)
+    ev(1, 330, 0)
+    syn()
 elif cmd == "geser3":
     # Tiga jari mendarat hampir bersamaan lalu bergeser ke bawah sejauh a[0] persen tinggi layar.
     dist = H * float(a[0]) / 100
