@@ -46,6 +46,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.goresan.engine.AngleMode
@@ -839,6 +844,14 @@ private fun BrushStudio(state: AppState, main: Brush) {
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
+                        if (!sec && main.dual == null && b.fixedColor != 0) {
+                            // Kuas berwarna sendiri (mis. bekas bagian kuas gabungan yang dipisah).
+                            PartColorRow(
+                                state, "Warna kuas", listOf("Ikut warna aktif", "Warna sendiri"), 1, b.fixedColor,
+                                { i -> if (i == 0) up(b.copy(fixedColor = 0)) },
+                                { c -> up(b.copy(fixedColor = c)) },
+                            )
+                        }
                         SwitchRow(
                             "Hadap layar (orient to screen)",
                             "Bentuk kuas tetap menghadap ke atas layar walau kanvas diputar",
@@ -887,11 +900,30 @@ private fun BrushStudio(state: AppState, main: Brush) {
                             )
                             Choice("Cara gabung", main.dualMode, DualNames.indices.toList(), { DualNames[it] }) { upMain(main.copy(dualMode = it)) }
                             LabeledSlider("Ukuran kuas kedua", main.dualSize, { upMain(main.copy(dualSize = it)) }, 0.1f..4f, { "×${"%.2f".format(it)}" })
+                            // Warna tiap bagian: kuas utama ikut warna aktif atau warna sendiri; kuas kedua juga bisa
+                            // hanya menjadi topeng (tidak mewarnai).
+                            SubLabel("Warna")
+                            PartColorRow(
+                                state, "Kuas utama", listOf("Ikut warna aktif", "Warna sendiri"),
+                                if (main.fixedColor != 0) 1 else 0, main.fixedColor,
+                                { i -> upMain(main.copy(fixedColor = if (i == 1) main.fixedColor.takeIf { it != 0 } ?: state.color else 0)) },
+                                { c -> upMain(main.copy(fixedColor = c)) },
+                            )
+                            PartColorRow(
+                                state, "Kuas kedua", listOf("Topeng saja", "Ikut warna aktif", "Warna sendiri"),
+                                when { !main.dualPaint -> 0; d.fixedColor == 0 -> 1; else -> 2 }, d.fixedColor,
+                                { i ->
+                                    val c = if (i == 2) d.fixedColor.takeIf { it != 0 } ?: 0xFFFFFFFF.toInt() else 0
+                                    upMain(main.copy(dualPaint = i > 0, dual = d.copy(fixedColor = c)))
+                                },
+                                { c -> upMain(main.copy(dualPaint = true, dual = d.copy(fixedColor = c))) },
+                            )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 TextButton(onClick = { second = !sec }) { Text(if (sec) "Atur kuas utama" else "Atur kuas kedua", fontSize = 13.sp) }
                                 TextButton(onClick = { upMain(main.copy(dualMode = 2, dualSize = 0.7f)) }) { Text("Jadikan garis tepi", fontSize = 13.sp) }
                             }
                             TextButton(onClick = { state.uncombineBrush(main.id) }) { Text("Pisahkan kuas", color = Color(0xFFFF8A80), fontSize = 13.sp) }
+                            Hint("Warna: kuas utama dan kuas kedua bisa diberi warna berbeda. Kuas kedua \"Topeng saja\" hanya membentuk goresan (tidak mewarnai); dengan \"Ikut warna aktif\" atau \"Warna sendiri\" catnya menimpa kuas utama, dan dengan cara gabung Kurangi bagian tengahnya terisi warna kuas kedua (garis tepi dengan isi berwarna).")
                             Hint("Kuas kedua menggores di jalur yang sama dan menjadi topeng bagi kuas utama. Garis tepi seperti di Procreate: gabungkan dua Monoline (duplikat dulu), pilih Cara gabung \"Kurangi\", lalu kecilkan Ukuran kuas kedua: bagian tengah goresan jadi kosong, tinggal garis tepinya, dan garis yang bersilangan dalam satu goresan menyatu. \"Pisahkan kuas\" mengembalikan keduanya jadi dua kuas.")
                         } else {
                             val others = state.brushes.list.filter { it.id != b.id && !it.stamp }
@@ -911,6 +943,79 @@ private fun BrushStudio(state: AppState, main: Brush) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+/** Palet warna sendiri bagian kuas gabungan. */
+private val BrushColors: List<Pair<Int, String>> = listOf(
+    0xFFFFFFFF to "Putih", 0xFF111111 to "Hitam", 0xFFE53935 to "Merah", 0xFFFB8C00 to "Oranye",
+    0xFFFDD835 to "Kuning", 0xFF43A047 to "Hijau", 0xFF29B6F6 to "Biru muda", 0xFF1E88E5 to "Biru",
+    0xFF8E24AA to "Ungu", 0xFFF48FB1 to "Merah muda", 0xFF8D6E63 to "Cokelat", 0xFF9E9E9E to "Abu-abu",
+).map { (c, n) -> c.toInt() to n }
+
+/**
+ * Pengaturan warna satu bagian kuas: pilihan [options] (yang terakhir = warna sendiri), lalu warna yang dipakai,
+ * tombol mengambil warna aktif, dan palet.
+ */
+@Composable
+private fun PartColorRow(
+    state: AppState,
+    title: String,
+    options: List<String>,
+    selected: Int,
+    color: Int,
+    onSelect: (Int) -> Unit,
+    onColor: (Int) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(title, color = Color(0xFFDADAE0), fontSize = 13.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            options.forEachIndexed { i, o ->
+                val on = i == selected
+                Text(
+                    o,
+                    color = if (on) Color.White else Color(0xFFB8B8C0),
+                    fontSize = 12.sp,
+                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (on) Color(0x553D8BFF) else Color(0x14FFFFFF))
+                        .clickable { onSelect(i) }
+                        .semantics { contentDescription = "$title: $o" }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
+        if (selected == options.lastIndex && color != 0) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                Box(
+                    Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color(color))
+                        .border(1.dp, Color(0x66FFFFFF), CircleShape),
+                )
+                TextButton(onClick = { onColor(state.color) }) { Text("Pakai warna aktif", fontSize = 12.sp) }
+            }
+            BrushColors.chunked(6).forEach { row ->
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { (c, n) ->
+                        val on = c == color
+                        Box(
+                            Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(if (on) Accent else Color(0x33FFFFFF))
+                                .padding(if (on) 3.dp else 1.dp)
+                                .clip(CircleShape)
+                                .background(Color(c))
+                                .clickable { onColor(c) }
+                                .semantics { contentDescription = "$title $n" },
+                        )
+                    }
+                }
             }
         }
     }

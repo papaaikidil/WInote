@@ -135,6 +135,8 @@ class BrushStore(ctx: Context) {
             dualMode = 0,
             dualSize = 1f,
             dual = secondary.copy(dual = null, dualId = "", builtIn = false, stamp = false),
+            // Kuas kedua yang sudah punya warna sendiri langsung ikut mewarnai.
+            dualPaint = secondary.fixedColor != 0,
         )
         var at = list.indexOfFirst { it.id == primary.id && !it.builtIn }
         if (at < 0) at = list.indexOfFirst { it.id == secondary.id && !it.builtIn }
@@ -159,8 +161,10 @@ class BrushStore(ctx: Context) {
             builtIn = false,
             dual = null,
             dualId = "",
+            // Warna sendiri kuas kedua hanya terbawa bila tadinya memang dipakai mewarnai.
+            fixedColor = if (b.dualPaint) d.fixedColor else 0,
         )
-        list[i] = b.copy(dual = null, dualId = "", dualMode = 0, dualSize = 1f)
+        list[i] = b.copy(dual = null, dualId = "", dualMode = 0, dualSize = 1f, dualPaint = false)
         list.add(i + 1, second)
         if (second.category !in Brushes.categories && second.category !in customSets) customSets.add(second.category)
         save()

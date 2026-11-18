@@ -278,6 +278,9 @@ uniform int uUseF;
 uniform int uNoStroke;
 uniform int uLive;
 uniform int uDualMode;
+// Kuas kedua berwarna sendiri (bukan sekadar topeng) dan warnanya.
+uniform int uDualPaint;
+uniform vec3 uDualPaintColor;
 uniform sampler2D uDualTex;
 uniform sampler2D uDualPred;
 uniform vec3 uDualColor;
@@ -348,6 +351,11 @@ float dualCombine(float a, float m) {
     if (uDualMode == 4) return min(a, m);
     return max(a, m);
 }
+// Alfa goresan kuas ganda. Bila kuas kedua berwarna sendiri, "Kurangi" tidak melubangi: lubangnya diisi warna kuas kedua.
+float dualAlpha(float a, float m) {
+    if (uDualPaint == 1 && uDualMode == 2) return a;
+    return dualCombine(a, m);
+}
 float dualMask(vec2 uv) {
     float m = texture(uDualTex, uv).a;
     if (uUsePred == 1) { float q = texture(uDualPred, uv).a; m = m + q * (1.0 - m); }
@@ -364,7 +372,7 @@ float strokeAlpha(vec2 p) {
         float q = texture(uPred, uv).a;
         a = a + q * (1.0 - a);
     }
-    if (uDual == 1) a = dualCombine(a, dualMask(uv));
+    if (uDual == 1) a = dualAlpha(a, dualMask(uv));
     if (uUseF == 1) {
         float f = texture(uWetF, uv).a;
         a = a + f * (1.0 - a);
@@ -433,7 +441,13 @@ void main() {
         if (uDual == 1) {
             // Kuas ganda: alfa goresan digabung dengan topeng kuas kedua; bagian yang hanya dari kuas kedua memakai warna kuas.
             vec3 col = s.a > 0.0 ? s.rgb / s.a : uDualColor;
-            float A = dualCombine(s.a, dualMask(uv));
+            float m = dualMask(uv);
+            float A = dualAlpha(s.a, m);
+            if (uDualPaint == 1) {
+                // Kuas kedua berwarna sendiri: catnya menimpa cat kuas utama.
+                float w = m + s.a * (1.0 - m);
+                if (w > 0.0) col = (uDualPaintColor * m + col * s.a * (1.0 - m)) / w;
+            }
             s = vec4(col * A, A);
         }
         if (uUseF == 1) {

@@ -241,6 +241,14 @@ data class Brush(
      * ini, jadi bisa diatur sendiri tanpa mengubah kuas lain. Bila ada, dipakai sebagai ganti [dualId].
      */
     val dual: Brush? = null,
+    /** Warna kuas sendiri (ARGB); 0 = ikut warna aktif. Dipakai bagian-bagian kuas gabungan supaya warnanya berbeda. */
+    val fixedColor: Int = 0,
+    /**
+     * Kuas kedua ikut mewarnai dengan warnanya sendiri ([Brush.fixedColor] kuas kedua, atau warna aktif), di atas cat kuas
+     * utama. Dengan cara gabung "Kurangi", bagian yang dikurangi terisi warna kuas kedua (garis tepi dengan isi berwarna).
+     * Bila tidak, kuas kedua hanya menjadi topeng.
+     */
+    val dualPaint: Boolean = false,
 ) {
     /** Kuas ini gabungan dua kuas (kuas kedua tersimpan di dalamnya). */
     val combined: Boolean get() = dual != null
@@ -315,6 +323,8 @@ data class Brush(
             put("dualMode", dualMode); n("dualSize", dualSize, 1f)
         }
         dual?.let { put("dual", it.copy(dual = null, dualId = "").toJson()) }
+        if (fixedColor != 0) put("fixedColor", fixedColor)
+        z("dualPaint", dualPaint)
         if (watercolor) {
             put("watercolor", true)
             put("wcDensity", wcDensity.toDouble()); put("wcEdge", wcEdge.toDouble()); put("wcSoft", wcSoft.toDouble())
@@ -436,6 +446,8 @@ data class Brush(
                 dualId = o.optString("dualId", ""),
                 dualMode = o.optInt("dualMode", 0).coerceIn(0, 5),
                 dualSize = f("dualSize", 1f).coerceIn(0.1f, 4f),
+                fixedColor = o.optInt("fixedColor", 0).let { if (it == 0) 0 else it or 0xFF000000.toInt() },
+                dualPaint = o.optBoolean("dualPaint", false),
                 dual = o.optJSONObject("dual")?.let { d ->
                     runCatching { fromJson(d).copy(dual = null, dualId = "", builtIn = false, stamp = false) }.getOrNull()
                 },

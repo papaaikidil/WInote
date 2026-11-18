@@ -438,6 +438,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
     private var strokeSet: BrushSetting? = null
     private var strokeLayer: Layer? = null
     private var strokeColor = 0
+    /** Kuas kedua goresan ini ikut mewarnai, dengan warna [strokeDualColor]. */
+    private var strokeDualPaint = false
+    private var strokeDualColor = 0
     private var predOn = false
     private var predAhead = true
     private var smudgeFirst = true
@@ -1626,7 +1629,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         if (strokeTool == ToolKind.PAINT && set.brush.blender && !cloneActive) strokeTool = ToolKind.SMUDGE
         strokeSet = set
         strokeLayer = layer
-        strokeColor = ts.color
+        // Kuas berwarna sendiri (bagian kuas gabungan) memakai warnanya, bukan warna aktif.
+        strokeColor = if (strokeTool == ToolKind.PAINT && !cloneActive && set.brush.fixedColor != 0) set.brush.fixedColor or 0xFF000000.toInt() else ts.color
         strokeFlags = r.flags
         strokeGamma = ts.gamma
         rawN = 0
@@ -1648,7 +1652,7 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         predAhead = ts.prediction
         val spacing = if (smudge) min(set.brush.spacing, 0.08f) else if (strokeWetMix) min(set.brush.spacing, 0.12f) else set.brush.spacing
         proc.begin(
-            set.brush, set.sizePx, ts.color,
+            set.brush, set.sizePx, strokeColor,
             pressure = r.flags and RawPoint.PRESSURE != 0,
             tilt = r.flags and RawPoint.TILT != 0,
             pressureGamma = ts.gamma,
@@ -1672,6 +1676,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             if (dualBuf == null) dualBuf = Tex(W, H)
             if (dualPred == null) dualPred = Tex(W, H)
             strokeDual = dualB
+            strokeDualPaint = set.brush.dualPaint
+            strokeDualColor = if (dualB.fixedColor != 0) dualB.fixedColor or 0xFF000000.toInt() else ts.color
             dualBox.clear()
             dualPredBox.clear()
             val b2 = dualB.copy(
@@ -2311,6 +2317,9 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         pPreview.i("uDualMode", fb?.dualMode ?: 0)
         val sc = strokeColor
         pPreview.f3("uDualColor", Color.red(sc) / 255f, Color.green(sc) / 255f, Color.blue(sc) / 255f)
+        pPreview.i("uDualPaint", if (dualOn && strokeDualPaint) 1 else 0)
+        val dc = strokeDualColor
+        pPreview.f3("uDualPaintColor", Color.red(dc) / 255f, Color.green(dc) / 255f, Color.blue(dc) / 255f)
         val rendOn = fb != null && (fb.wetEdges > 0f || fb.burntEdges > 0f || fb.render == 2 || fb.render == 3 ||
             fb.alphaThreshold > 0f || fb.blendMode != 0 || fb.lumBlend)
         pPreview.i("uRend", if (rendOn) 1 else 0)
@@ -7102,6 +7111,8 @@ class Engine(private val ctx: Context, private val listener: Listener) {
         feed(list)
         renderDabs(t, list, pb, 0f, 0f, perDab = !pb.grainStroke)
         var buf = readRegion(t.fb, IRect(0, 0, w, h))
+        // Kuas kedua berwarna sendiri: bagian kuas kedua di pratinjau (0..1), untuk diwarnai di akhir.
+        var share: FloatArray? = null
         if (dual != null) {
             // Kuas ganda: goresan kuas kedua di jalur yang sama menjadi topeng.
             if (prevTex2 == null) prevTex2 = Tex(w, h)
@@ -7113,10 +7124,16 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             feed(l2)
             renderDabs(t2, l2, pd, 0f, 0f)
             val m = readRegion(t2.fb, IRect(0, 0, w, h))
+            val sh = if (b.dualPaint) FloatArray(w * h) else null
+            share = sh
             for (i in 0 until w * h) {
                 val a = (buf.get(i * 4 + 3).toInt() and 0xFF) / 255f
                 val q = (m.get(i * 4 + 3).toInt() and 0xFF) / 255f
-                val c = when (b.dualMode) {
+                if (sh != null) {
+                    val ws = q + a * (1f - q)
+                    sh[i] = if (ws > 0f) q / ws else 0f
+                }
+                val c = if (sh != null && b.dualMode == 2) a else when (b.dualMode) {
                     0 -> a * q
                     1 -> a + q - a * q
                     2 -> a * (1f - q)
@@ -7141,9 +7158,38 @@ class Engine(private val ctx: Context, private val listener: Listener) {
             }
             buf.position(0)
         }
-        val bmp = toBitmap(previewWet(previewGrain(buf, w, h, pb), w, h, pb, size), w, h)
+        val out = previewWet(previewGrain(buf, w, h, pb), w, h, pb, size)
+        share?.let { sh -> previewTwoTone(out, sh, w, h, b, dual) }
+        val bmp = toBitmap(out, w, h)
         val id = b.id
         post { listener.onBrushPreview(id, bmp) }
+    }
+
+    /**
+     * Pratinjau kuas gabungan yang kedua kuasnya berwarna: bagian kuas kedua diwarnai beda dari kuas utama. Warna sendiri
+     * dipakai bila cukup terang di latar gelap pratinjau; warna aktif digambar putih (kuas utama) atau abu-abu (kuas kedua).
+     */
+    private fun previewTwoTone(buf: ByteBuffer, share: FloatArray, w: Int, h: Int, b: Brush, dual: Brush?) {
+        fun tone(c: Int, fallback: Int): FloatArray {
+            val v = if (c == 0) fallback else c
+            var r = Color.red(v) / 255f; var g = Color.green(v) / 255f; var bl = Color.blue(v) / 255f
+            val lum = 0.3f * r + 0.59f * g + 0.11f * bl
+            if (lum < 0.25f) { r += (1f - r) * 0.35f; g += (1f - g) * 0.35f; bl += (1f - bl) * 0.35f }
+            return floatArrayOf(r, g, bl)
+        }
+        val p = tone(b.fixedColor, Color.WHITE)
+        var q = tone(dual?.fixedColor ?: 0, Color.rgb(140, 140, 146))
+        if (abs(p[0] - q[0]) + abs(p[1] - q[1]) + abs(p[2] - q[2]) < 0.25f) q = floatArrayOf(p[0] * 0.5f, p[1] * 0.5f, p[2] * 0.5f)
+        for (i in 0 until w * h) {
+            val a = (buf.get(i * 4 + 3).toInt() and 0xFF) / 255f
+            if (a <= 0f) continue
+            val k = share[i]
+            for (ch in 0 until 3) {
+                val c = p[ch] + (q[ch] - p[ch]) * k
+                buf.put(i * 4 + ch, (c * a * 255f + 0.5f).toInt().coerceIn(0, 255).toByte())
+            }
+        }
+        buf.position(0)
     }
 
     private var noiseCpu: ByteArray? = null
