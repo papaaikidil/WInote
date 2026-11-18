@@ -1228,3 +1228,13 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   atau warna sendiri dari palet warna muda dan warna tegas). Jadi garis tepi dan isinya bisa dibuat berbeda warna,
   misalnya garis tepi merah dengan isi kuning.
 - Pratinjau kuas di daftar menampilkan garis tepi dan warna isinya.
+
+## Perubahan 0.1.132: Kuas Latar Cat Air
+
+- Kuas baru di kategori **Cat Air**: **Latar Cat Air** (kuas sangat besar untuk latar cat air seperti kuas
+  "background" cat air Procreate: beberapa sapuan menutup kanvas dengan awan pekat-pucat, bercak backrun, dan urat
+  air) dan **Bercak Cat Air** (versi lebih kecil untuk menambah awan atau bercak gelap).
+- Fitur tambahan untuk kuas itu, bisa dipakai di kuas mana pun lewat Studio Kuas:
+  - Bentuk › Ujung kuas **Bercak cat air**: bercak bertepi bergelombang seperti kembang kol, dalamnya belang.
+  - Tekstur **Awan cat air**: tekstur latar cat air (awan, bercak backrun dengan tepi gelap tipis, urat air, serat
+    pigmen) yang menyatu di kanvas, jadi sapuan yang bersambung tetap satu pola.
