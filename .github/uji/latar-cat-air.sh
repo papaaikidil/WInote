@@ -129,11 +129,13 @@ shot pustaka
 tap_node "Kuas" 2 || true
 # Satu bercak di tengah, seperti awal video.
 gerak jalur 40 35 46 45 42 58 50 66 56 55 52 42 46 36
+sleep 8
 shot bercak-awal
 # Diperluas ke seluruh kanvas dengan beberapa sapuan besar.
 gerak jalur 12 15 30 22 20 40 35 55 18 75 30 90 50 80
 gerak jalur 60 12 80 20 90 40 75 55 92 72 80 90 62 85
 gerak jalur 30 10 50 15 70 30 55 50 40 70 60 92
+sleep 8
 shot latar-penuh
 gerak jalur 20 30 40 50 60 40 80 60
 shot latar-lapis-dua

@@ -604,19 +604,19 @@ object Brushes {
         // diolah sebagai cat air (tepi gelap, granulasi kertas, lapisan menumpuk). Beberapa sapuan menutup kanvas.
         Brush(
             id = "wclatar", name = "Latar Cat Air", category = "Cat Air",
-            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.8f, grainScale = 2.6f, grainStroke = true,
-            sizeMax = 2400f, sizeMin = 40f, spacing = 0.1f, flow = 0.45f,
+            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.9f, grainScale = 2.6f, grainStroke = true,
+            sizeMax = 2400f, sizeMin = 40f, spacing = 0.1f, flow = 0.4f,
             angleJitter = 1f, sizeJitter = 0.2f, scatter = 0.1f,
             pressureSize = 0.25f, pressureOpacity = 0.35f, streamline = 0.1f, defaultSize = 0.6f,
-            watercolor = true, wcDensity = 0.72f, wcEdge = 0.85f, wcSoft = 0.12f, wcBloom = 0.7f, wcGrain = 0.6f,
+            watercolor = true, wcDensity = 0.62f, wcEdge = 0.5f, wcSoft = 0.3f, wcBloom = 0.6f, wcGrain = 0.18f,
         ),
         Brush(
             id = "wcbercak", name = "Bercak Cat Air", category = "Cat Air",
-            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.7f, grainScale = 1.6f, grainStroke = true,
+            tip = TipShape.WC_BLOB, grain = Grain.WC_CLOUD, grainStrength = 0.8f, grainScale = 1.6f, grainStroke = true,
             sizeMax = 900f, sizeMin = 10f, spacing = 0.12f, flow = 0.4f,
             angleJitter = 1f, sizeJitter = 0.25f, scatter = 0.12f,
             pressureSize = 0.4f, pressureOpacity = 0.4f, streamline = 0.1f, defaultSize = 0.45f,
-            watercolor = true, wcDensity = 0.68f, wcEdge = 0.85f, wcSoft = 0.1f, wcBloom = 0.65f, wcGrain = 0.6f,
+            watercolor = true, wcDensity = 0.65f, wcEdge = 0.65f, wcSoft = 0.22f, wcBloom = 0.6f, wcGrain = 0.2f,
         ),
         Brush(
             id = "gouache", name = "Gouache", category = "Melukis",
