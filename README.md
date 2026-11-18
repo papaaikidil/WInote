@@ -1207,3 +1207,13 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   dalam satu goresan menyatu.
 - **Pisahkan kuas** (di Studio bagian Kuas ganda, atau tahan lama kuasnya) mengembalikan kuas gabungan jadi dua kuas.
 - Kuas gabungan ikut tersimpan, diekspor (.wkuas), dan diimpor lengkap dengan gambar ujung/tekstur kuas keduanya.
+
+## Perubahan 0.1.130: Warna berbeda untuk kuas gabungan
+
+- Studio Kuas › **Kuas ganda** (kuas gabungan) punya bagian **Warna**: **kuas utama** bisa *Ikut warna aktif* atau
+  *Warna sendiri*; **kuas kedua** bisa *Topeng saja* (seperti sebelumnya, hanya membentuk goresan), *Ikut warna
+  aktif*, atau *Warna sendiri*. Warna sendiri dipilih dari palet atau diambil dari warna aktif.
+- Bila kuas kedua ikut mewarnai, catnya menimpa cat kuas utama. Dengan cara gabung **Kurangi**, bagian tengah
+  goresan terisi warna kuas kedua: misalnya garis tepi merah dengan isi kuning.
+- Pratinjau kuas di daftar menampilkan dua warnanya. Saat kuas gabungan dipisah, kuas utama tetap berwarna sendiri
+  dan bisa dikembalikan ke warna aktif di Studio › Properti.
