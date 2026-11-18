@@ -37,7 +37,7 @@ enum class Tool(val label: String) {
     val defaultWidth: Float
         get() = when (this) {
             PEN -> 2f; PENCIL -> 1.6f; BRUSH -> 6f; MARKER -> 5f; HIGHLIGHTER -> 14f; ERASER -> 12f; LINE -> 2f
-            WATERCOLOR -> 16f; TAPE -> 16f; QALAM -> 7f
+            WATERCOLOR -> 16f; TAPE -> 16f; QALAM -> 5f
         }
     /** Tiga ukuran cepat yang ditampilkan di bilah alat. */
     val presets: List<Float>
@@ -51,7 +51,7 @@ enum class Tool(val label: String) {
             LINE -> listOf(1.2f, 2f, 4f)
             WATERCOLOR -> listOf(8f, 16f, 30f)
             TAPE -> listOf(10f, 16f, 28f)
-            QALAM -> listOf(4f, 7f, 12f)
+            QALAM -> listOf(3.5f, 5f, 8f)
         }
 
     /** Alat yang digambar di bawah teks dan tulisan (seperti cat di atas kertas). */
