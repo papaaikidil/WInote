@@ -1,0 +1,247 @@
+03:14:53.441  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:14:53.536  Aktivitas: lanjut
+03:14:54.742  Buka karya kmwljsus2cc53
+03:14:55.106  Permukaan kanvas dibuat
+03:14:55.264  Permukaan kanvas: sRGB
+03:14:55.268  GL: konteks dibuat
+03:14:56.967  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:14:57.131  GL: siap (1862 ms)
+03:14:57.131  GL: ukuran permukaan 2560x1800
+03:14:57.148  Karya dibuka 1600x1200, 1 layer, batas 110 layer (16 ms)
+03:15:00.452  !!! Kanvas macet 3321 ms. Posisi thread kanvas:
+03:15:00.453      android.opengl.GLES20.glGenTextures(Native Method)
+03:15:00.454      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:15:00.454      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:15:00.455      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:15:00.455      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:15:00.456      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:15:00.457      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:15:00.458      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:15:04.877  Frame lambat: 7746 ms
+03:15:05.459  Kanvas kembali merespons
+03:15:13.765  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:15:13.894  Aktivitas: lanjut
+03:15:15.329  Buka karya kmwljtahn14ca
+03:15:15.715  Permukaan kanvas dibuat
+03:15:15.829  Permukaan kanvas: sRGB
+03:15:15.839  GL: konteks dibuat
+03:15:17.718  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:15:17.868  Sistem minta hemat memori (level 5)
+03:15:17.938  GL: siap (2098 ms)
+03:15:17.938  GL: ukuran permukaan 2560x1800
+03:15:17.976  Karya dibuka 1600x1200, 1 layer, batas 110 layer (37 ms)
+03:15:20.782  !!! Antarmuka macet 3001 ms. Posisi thread utama:
+03:15:25.319      android.os.BinderProxy.transactNative(Native Method)
+03:15:25.319      android.os.BinderProxy.transact(BinderProxy.java:584)
+03:15:25.320      android.view.accessibility.IAccessibilityManager$Stub$Proxy.addAccessibilityInteractionConnection(IAccessibilityManager.java:762)
+03:15:25.320      android.view.accessibility.AccessibilityManager.addAccessibilityInteractionConnection(AccessibilityManager.java:1425)
+03:15:25.320      android.view.ViewRootImpl$AccessibilityInteractionConnectionManager.ensureConnection(ViewRootImpl.java:10622)
+03:15:25.324      android.view.ViewRootImpl$AccessibilityInteractionConnectionManager.onAccessibilityStateChanged(ViewRootImpl.java:10599)
+03:15:25.324      android.view.accessibility.AccessibilityManager.lambda$notifyAccessibilityStateChanged$0(AccessibilityManager.java:1881)
+03:15:25.325      android.view.accessibility.AccessibilityManager$$ExternalSyntheticLambda1.run(Unknown Source:4)
+03:15:25.325      android.os.Handler.handleCallback(Handler.java:942)
+03:15:25.325      android.os.Handler.dispatchMessage(Handler.java:99)
+03:15:25.325      android.os.Looper.loopOnce(Looper.java:201)
+03:15:25.326      android.os.Looper.loop(Looper.java:288)
+03:15:25.326      android.app.ActivityThread.main(ActivityThread.java:7924)
+03:15:25.376  Sistem minta hemat memori (level 5)
+03:15:25.376  Sistem minta hemat memori (level 15)
+03:15:25.326      java.lang.reflect.Method.invoke(Native Method)
+03:15:25.380      com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+03:15:25.380      com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+03:15:25.381  !!! Kanvas macet 2843 ms. Posisi thread kanvas:
+03:15:25.381      android.opengl.GLES20.glReadPixels(Native Method)
+03:15:25.388      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4442)
+03:15:25.388      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:15:25.389      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:15:25.389      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:15:25.389      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:15:26.006  Frame lambat: 8067 ms
+03:15:26.402  Antarmuka kembali merespons
+03:15:26.403  Kanvas kembali merespons
+03:15:44.067  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:15:44.138  Aktivitas: lanjut
+03:15:44.818  Buka karya kmwljtxtsf2dc
+03:15:45.111  Permukaan kanvas dibuat
+03:15:45.138  Permukaan kanvas: sRGB
+03:15:45.143  GL: konteks dibuat
+03:15:46.221  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:15:46.435  GL: siap (1291 ms)
+03:15:46.435  GL: ukuran permukaan 2560x1800
+03:15:46.443  Karya dibuka 1600x1200, 1 layer, batas 110 layer (8 ms)
+03:15:49.077  !!! Antarmuka macet 3001 ms. Posisi thread utama:
+03:15:49.082      android.graphics.HardwareRenderer.nSyncAndDrawFrame(Native Method)
+03:15:49.085      android.graphics.HardwareRenderer.syncAndDrawFrame(HardwareRenderer.java:457)
+03:15:49.085      android.view.ThreadedRenderer.draw(ThreadedRenderer.java:811)
+03:15:49.086      android.view.ViewRootImpl.draw(ViewRootImpl.java:4789)
+03:15:49.086      android.view.ViewRootImpl.performDraw(ViewRootImpl.java:4500)
+03:15:49.087      android.view.ViewRootImpl.performTraversals(ViewRootImpl.java:3687)
+03:15:49.087      android.view.ViewRootImpl.doTraversal(ViewRootImpl.java:2371)
+03:15:49.087      android.view.ViewRootImpl$TraversalRunnable.run(ViewRootImpl.java:9297)
+03:15:49.088      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1231)
+03:15:49.088      android.view.Choreographer$CallbackRecord.run(Choreographer.java:1239)
+03:15:49.091      android.view.Choreographer.doCallbacks(Choreographer.java:899)
+03:15:49.095      android.view.Choreographer.doFrame(Choreographer.java:832)
+03:15:49.096      android.view.Choreographer$FrameDisplayEventReceiver.run(Choreographer.java:1214)
+03:15:49.096      android.os.Handler.handleCallback(Handler.java:942)
+03:15:49.096      android.os.Handler.dispatchMessage(Handler.java:99)
+03:15:49.097      android.os.Looper.loopOnce(Looper.java:201)
+03:15:49.097      android.os.Looper.loop(Looper.java:288)
+03:15:49.097      android.app.ActivityThread.main(ActivityThread.java:7924)
+03:15:49.099      java.lang.reflect.Method.invoke(Native Method)
+03:15:49.099      com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+03:15:49.100      com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+03:15:49.103  !!! Kanvas macet 2642 ms. Posisi thread kanvas:
+03:15:49.104      android.opengl.GLES20.glGenTextures(Native Method)
+03:15:49.104      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:15:49.104      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:15:49.105      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:15:49.105      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:15:49.106      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:15:49.106      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:15:49.106      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:15:53.116  Antarmuka kembali merespons
+03:15:53.437  Frame lambat: 7001 ms
+03:15:54.128  Kanvas kembali merespons
+03:16:09.327  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:16:09.394  Aktivitas: lanjut
+03:16:10.060  Buka karya kmwljuhbb5f65
+03:16:10.296  Permukaan kanvas dibuat
+03:16:10.380  Permukaan kanvas: sRGB
+03:16:10.387  GL: konteks dibuat
+03:16:11.733  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:16:11.801  GL: siap (1414 ms)
+03:16:11.802  GL: ukuran permukaan 2560x1800
+03:16:11.810  Karya dibuka 1600x1200, 1 layer, batas 110 layer (8 ms)
+03:16:14.372  !!! Kanvas macet 2569 ms. Posisi thread kanvas:
+03:16:14.390      android.opengl.GLES20.glGenTextures(Native Method)
+03:16:14.390      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:16:14.390      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:16:14.392      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:16:14.393      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:16:14.397      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:16:14.397      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:16:14.403      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:16:21.424  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:16:21.496  Aktivitas: lanjut
+03:16:22.155  Buka karya kmwljuqne3133
+03:16:22.409  Permukaan kanvas dibuat
+03:16:22.505  Permukaan kanvas: sRGB
+03:16:22.513  GL: konteks dibuat
+03:16:23.574  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:16:23.731  GL: siap (1218 ms)
+03:16:23.732  GL: ukuran permukaan 2560x1800
+03:16:23.746  Karya dibuka 1600x1200, 1 layer, batas 110 layer (11 ms)
+03:16:26.447  !!! Kanvas macet 2712 ms. Posisi thread kanvas:
+03:16:26.447      android.opengl.GLES20.glGenTextures(Native Method)
+03:16:26.448      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:16:26.448      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:16:26.448      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:16:26.449      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:16:26.449      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:16:26.449      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:16:26.453      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:16:31.235  Frame lambat: 7501 ms
+03:16:31.500  Kanvas kembali merespons
+03:16:41.978  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:16:42.043  Impor font gagal: web.woff2, 200 bait, awal 77 4f 46 32 00 11 01 00 00 04 00 10 44 53 49 47: Ini font web WOFF2, belum bisa dipakai langsung. Cari versi .ttf atau .otf-nya (misalnya dari Google Fonts).
+03:16:42.046  Aktivitas: lanjut
+03:16:42.709  Buka karya kmwljv6id974e
+03:16:42.895  Permukaan kanvas dibuat
+03:16:42.956  Permukaan kanvas: sRGB
+03:16:42.962  GL: konteks dibuat
+03:16:44.033  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:16:44.125  GL: siap (1162 ms)
+03:16:44.126  GL: ukuran permukaan 2560x1800
+03:16:44.163  Karya dibuka 1600x1200, 1 layer, batas 110 layer (31 ms)
+03:16:46.987  !!! Kanvas macet 2856 ms. Posisi thread kanvas:
+03:16:46.988      android.opengl.GLES20.glGenTextures(Native Method)
+03:16:46.988      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:16:46.989      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:16:46.989      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:16:46.989      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:16:46.990      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:16:46.990      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:16:46.990      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:16:53.402  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:16:53.464  Impor font gagal: Fix_Font_nana.pdf, 35 bait, awal 25 50 44 46 2d 31 2e 34 0a 25 e2 e3 cf d3 0a 31: Ini berkas PDF, bukan font. Pilih berkas font .ttf atau .otf.
+03:16:53.468  Aktivitas: lanjut
+03:16:54.115  Buka karya kmwljvfbn99c5
+03:16:54.318  Permukaan kanvas dibuat
+03:16:54.391  Permukaan kanvas: sRGB
+03:16:54.395  GL: konteks dibuat
+03:16:55.434  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:16:55.571  GL: siap (1176 ms)
+03:16:55.572  GL: ukuran permukaan 2560x1800
+03:16:55.591  Karya dibuka 1600x1200, 1 layer, batas 110 layer (19 ms)
+03:16:58.417  !!! Kanvas macet 2844 ms. Posisi thread kanvas:
+03:16:58.418      android.opengl.GLES20.glGenTextures(Native Method)
+03:16:58.419      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:16:58.419      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:16:58.419      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:16:58.466      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:16:58.467      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:16:58.467      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:16:58.467      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:17:04.891  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:17:04.957  Impor font gagal: gambar.otf, 72 bait, awal 89 50 4e 47 0d 0a 1a 0a 00 00 00 00 00 00 00 00: Ini berkas gambar, bukan font. Pilih berkas font .ttf atau .otf.
+03:17:04.960  Aktivitas: lanjut
+03:17:05.582  Buka karya kmwljvo6v94ad
+03:17:05.825  Permukaan kanvas dibuat
+03:17:05.834  Permukaan kanvas: sRGB
+03:17:05.850  GL: konteks dibuat
+03:17:06.777  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:17:06.862  GL: siap (1012 ms)
+03:17:06.862  GL: ukuran permukaan 2560x1800
+03:17:06.875  Karya dibuka 1600x1200, 1 layer, batas 110 layer (11 ms)
+03:17:10.020  !!! Kanvas macet 3157 ms. Posisi thread kanvas:
+03:17:10.021      android.opengl.GLES20.glGenTextures(Native Method)
+03:17:10.021      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:17:10.022      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:17:10.022      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:17:10.022      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:17:10.023      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:17:10.023      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:17:10.024      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:17:17.225  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:17:17.288  Impor font gagal: teks.ttf, 108 bait, awal 69 6e 69 20 62 75 6b 61 6e 20 66 6f 6e 74 20 73: Berkas ini bukan font yang dikenali. Pilih berkas .ttf atau .otf.
+03:17:17.291  Aktivitas: lanjut
+03:17:17.919  Buka karya kmwljvxpf32aa
+03:17:18.182  Permukaan kanvas dibuat
+03:17:18.243  Permukaan kanvas: sRGB
+03:17:18.247  GL: konteks dibuat
+03:17:19.156  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:17:19.246  GL: siap (999 ms)
+03:17:19.247  GL: ukuran permukaan 2560x1800
+03:17:19.268  Karya dibuka 1600x1200, 1 layer, batas 110 layer (21 ms)
+03:17:22.244  !!! Kanvas macet 2996 ms. Posisi thread kanvas:
+03:17:22.245      android.opengl.GLES20.glGenTextures(Native Method)
+03:17:22.246      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:17:22.246      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:17:22.247      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:17:22.247      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:17:22.247      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:17:22.300      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:17:22.300      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:17:29.147  === Aplikasi dibuka · WInote Gambar 0.1.36 (36) · Google sdk_gphone64_x86_64 · Android 13
+03:17:29.209  Impor font gagal: kosong.zip, 130 bait, awal 50 4b 03 04 14 00 00 00 00 00 da 19 72 5d fd 57: Di dalam ZIP ini tidak ada berkas font .ttf atau .otf.
+03:17:29.214  Aktivitas: lanjut
+03:17:29.878  Buka karya kmwljw6wka623
+03:17:30.092  Permukaan kanvas dibuat
+03:17:30.135  Permukaan kanvas: sRGB
+03:17:30.136  GL: konteks dibuat
+03:17:31.216  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+03:17:31.355  GL: siap (1216 ms)
+03:17:31.355  GL: ukuran permukaan 2560x1800
+03:17:31.365  Karya dibuka 1600x1200, 1 layer, batas 110 layer (9 ms)
+03:17:34.161  !!! Kanvas macet 2805 ms. Posisi thread kanvas:
+03:17:34.162      android.opengl.GLES20.glGenTextures(Native Method)
+03:17:34.162      id.goresan.engine.Tex.<init>(GL.kt:49)
+03:17:34.162      id.goresan.engine.Tex.<init>(GL.kt:43)
+03:17:34.162      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4428)
+03:17:34.163      id.goresan.engine.Engine.onDrawFrame(Engine.kt:888)
+03:17:34.163      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+03:17:34.211      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+03:17:34.211      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+03:17:38.998  Frame lambat: 7642 ms
+03:17:39.266  Kanvas kembali merespons

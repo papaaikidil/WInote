@@ -1,0 +1,9 @@
+NanaFont-Regular.ttf.otf => (tidak ada pesan)
+web.woff => (tidak ada pesan)
+Poppins.zip => 4 font ditambahkan: Poppins-Regular, Poppins-Bold, Poppins-Italic, Poppins-BoldItalic
+dua-font.zip => (tidak ada pesan)
+web.woff2 => Ini font web WOFF2, belum bisa dipakai langsung. Cari versi .ttf atau .otf-nya (misalnya dari Google Fonts).
+Fix Font nana.pdf => Ini berkas PDF, bukan font. Pilih berkas font .ttf atau .otf.
+gambar.otf => Ini berkas gambar, bukan font. Pilih berkas font .ttf atau .otf.
+teks.ttf => Berkas ini bukan font yang dikenali. Pilih berkas .ttf atau .otf.
+kosong.zip => Di dalam ZIP ini tidak ada berkas font .ttf atau .otf.
