@@ -1,0 +1,14 @@
+Fix Font nana.pdf !! Ini berkas PDF, bukan font. Pilih berkas font .ttf atau .otf.
+NanaFont-Regular.ttf.otf => NanaFont-Regular.ttf 31828
+Poppins.zip => Poppins-Regular.ttf 31828 | Poppins-Bold.ttf 31828 | Poppins-Italic.ttf 31828 | Poppins-BoldItalic.ttf 31828
+asli.ttf => asli.ttf 31828
+dua-font.zip => Satu.ttf 31828 | Dua.ttf 31828
+gambar.otf !! Ini berkas gambar, bukan font. Pilih berkas font .ttf atau .otf.
+kosong.zip !! Di dalam ZIP ini tidak ada berkas font .ttf atau .otf.
+tanpa-ekstensi => tanpa-ekstensi.ttf 31828
+teks.ttf !! Berkas ini bukan font yang dikenali. Pilih berkas .ttf atau .otf.
+web.woff => web.ttf 31828
+web.woff2 !! Ini font web WOFF2, belum bisa dipakai langsung. Cari versi .ttf atau .otf-nya (misalnya dari Google Fonts).
+web.woff.0.ttf -> 217 glyph, tabel ['DSIG', 'FFTM', 'GDEF', 'GPOS', 'GSUB', 'OS/2', 'cmap', 'gasp', 'glyf', 'head', 'hhea', 'hmtx', 'loca', 'maxp', 'name', 'post', 'prep']
+dua-font.zip.1.ttf -> 217 glyph, tabel ['DSIG', 'FFTM', 'GDEF', 'GPOS', 'GSUB', 'OS/2', 'cmap', 'gasp', 'glyf', 'head', 'hhea', 'hmtx', 'loca', 'maxp', 'name', 'post', 'prep']
+SEMUA LULUS
