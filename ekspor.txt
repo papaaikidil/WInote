@@ -1,0 +1,4 @@
+total 220
+drwx--S--- 2 u0_a174 u0_a174_cache   4096 2026-11-19 11:43 .
+drwxrws--x 3 u0_a174 u0_a174_cache   4096 2026-11-19 11:43 ..
+-rw------- 1 u0_a174 u0_a174_cache 200831 2026-11-19 11:43 Dokumen PDF - hal 2.pdf

@@ -1,0 +1,1 @@
+cat: files/crash.txt: No such file or directory
