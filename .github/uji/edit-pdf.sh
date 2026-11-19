@@ -233,7 +233,7 @@ shot lanjut-baca
 tap_node "Sunting" 3 || true
 # 10. Ekspor sebagian halaman jadi PDF.
 # Bilah fitur digeser ke ujung kanan (kelompok PDF di paling kanan).
-YB=$(dp 55)
+YB=$(dp 110)
 adb shell input swipe $((W*85/100)) $YB $((W*10/100)) $YB 400; sleep 1
 adb shell input swipe $((W*85/100)) $YB $((W*10/100)) $YB 400; sleep 2
 shot bilah-digeser
