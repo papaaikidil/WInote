@@ -1238,3 +1238,12 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   - Bentuk › Ujung kuas **Bercak cat air**: bercak bertepi bergelombang seperti kembang kol, dalamnya belang.
   - Tekstur **Awan cat air**: tekstur latar cat air (awan, bercak backrun dengan tepi gelap tipis, urat air, serat
     pigmen) yang menyatu di kanvas, jadi sapuan yang bersambung tetap satu pola.
+
+## Perubahan 0.1.133: Perbaikan garis tepi menyatu di atas gambar
+
+- Garis tepi kuas Huruf Gelembung (dan kuas lain dengan Garis tepi menyatu) hilang bila digambar di layer yang sudah
+  berisi gambar atau cat (mis. logo yang diimpor): yang tampak hanya isinya. Penyebabnya, garis tepi digambar di
+  belakang semua cat yang sudah ada. Sekarang garis tepi tampil di atas gambar dan cat biasa, dan hanya tersembunyi
+  di dalam isi gelembung lain (isi gelembung diberi tanda alfa 254/255 yang tidak terlihat), jadi goresan yang
+  bersilangan tetap menyatu.
+- Gelembung yang digambar dengan versi sebelumnya belum punya tanda itu, jadi goresan baru tidak menyatu dengannya.
