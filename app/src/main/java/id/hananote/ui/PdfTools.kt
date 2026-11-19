@@ -87,7 +87,7 @@ internal fun PdfToolOptions(c: EditorController) {
         if (!c.pdfForm) {
             Text("Stabilo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             HighlighterColors.forEach { col ->
-                ColorDot(Color(col), col == c.pdfMarkColor, { c.setPdfMarkColor(col) }, size = 22.dp, description = "Warna stabilo")
+                ColorDot(Color(col), col == c.pdfMarkColor, { c.choosePdfMarkColor(col) }, size = 22.dp, description = "Warna stabilo")
             }
         } else {
             Text(

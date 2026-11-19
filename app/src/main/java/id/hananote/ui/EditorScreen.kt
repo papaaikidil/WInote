@@ -2807,7 +2807,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
         pdfSel = null
     }
 
-    fun setPdfMarkColor(c: Int) {
+    fun choosePdfMarkColor(c: Int) {
         pdfMarkColor = c
         prefs.edit().putInt("pdf_mark_color", c).apply()
     }
