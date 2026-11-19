@@ -75,7 +75,7 @@ enum class EraserMode(val label: String) { BRUSH("Kuas halus"), PARTIAL("Sebagia
 
 /** Cara kanvas menanggapi sentuhan pena. */
 /** Cara menyentuh halaman: menulis (pensil), bentuk, memilih, mengetik (mode teks), atau menempel selotip. */
-enum class InputMode { INK, SHAPE, SELECT, TYPE, TAPE }
+enum class InputMode { INK, SHAPE, SELECT, TYPE, TAPE, PDF }
 
 /**
  * Bentuk selotip hafalan. Urutannya tersimpan di berkas, jadi bentuk baru selalu ditambahkan di akhir.
@@ -471,6 +471,17 @@ class TapeItem(
     override val canRotate get() = true
 }
 
+/**
+ * Penutup: bidang berwarna polos (biasanya warna kertas PDF) untuk menutupi tulisan asli PDF yang diubah. Teks
+ * penggantinya kotak teks biasa yang dikelompokkan dengan penutup ini.
+ */
+class CoverItem(x: Float, y: Float, w: Float, h: Float, val color: Int) : PageItem(x, y, w, h, 0f) {
+    override fun copyAt(x: Float, y: Float, w: Float, h: Float, rotation: Float) = CoverItem(x, y, w, h, color)
+    fun withColor(c: Int) = CoverItem(x, y, w, h, c).keepFrom(this)
+    override val kindLabel get() = "Penutup"
+    override val carriesInk get() = false
+}
+
 /** Satu ide di mind map. [x], [y] pusatnya dalam satuan peta; [parent] -1 untuk ide utama. */
 class MindNode(val id: Int, val parent: Int, val x: Float, val y: Float, val text: String, val color: Int) {
     fun moved(x: Float, y: Float) = MindNode(id, parent, x, y, text, color)
@@ -638,7 +649,47 @@ data class Note(
     val pinned: Boolean = false,
     /** Bila tidak kosong: entri ini adalah gambar dari ruang gambar (id karyanya), bukan catatan berhalaman. */
     val art: String = "",
+    /** Nomor halaman yang dicetak di tiap halaman (lihat [PageNumberSpec]); kosong = tanpa nomor. */
+    val pageNumbers: String = "",
 )
+
+/**
+ * Pengaturan nomor halaman sebuah catatan. [position]: 0 bawah tengah, 1 bawah kanan, 2 bawah kiri, 3 atas kanan,
+ * 4 atas tengah. [format]: 0 "1", 1 "Hal. 1", 2 "1 / 12", 3 "- 1 -". [start]: nomor halaman pertama.
+ * [skipFirst]: halaman pertama (sampul) tidak diberi nomor.
+ */
+data class PageNumberSpec(val position: Int = 0, val format: Int = 0, val start: Int = 1, val skipFirst: Boolean = false, val size: Float = 10f) {
+    fun encode(): String = "$position,$format,$start,${if (skipFirst) 1 else 0},$size"
+
+    /** Teks nomor untuk halaman ke-[index] (mulai 0) dari [total] halaman, atau null bila tanpa nomor. */
+    fun label(index: Int, total: Int): String? {
+        if (skipFirst && index == 0) return null
+        val n = start + index - (if (skipFirst) 1 else 0)
+        val last = start + total - 1 - (if (skipFirst) 1 else 0)
+        return when (format) {
+            1 -> "Hal. $n"
+            2 -> "$n / $last"
+            3 -> "- $n -"
+            else -> "$n"
+        }
+    }
+
+    companion object {
+        val POSITIONS = listOf("Bawah tengah", "Bawah kanan", "Bawah kiri", "Atas kanan", "Atas tengah")
+        val FORMATS = listOf("1", "Hal. 1", "1 / 12", "- 1 -")
+
+        fun decode(s: String): PageNumberSpec? {
+            if (s.isBlank()) return null
+            val p = s.split(',')
+            return runCatching {
+                PageNumberSpec(
+                    p[0].toInt().coerceIn(0, POSITIONS.lastIndex), p[1].toInt().coerceIn(0, FORMATS.lastIndex),
+                    p[2].toInt(), p.getOrNull(3) == "1", p.getOrNull(4)?.toFloatOrNull()?.coerceIn(6f, 28f) ?: 10f,
+                )
+            }.getOrNull()
+        }
+    }
+}
 
 /** Urutan rak: buku yang disematkan dulu, lalu menurut urutan yang diatur. */
 fun shelfOrder(books: List<Book>): List<Book> =

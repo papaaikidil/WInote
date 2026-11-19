@@ -38,15 +38,26 @@ object PageBackground {
     fun imageOf(bg: String): String? =
         if (bg.startsWith("img:")) bg.substring(4).takeIf { it.isNotBlank() && !it.contains('/') } else null
 
-    /** Halaman PDF: "pdf:<berkas>#<nomor halaman mulai 0>". */
-    fun pdf(file: String, index: Int) = "pdf:$file#$index"
+    /**
+     * Halaman PDF: "pdf:<berkas>#<nomor halaman mulai 0>", ditambah "@<derajat>" bila halamannya diputar searah
+     * jarum jam (90, 180, 270).
+     */
+    fun pdf(file: String, index: Int, rotation: Int = 0) =
+        "pdf:$file#$index" + (((rotation % 360) + 360) % 360).let { if (it == 0) "" else "@$it" }
 
     fun pdfOf(bg: String): Pair<String, Int>? {
         if (!bg.startsWith("pdf:")) return null
-        val body = bg.substring(4)
+        val body = bg.substring(4).substringBefore('@')
         val file = body.substringBeforeLast('#')
         val index = body.substringAfterLast('#', "").toIntOrNull() ?: return null
         if (file.isBlank() || file.contains('/')) return null
         return file to index
+    }
+
+    /** Putaran halaman PDF (0, 90, 180, 270). */
+    fun pdfRotation(bg: String): Int {
+        if (!bg.startsWith("pdf:")) return 0
+        val r = bg.substringAfterLast('@', "").toIntOrNull() ?: return 0
+        return if (r == 90 || r == 180 || r == 270) r else 0
     }
 }

@@ -45,7 +45,19 @@ class MainActivity : ComponentActivity() {
                 openRequest.value = id
             }
             HanaWidgets.ACTION_NEW -> {
-                val n = runCatching { Repository.get(applicationContext).createQuickNote() }.getOrNull()
+                val repo = Repository.get(applicationContext)
+                // Uji: catatan baru dari berkas PDF di folder data aplikasi (seperti "Buka PDF untuk ditulisi…").
+                val pdf = intent.getStringExtra("uji_pdf")
+                val n = if (pdf != null) {
+                    runCatching {
+                        val quick = repo.createQuickNote()
+                        repo.deleteNote(quick.id)
+                        repo.deleteNoteForever(quick.id)
+                        repo.createNoteFromPdf(applicationContext, quick.bookId, android.net.Uri.fromFile(java.io.File(filesDir, pdf)))
+                    }.getOrNull()
+                } else {
+                    runCatching { repo.createQuickNote() }.getOrNull()
+                }
                 if (n != null) openRequest.value = n.id
             }
             else -> return

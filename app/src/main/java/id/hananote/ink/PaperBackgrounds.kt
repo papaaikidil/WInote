@@ -21,7 +21,8 @@ object PaperBackgrounds {
 
     /** Lebar gambar halaman PDF yang dipakai untuk skala tampilan [scale]. */
     fun pdfWidth(page: PageMeta, scale: Float): Int {
-        val need = page.width * scale
+        val rot = PageBackground.pdfRotation(page.background)
+        val need = (if (rot == 90 || rot == 270) page.height else page.width) * scale
         return when {
             need <= 600f -> 600
             need <= 1200f || InkRenderer.drawingPdf() -> 1200
@@ -70,12 +71,26 @@ object PaperBackgrounds {
         }
         PageBackground.pdfOf(bg)?.let { (name, index) ->
             if (imageDir == null) return page.paperColor
+            val rot = PageBackground.pdfRotation(bg)
             val px = pdfWidth(page, scale)
             val f = File(imageDir, name)
             val bmp = PdfPages.render(f, index, px) ?: (if (px > 1200) PdfPages.render(f, index, 1200) else null) ?: return page.paperColor
             paint.reset()
             paint.isFilterBitmap = true
-            c.drawBitmap(bmp, null, RectF(0f, 0f, page.width, page.height), paint)
+            if (rot == 0) {
+                c.drawBitmap(bmp, null, RectF(0f, 0f, page.width, page.height), paint)
+            } else {
+                // Halaman PDF yang diputar searah jarum jam: gambar aslinya diputar di dalam kotak halaman.
+                c.save()
+                when (rot) {
+                    90 -> { c.translate(page.width, 0f); c.rotate(90f) }
+                    180 -> { c.translate(page.width, page.height); c.rotate(180f) }
+                    else -> { c.translate(0f, page.height); c.rotate(270f) }
+                }
+                val swap = rot == 90 || rot == 270
+                c.drawBitmap(bmp, null, RectF(0f, 0f, if (swap) page.height else page.width, if (swap) page.width else page.height), paint)
+                c.restore()
+            }
             return android.graphics.Color.WHITE
         }
         val file = PageBackground.imageOf(bg)

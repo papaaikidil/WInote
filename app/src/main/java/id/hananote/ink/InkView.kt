@@ -308,7 +308,7 @@ class InkView(context: Context) : View(context) {
     private val afterBake = ArrayList<Runnable>()
 
     // ---- sentuhan ----
-    private enum class Mode { NONE, DRAW, ERASE, SHAPE, PAN, ZOOM, IGNORE, RULER, SELECT, TURN, TYPESEL, TYPEOUT, MAPNODE, MAPBLANK, CHECKTAP, TABLELINE, TAPE, TAPETAP }
+    private enum class Mode { NONE, DRAW, ERASE, SHAPE, PAN, ZOOM, IGNORE, RULER, SELECT, TURN, TYPESEL, TYPEOUT, MAPNODE, MAPBLANK, CHECKTAP, TABLELINE, TAPE, TAPETAP, PDFSEL, PDFFIELD }
     private var mode = Mode.NONE
     private var activePointer = -1
     private var activeIsFinger = false
@@ -2501,6 +2501,7 @@ class InkView(context: Context) : View(context) {
             InkRenderer.drawTape(canvas, tp, tapePaint, 0.85f)
             canvas.restore()
         }
+        drawPdfOverlay(canvas, p)
         lifted?.let { l ->
             val preview = widthPreview
             if (preview != null && (dragCorner == 5 || dragCorner == 6)) {
@@ -4354,6 +4355,12 @@ class InkView(context: Context) : View(context) {
             panTapAny = true
             return
         }
+        // Mode Teks PDF: pilih teks PDF (atau kolom formulir); jari di tempat kosong menggeser halaman.
+        if (inputMode == InputMode.PDF) {
+            if (palmLike(e, 0)) { mode = Mode.IGNORE; return }
+            pdfDown(e, 0, stylus)
+            return
+        }
         // Jari di atas penggaris: geser atau putar penggaris.
         if (!stylus && insideRuler(e.getX(0), e.getY(0))) {
             startRuler(e)
@@ -4423,6 +4430,11 @@ class InkView(context: Context) : View(context) {
             Mode.SELECT, Mode.TURN -> Unit
             Mode.CHECKTAP -> if (!stylus) startZoom(e, skip = -1)
             Mode.TAPETAP -> if (!stylus) { tapeHit = null; startZoom(e, skip = -1) }
+            Mode.PDFSEL, Mode.PDFFIELD -> if (!stylus) {
+                // Jari kedua: batalkan pilihan yang sedang ditarik, lalu perbesar atau geser halaman.
+                pdfCancelDrag()
+                startZoom(e, skip = -1)
+            }
             Mode.TABLELINE -> Unit
             Mode.TYPESEL, Mode.TYPEOUT, Mode.MAPNODE, Mode.MAPBLANK -> {
                 if (!stylus) {
@@ -4437,6 +4449,8 @@ class InkView(context: Context) : View(context) {
                     onStylusSeen?.invoke()
                     if (inputMode == InputMode.SELECT) {
                         selectDown(e, i, finger = false)
+                    } else if (inputMode == InputMode.PDF && !readOnly) {
+                        pdfDown(e, i, stylus = true)
                     } else if (inputMode == InputMode.TYPE || readOnly) {
                         startPan(e, i)
                         panTapAny = true
@@ -4455,6 +4469,15 @@ class InkView(context: Context) : View(context) {
         if (lpPointer >= 0) {
             val k = e.findPointerIndex(lpPointer)
             if (k < 0 || hypot(e.getX(k) - lpX, e.getY(k) - lpY) > touchSlop) disarmLongPress()
+        }
+        when (mode) {
+            Mode.PDFSEL -> { pdfMove(e); return }
+            Mode.PDFFIELD -> {
+                val i = e.findPointerIndex(activePointer)
+                if (i >= 0 && hypot(e.getX(i) - downX, e.getY(i) - downY) > touchSlop * 2f) pdfFieldHit = null
+                return
+            }
+            else -> Unit
         }
         when (mode) {
             Mode.DRAW -> {
@@ -4590,6 +4613,8 @@ class InkView(context: Context) : View(context) {
             Mode.SHAPE -> if (id == activePointer) { commitShape(); mode = Mode.IGNORE }
             Mode.TAPE -> if (id == activePointer) { commitTape(); mode = Mode.IGNORE }
             Mode.TAPETAP -> if (id == activePointer) { tapeHit?.let { toggleTape(it) }; tapeHit = null; mode = Mode.IGNORE }
+            Mode.PDFSEL -> if (id == activePointer) { pdfUp(commit = true); mode = Mode.IGNORE }
+            Mode.PDFFIELD -> if (id == activePointer) { pdfFieldUp(commit = true); mode = Mode.IGNORE }
             Mode.SELECT -> if (id == activePointer) { selectUp(commit = true); mode = Mode.IGNORE }
             Mode.TURN -> if (id == activePointer) { releaseTurn(commit = true); mode = Mode.IGNORE }
             Mode.TYPESEL -> if (id == activePointer) { typeUp(); mode = Mode.IGNORE }
@@ -4641,6 +4666,8 @@ class InkView(context: Context) : View(context) {
                 tapeHit = null
             }
             Mode.SELECT -> selectUp(commit)
+            Mode.PDFSEL -> pdfUp(commit)
+            Mode.PDFFIELD -> pdfFieldUp(commit)
             Mode.CHECKTAP -> if (commit) toggleCheckboxAt(checkTapX, checkTapY)
             Mode.TABLELINE -> tableLineUp(commit)
             Mode.PAN -> {
@@ -4652,6 +4679,7 @@ class InkView(context: Context) : View(context) {
                 endPanZoom()
                 if (tapped) {
                     when {
+                        inputMode == InputMode.PDF && !readOnly -> clearPdfSelection()
                         blank -> mapBlankTap()
                         outside -> tapOutsideEditing(downX, downY)
                         else -> tapAt(downX, downY)
@@ -5002,6 +5030,246 @@ class InkView(context: Context) : View(context) {
         addPoint(downX, downY, tapeDownP, true, tapeDownT)
         addPoint(e.getX(i), e.getY(i), e.getPressure(i), false, e.eventTime)
         invalidate()
+    }
+
+    // ================= Teks PDF, formulir, penanda baca =================
+
+    /** Teks halaman PDF ini dalam satuan halaman (untuk mode Teks PDF); null bila bukan PDF atau belum terbaca. */
+    var pdfLayer: PdfTextLayer? = null
+        set(v) {
+            field = v
+            pdfSelFrom = -1
+            pdfSelTo = -1
+            invalidate()
+        }
+
+    /** Kolom formulir PDF di halaman ini; tampil dan bisa diketuk bila [pdfFormMode]. */
+    var pdfFields: List<PdfFieldBox> = emptyList()
+        set(v) { field = v; invalidate() }
+    var pdfFormMode = false
+        set(v) { field = v; invalidate() }
+
+    /** Pilihan teks PDF berubah (null: pilihan dihapus). */
+    var onPdfSelection: ((PdfSelection?) -> Unit)? = null
+    /** Kolom formulir diketuk. */
+    var onPdfFieldTapped: ((PdfFieldBox) -> Unit)? = null
+    /** Halaman disentuh di mode Teks PDF padahal teksnya tidak ada (bukan PDF, hasil pindaian, atau belum terbaca). */
+    var onPdfNoText: (() -> Unit)? = null
+
+    /** Tampilkan pita penanda "terakhir dibaca" di pojok kanan atas halaman ini. */
+    var bookmarkRibbon = false
+        set(v) { if (field != v) { field = v; invalidate() } }
+
+    private var pdfSelFrom = -1
+    private var pdfSelTo = -1
+    private var pdfAnchor = -1
+    private var pdfDragging = false
+    private var pdfPrevFrom = -1
+    private var pdfPrevTo = -1
+    private var pdfFieldHit: PdfFieldBox? = null
+    private val pdfPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pdfRect = RectF()
+
+    fun pdfSelectionRange(): IntRange? =
+        if (pdfSelFrom < 0 || pdfSelTo < 0) null else min(pdfSelFrom, pdfSelTo)..max(pdfSelFrom, pdfSelTo)
+
+    fun clearPdfSelection() {
+        if (pdfSelFrom < 0 && pdfSelTo < 0) return
+        pdfSelFrom = -1
+        pdfSelTo = -1
+        invalidate()
+        onPdfSelection?.invoke(null)
+    }
+
+    /** Pilih huruf [from]..[to] (mis. dari bilah aksi: perluas ke satu baris). */
+    fun selectPdfRange(from: Int, to: Int) {
+        val layer = pdfLayer ?: return
+        if (layer.n == 0) return
+        pdfSelFrom = from.coerceIn(0, layer.n - 1)
+        pdfSelTo = to.coerceIn(0, layer.n - 1)
+        invalidate()
+        reportPdfSelection()
+    }
+
+    private fun pdfDown(e: MotionEvent, i: Int, stylus: Boolean) {
+        activePointer = e.getPointerId(i)
+        activeIsFinger = !stylus
+        downX = e.getX(i)
+        downY = e.getY(i)
+        val pp = toPage(downX, downY)
+        if (pdfFormMode) {
+            val pad = 6f / scale
+            val f = pdfFields.firstOrNull { it.rect.left - pad <= pp.x && pp.x <= it.rect.right + pad && it.rect.top - pad <= pp.y && pp.y <= it.rect.bottom + pad }
+            if (f != null) {
+                mode = Mode.PDFFIELD
+                pdfFieldHit = f
+                return
+            }
+        }
+        val layer = pdfLayer
+        val reach = (if (stylus) 18f else 12f) * density / scale
+        val hit = if (layer == null || layer.n == 0) null else layer.charAt(pp.x, pp.y, reach)
+        if (hit != null) {
+            mode = Mode.PDFSEL
+            pdfAnchor = hit
+            pdfDragging = false
+            pdfPrevFrom = pdfSelFrom
+            pdfPrevTo = pdfSelTo
+            return
+        }
+        if (layer == null || layer.n == 0) post { onPdfNoText?.invoke() }
+        startPan(e, i)
+        panTapAny = true
+    }
+
+    private fun pdfMove(e: MotionEvent) {
+        val i = e.findPointerIndex(activePointer)
+        if (i < 0) return
+        if (!pdfDragging && hypot(e.getX(i) - downX, e.getY(i) - downY) < touchSlop) return
+        pdfDragging = true
+        val layer = pdfLayer ?: return
+        val pp = toPage(e.getX(i), e.getY(i))
+        val c = layer.charAt(pp.x, pp.y) ?: return
+        if (pdfSelFrom != pdfAnchor || pdfSelTo != c) {
+            pdfSelFrom = pdfAnchor
+            pdfSelTo = c
+            invalidate()
+        }
+    }
+
+    private fun pdfUp(commit: Boolean) {
+        val layer = pdfLayer
+        if (!commit || layer == null) {
+            pdfCancelDrag()
+            return
+        }
+        if (!pdfDragging) {
+            // Ketuk: pilih katanya; ketuk lagi kata yang sudah terpilih: pilih seluruh barisnya.
+            val cur = pdfSelectionRange()
+            val word = layer.wordRange(pdfAnchor)
+            val r = if (cur != null && pdfAnchor in cur && cur.first == word.first && cur.last == word.last) layer.lineRange(pdfAnchor) else word
+            if (!r.isEmpty()) {
+                pdfSelFrom = r.first
+                pdfSelTo = r.last
+            }
+        }
+        pdfDragging = false
+        invalidate()
+        reportPdfSelection()
+    }
+
+    private fun pdfCancelDrag() {
+        if (mode == Mode.PDFSEL && pdfDragging) {
+            pdfSelFrom = pdfPrevFrom
+            pdfSelTo = pdfPrevTo
+        }
+        pdfDragging = false
+        pdfFieldHit = null
+        invalidate()
+    }
+
+    private fun pdfFieldUp(commit: Boolean) {
+        val f = pdfFieldHit
+        pdfFieldHit = null
+        if (commit && f != null) post { onPdfFieldTapped?.invoke(f) }
+    }
+
+    private fun reportPdfSelection() {
+        val layer = pdfLayer
+        val r = pdfSelectionRange()
+        if (layer == null || r == null) { onPdfSelection?.invoke(null); return }
+        val rects = layer.rects(r.first, r.last)
+        if (rects.isEmpty()) { onPdfSelection?.invoke(null); return }
+        val u = RectF(rects[0])
+        for (k in 1 until rects.size) u.union(rects[k])
+        val v = floatArrayOf(u.left, u.top, u.right, u.bottom)
+        viewMatrix.mapPoints(v)
+        onPdfSelection?.invoke(PdfSelection(r.first, r.last, layer.text(r.first, r.last), RectF(min(v[0], v[2]), min(v[1], v[3]), max(v[0], v[2]), max(v[1], v[3]))))
+    }
+
+    private fun drawPdfOverlay(canvas: Canvas, p: PageMeta) {
+        if (inputMode == InputMode.PDF && !readOnly) {
+            if (pdfFormMode) {
+                for (f in pdfFields) {
+                    pdfPaint.style = Paint.Style.FILL
+                    pdfPaint.color = if (f === pdfFieldHit) 0x402F6FDE else 0x1A2F6FDE
+                    canvas.drawRect(f.rect, pdfPaint)
+                    pdfPaint.style = Paint.Style.STROKE
+                    pdfPaint.strokeWidth = 1.5f / scale * density
+                    pdfPaint.color = 0xB02F6FDE.toInt()
+                    canvas.drawRect(f.rect, pdfPaint)
+                }
+            }
+            val layer = pdfLayer
+            val r = pdfSelectionRange()
+            if (layer != null && r != null) {
+                pdfPaint.style = Paint.Style.FILL
+                pdfPaint.color = (accentColor and 0x00FFFFFF) or 0x3D000000
+                for (rc in layer.rects(r.first, r.last)) canvas.drawRect(rc, pdfPaint)
+                // Pegangan kecil di awal dan akhir pilihan.
+                pdfPaint.color = accentColor
+                val rad = 4f * density / scale
+                val rs = layer.rects(r.first, r.last)
+                if (rs.isNotEmpty()) {
+                    canvas.drawCircle(rs.first().left, rs.first().top, rad, pdfPaint)
+                    canvas.drawCircle(rs.last().right, rs.last().bottom, rad, pdfPaint)
+                }
+            }
+        }
+        if (bookmarkRibbon && readOnly) {
+            // Pita merah "terakhir dibaca" yang menjuntai di pojok kanan atas halaman.
+            val w = 16f
+            val h = 34f
+            val x = p.width - 28f - w
+            pdfPaint.style = Paint.Style.FILL
+            pdfPaint.color = 0xFFD84343.toInt()
+            val path = Path()
+            path.moveTo(x, 0f)
+            path.lineTo(x + w, 0f)
+            path.lineTo(x + w, h)
+            path.lineTo(x + w / 2f, h - 7f)
+            path.lineTo(x, h)
+            path.close()
+            canvas.drawPath(path, pdfPaint)
+        }
+    }
+
+    /**
+     * Tambahkan coretan, teks, dan benda sekaligus sebagai satu langkah urungkan (stabilo/garis bawah teks PDF,
+     * penutup + teks pengganti). Semua dikelompokkan bila [groupIt].
+     */
+    fun addMarks(strokesToAdd: List<Stroke>, textsToAdd: List<TextItem>, itemsToAdd: List<PageItem>, groupIt: Boolean = false) {
+        cancelInteraction()
+        if (strokesToAdd.isEmpty() && textsToAdd.isEmpty() && itemsToAdd.isEmpty()) return
+        val g = if (groupIt && strokesToAdd.size + textsToAdd.size + itemsToAdd.size > 1) PageItem.newId() else 0L
+        for (it in itemsToAdd) { it.z = nextZ(); if (g != 0L) it.group = g; items.add(it) }
+        for (s in strokesToAdd) { s.z = nextZ(); if (g != 0L) s.group = g; strokes.add(s) }
+        for (t in textsToAdd) { t.z = nextZ(); if (g != 0L) t.group = g; texts.add(t) }
+        sortLayers()
+        pushUndo(Change(addedStrokes = strokesToAdd, addedTexts = textsToAdd, addedItems = itemsToAdd))
+        contentChanged()
+    }
+
+    /** Teks ketik yang kotaknya berada di dalam [r] (isian kolom formulir yang sudah ada). */
+    fun textInside(r: RectF): TextItem? {
+        val pad = 3f
+        return texts.lastOrNull { it.x >= r.left - pad && it.x <= r.right && it.y >= r.top - pad && it.y <= r.bottom }
+    }
+
+    /** Ganti teks [old] dengan [new] (salah satunya boleh null) sebagai satu langkah urungkan. */
+    fun swapText(old: TextItem?, new: TextItem?) {
+        cancelInteraction()
+        val removed = ArrayList<Pair<Int, TextItem>>()
+        if (old != null) {
+            val idx = texts.indexOf(old)
+            if (idx >= 0) { removed.add(idx to old); texts.removeAt(idx) }
+        }
+        val added = ArrayList<TextItem>()
+        if (new != null) { new.z = if (old != null) old.z else nextZ(); texts.add(new); added.add(new) }
+        if (removed.isEmpty() && added.isEmpty()) return
+        sortLayers()
+        pushUndo(Change(removedTexts = removed, addedTexts = added))
+        contentChanged()
     }
 
     /** Jumlah selotip hafalan di halaman ini, dan berapa yang sedang tertutup. */

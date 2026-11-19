@@ -77,6 +77,12 @@ object PdfPages {
         return renderNow(file, index, widthPx)
     }
 
+    /** Gambar halaman [index] yang sudah tersimpan, ukuran terbesar yang ada; null bila belum pernah digambar. */
+    fun anyCached(file: File, index: Int): Bitmap? {
+        for (w in widths.reversed()) bitmaps.get("${file.path}#$index@$w")?.let { return it }
+        return null
+    }
+
     /** Siapkan di latar lebih dulu, misalnya halaman sebelah. */
     fun prefetch(file: File, index: Int, widthPx: Int) {
         if (bitmaps.get("${file.path}#$index@$widthPx") == null) request(file, index, widthPx)

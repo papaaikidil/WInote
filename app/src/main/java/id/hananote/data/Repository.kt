@@ -471,6 +471,12 @@ class Repository private constructor(context: Context) {
         }
     }
 
+    /** Simpan pengaturan nomor halaman catatan [id] (kosong = tanpa nomor). */
+    fun setPageNumbers(id: String, spec: String) = synchronized(lock) {
+        _notes.value = _notes.value.map { if (it.id == id) it.copy(pageNumbers = spec) else it }
+        saveNotes()
+    }
+
     fun renameNote(id: String, title: String) = synchronized(lock) {
         _notes.value = _notes.value.map { if (it.id == id) it.copy(title = title.ifBlank { it.title }) else it }
         saveNotes()
@@ -1081,6 +1087,7 @@ class Repository private constructor(context: Context) {
             order = o.optLong("order", 0L),
             pinned = o.optBoolean("pinned", false),
             art = o.optString("art", ""),
+            pageNumbers = o.optString("pageNumbers", ""),
         )
     }.getOrNull()
 
@@ -1094,6 +1101,7 @@ class Repository private constructor(context: Context) {
             .put("created", n.created).put("updated", n.updated).put("pages", n.pageCount)
             .put("order", n.order).put("pinned", n.pinned)
             .apply { if (n.art.isNotEmpty()) put("art", n.art) }
+            .apply { if (n.pageNumbers.isNotEmpty()) put("pageNumbers", n.pageNumbers) }
 
     private fun parseBooks(f: File): List<Book> = readArray(f).mapNotNull { bookFrom(it) }
 
@@ -1199,6 +1207,7 @@ object PageIO {
     private const val ITEM_MINDMAP = 6
     private const val ITEM_AUDIO = 7
     private const val ITEM_TAPE = 8
+    private const val ITEM_COVER = 9
 
     private fun DataOutputStream.writeStr(s: String) {
         val b = s.toByteArray(Charsets.UTF_8)
@@ -1258,6 +1267,7 @@ object PageIO {
                     is MindMapItem -> ITEM_MINDMAP
                     is AudioItem -> ITEM_AUDIO
                     is TapeItem -> ITEM_TAPE
+                    is CoverItem -> ITEM_COVER
                 }
                 // Isi tiap benda diawali panjangnya, jadi versi lama bisa melewati jenis benda yang belum dikenalnya.
                 buf.reset()
@@ -1291,6 +1301,7 @@ object PageIO {
                 if (sh != null) { out.writeFloat(sh.distance); out.writeFloat(sh.blur); out.writeFloat(sh.opacity) }
             }
             is AudioItem -> { out.writeStr(it.file); out.writeLong(it.durationMs) }
+            is CoverItem -> out.writeInt(it.color)
             is TapeItem -> {
                 out.writeByte(it.shape.ordinal)
                 out.writeInt(it.color)
@@ -1514,6 +1525,7 @@ object PageIO {
                 CalendarItem(x, y, w, h, yr, mo, col, inp.readInt())
             }
             ITEM_AUDIO -> { val f = inp.readStr(); AudioItem(x, y, w, h, f, inp.readLong()) }
+            ITEM_COVER -> CoverItem(x, y, w, h, inp.readInt())
             ITEM_TAPE -> {
                 val shape = TapeShape.entries.getOrElse(inp.readByte().toInt()) { TapeShape.RECT }
                 val color = inp.readInt()

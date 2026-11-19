@@ -39,6 +39,7 @@ import id.hananote.data.PageItem
 import id.hananote.data.StickyItem
 import id.hananote.data.TableItem
 import id.hananote.data.TapeItem
+import id.hananote.data.CoverItem
 import id.hananote.data.TapeShape
 import java.io.File
 import id.hananote.data.PageContent
@@ -449,6 +450,40 @@ object InkRenderer {
         return l < 110
     }
 
+    /**
+     * Nomor halaman catatan yang sedang dibuka: diisi penyunting (id halaman → teks nomor) bersama pengaturannya,
+     * lalu ikut tergambar di kertas (layar, gambar kecil, dan ekspor).
+     */
+    object PageNumbers {
+        @Volatile var labels: Map<String, String> = emptyMap()
+        @Volatile var spec: id.hananote.data.PageNumberSpec? = null
+    }
+
+    private val numberPaint = ThreadLocal.withInitial { TextPaint(Paint.ANTI_ALIAS_FLAG) }
+
+    private fun drawPageNumber(c: Canvas, page: PageMeta, paint: Paint, dark: Boolean) {
+        val spec = PageNumbers.spec ?: return
+        val label = PageNumbers.labels[page.id] ?: return
+        val tp = numberPaint.get()!!
+        tp.reset()
+        tp.isAntiAlias = true
+        tp.textSize = spec.size
+        tp.color = if (dark) 0xCCFFFFFF.toInt() else 0xCC33415C.toInt()
+        tp.typeface = android.graphics.Typeface.DEFAULT
+        val w = tp.measureText(label)
+        val margin = maxOf(18f, spec.size * 2.2f)
+        val x = when (spec.position) {
+            1, 3 -> page.width - margin - w
+            2 -> margin
+            else -> (page.width - w) / 2f
+        }
+        val y = when (spec.position) {
+            3, 4 -> margin + spec.size * 0.4f
+            else -> page.height - margin + spec.size * 0.35f
+        }
+        c.drawText(label, x, y, tp)
+    }
+
     /** Kertas beserta latar (tekstur atau gambar) dan polanya: garis 8 mm, kotak 5 mm, atau titik 5 mm. */
     fun drawPaper(canvas: Canvas, page: PageMeta, paint: Paint, imageDir: File? = null, scale: Float = 1f) {
         paint.reset()
@@ -464,6 +499,10 @@ object InkRenderer {
 
         val dark = isDark(tone)
         lightPaper.set(!dark)
+        drawPageNumber(canvas, page, paint, dark)
+        paint.reset()
+        paint.isAntiAlias = true
+        paint.style = Paint.Style.FILL
         val line = if (dark) 0x33FFFFFF else 0x2E33415C
         val mm = PaperSize.mmToPt(1f)
         when (page.template) {
@@ -820,6 +859,13 @@ object InkRenderer {
             }
             is CalendarItem -> drawCalendar(c, item, paint)
             is TapeItem -> drawTape(c, item, paint)
+            is CoverItem -> {
+                paint.style = Paint.Style.FILL
+                paint.color = item.color
+                paint.isAntiAlias = false
+                c.drawRect(l, t, r, b, paint)
+                paint.isAntiAlias = true
+            }
             is MindMapItem -> MindMapRenderer.drawItem(c, item)
             is AudioItem -> drawAudio(c, item, paint, playing = false)
             is TableItem -> {

@@ -108,4 +108,6 @@ dependencies {
     // Hapus latar gambar: objek utama dikenali otomatis (komponen diunduh lewat Layanan Google Play).
     implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
     implementation("com.google.android.gms:play-services-base:18.5.0")
+    // Edit PDF di catatan: membaca teks PDF beserta posisinya (pilih, stabilo, ubah teks) dan kolom formulir.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

@@ -19,3 +19,10 @@
 -dontwarn com.google.auto.value.**
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# PdfBox (teks dan formulir PDF): beberapa kelas dimuat lewat refleksi; dekoder JPEG 2000 opsional tidak dipakai.
+-keep class com.tom_roush.pdfbox.** { *; }
+-keep class com.tom_roush.fontbox.** { *; }
+-keep class com.tom_roush.harmony.** { *; }
+-dontwarn com.tom_roush.**
+-dontwarn com.gemalto.jp2.**

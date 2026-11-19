@@ -26,7 +26,22 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.MergeType
+import androidx.compose.material.icons.filled.Rotate90DegreesCw
 import android.content.ClipData
+import android.graphics.RectF
+import id.hananote.data.CoverItem
+import id.hananote.data.PageNumberSpec
+import id.hananote.ink.PdfField
+import id.hananote.ink.PdfFieldBox
+import id.hananote.ink.PdfGeom
+import id.hananote.ink.PdfPages
+import id.hananote.ink.PdfSelection
+import id.hananote.ink.PdfText
+import id.hananote.ink.PdfTextLayer
 import androidx.core.content.FileProvider
 import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.produceState
@@ -38,6 +53,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Translate
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -459,9 +476,25 @@ class EditorController(private val repo: Repository, val noteId: String) {
                 notice = "Mode baca: catatan hanya bisa dibaca. Geser untuk menggulir, sapu ke samping untuk membalik halaman."
             }
         }
+        if (on) {
+            // Mode Teks PDF tidak berlaku saat membaca.
+            if (mode == InputMode.PDF) {
+                mode = writingMode
+                view?.inputMode = writingMode
+                pdfForm = false
+                view?.pdfFormMode = false
+            }
+            view?.clearPdfSelection()
+            offerResume()
+        } else {
+            resumeIndex = null
+            resumePageId = null
+        }
         readMode = on
         view?.readOnly = on
         if (on) prefs.edit().putBoolean("read_$noteId", true).apply() else prefs.edit().remove("read_$noteId").apply()
+        if (on) prefs.edit().putString("lastread_$noteId", page.id).apply()
+        view?.bookmarkRibbon = on && ribbonPageId == page.id
     }
 
     fun dismissCanvasMenu() { canvasMenu = null }
@@ -770,7 +803,13 @@ class EditorController(private val repo: Repository, val noteId: String) {
         v.onMindMapTapped = { m, node -> openMindMap(m, node) }
         v.onAudioTapped = { a -> togglePlayback(a) }
         v.onStrokeAdded = { s -> onInkForAutoText(s) }
+        v.onPdfSelection = { sel -> pdfSel = sel }
+        v.onPdfFieldTapped = { f -> pdfFieldTapped(f) }
+        v.onPdfNoText = { pdfNoText() }
+        v.pdfFormMode = pdfForm
         v.imageDir = repo.noteDir(noteId)
+        refreshPageLabels()
+        if (readMode) offerResume()
         v.post { showPage(index) }
     }
 
@@ -792,9 +831,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
         val meta = pages[target]
         CrashLog.note("buka halaman ${target + 1}/${pages.size}" + (if (meta.background.isNotEmpty()) " (latar ${meta.background.substringBefore(':')})" else ""))
         loadJob?.cancel()
+        refreshPageLabels()
         val cached = pageContent[meta.id]
         if (cached != null) {
             v.setPage(meta, cached)
+            onPageShown()
             preloadNeighbors()
             trimPageContent()
             return
@@ -803,7 +844,10 @@ class EditorController(private val repo: Repository, val noteId: String) {
             // Dibaca lewat jalur tulis supaya simpanan yang tertunda selesai lebih dulu.
             val content = withContext(repo.writeDispatcher) { repo.loadContent(noteId, meta.id) }
             pageContent[meta.id] = content
-            if (pages.getOrNull(index)?.id == meta.id) v.setPage(meta, content)
+            if (pages.getOrNull(index)?.id == meta.id) {
+                v.setPage(meta, content)
+                onPageShown()
+            }
             preloadNeighbors()
             trimPageContent()
         }
@@ -887,6 +931,9 @@ class EditorController(private val repo: Repository, val noteId: String) {
     }
 
     fun close() {
+        InkRenderer.PageNumbers.spec = null
+        InkRenderer.PageNumbers.labels = emptyMap()
+        PdfText.release()
         finishEditing(commit = true)
         stopPlayback()
         closeVoice()
@@ -2192,11 +2239,13 @@ class EditorController(private val repo: Repository, val noteId: String) {
         }
     }
 
-    fun export(context: Context, format: ExportFormat, allPages: Boolean, doc: DocContent, action: ExportAction) {
+    fun export(context: Context, format: ExportFormat, allPages: Boolean, doc: DocContent, action: ExportAction, pick: List<Int>? = null) {
         if (exportBusy != null) return
         finishEditing(commit = true)
         flush()
-        val targets = if (allPages) pages.toList() else listOf(page)
+        // [pick]: halaman terpilih saja (mis. mengambil sebagian halaman PDF jadi PDF baru).
+        val targets = pick?.mapNotNull { pages.getOrNull(it) } ?: if (allPages) pages.toList() else listOf(page)
+        val several = allPages || pick != null
         if (targets.isEmpty()) return
         CrashLog.note("ekspor ${format.name}, ${targets.size} halaman")
         exportBusy = "Menyiapkan…"
@@ -2215,7 +2264,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
                         // Satu berkas PDF berisi semua halaman yang dipilih.
                         val parts = ArrayList<Pair<PageMeta, PageContent>>()
                         for (meta in targets) parts.add(meta to contentOf(meta))
-                        val name = if (targets.size == 1 && pages.size > 1) "$base - hal ${index + 1}.pdf" else "$base.pdf"
+                        val name = when {
+                            pick != null && targets.size < pages.size -> "$base - hal ${pick.joinToString(",") { (it + 1).toString() }.take(40)}.pdf"
+                            targets.size == 1 && pages.size > 1 -> "$base - hal ${index + 1}.pdf"
+                            else -> "$base.pdf"
+                        }
                         val f = File(dir, name)
                         withContext(Dispatchers.Default) {
                             Exporter.writePdf(parts, imageDir, f) { i -> exportBusy = "Menyusun PDF: halaman ${i + 1} dari ${targets.size}…" }
@@ -2226,7 +2279,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
                         targets.forEachIndexed { i, meta ->
                             exportBusy = "Menggambar halaman ${i + 1} dari ${targets.size}…"
                             val content = contentOf(meta)
-                            val number = if (allPages) pages.indexOfFirst { it.id == meta.id } + 1 else index + 1
+                            val number = if (several) pages.indexOfFirst { it.id == meta.id } + 1 else index + 1
                             val name = if (targets.size == 1 && pages.size == 1) "$base.${format.ext}" else "$base - hal $number.${format.ext}"
                             val f = File(dir, name)
                             withContext(Dispatchers.Default) {
@@ -2729,6 +2782,521 @@ class EditorController(private val repo: Repository, val noteId: String) {
         repo.renameNote(noteId, t)
     }
 
+    // ---------- PDF: pilih teks, stabilo, ubah teks, formulir, tanda tangan, putar ----------
+
+    /** Pilihan teks PDF yang aktif (bilah aksinya tampil di atas kanvas). */
+    var pdfSel by mutableStateOf<PdfSelection?>(null)
+        private set
+    /** Mode isi formulir PDF: kolom-kolom formulir tampil dan bisa diketuk. */
+    var pdfForm by mutableStateOf(false)
+        private set
+    /** Warna stabilo untuk teks PDF. */
+    var pdfMarkColor by mutableIntStateOf(prefs.getInt("pdf_mark_color", HighlighterColors[0]))
+        private set
+    /** Teks PDF yang sedang diubah (dialog); null bila tidak ada. */
+    var pdfEditing by mutableStateOf<String?>(null)
+    /** Kolom formulir yang sedang diisi (dialog). */
+    var pdfFieldEditing by mutableStateOf<PdfFieldBox?>(null)
+    /** Dialog tanda tangan terbuka; [signatureTarget] kotak kolom tanda tangan bila dibuka dari formulir. */
+    var signatureOpen by mutableStateOf(false)
+    private var signatureTarget: RectF? = null
+    private var pdfNoTextNoticeAt = 0L
+
+    fun dismissPdfSelection() {
+        view?.clearPdfSelection()
+        pdfSel = null
+    }
+
+    fun setPdfMarkColor(c: Int) {
+        pdfMarkColor = c
+        prefs.edit().putInt("pdf_mark_color", c).apply()
+    }
+
+    /** Berkas PDF dan nomor halaman di balik halaman [meta], bila halaman PDF. */
+    private fun pdfSource(meta: PageMeta): Pair<File, Int>? =
+        PageBackground.pdfOf(meta.background)?.let { (name, i) -> File(repo.noteDir(noteId), name) to i }
+
+    /** Alat Teks PDF: pilih teks PDF untuk distabilo, digaris bawah, dicoret, disalin, atau diubah. */
+    fun selectPdfText() {
+        if (readMode) return
+        endInline(); convertPick = false; convertBackToInk = false
+        mode = InputMode.PDF
+        pdfForm = false
+        view?.pdfFormMode = false
+        CrashLog.note("mode teks PDF")
+        loadPdfLayer(announce = true)
+    }
+
+    /** Isi formulir PDF: kolom formulir ditampilkan dan bisa diketuk untuk diisi. */
+    fun togglePdfForm() {
+        if (readMode) return
+        if (pdfForm && mode == InputMode.PDF) {
+            pdfForm = false
+            view?.pdfFormMode = false
+            notice = "Isi formulir selesai."
+            return
+        }
+        endInline(); convertPick = false; convertBackToInk = false
+        mode = InputMode.PDF
+        pdfForm = true
+        view?.pdfFormMode = true
+        CrashLog.note("mode isi formulir PDF")
+        loadPdfLayer(announce = false)
+        loadPdfFields(announce = true)
+    }
+
+    /** Siapkan teks PDF halaman ini untuk kanvas (dibaca di latar). */
+    private fun loadPdfLayer(announce: Boolean) {
+        val v = view ?: return
+        val meta = page
+        val src = pdfSource(meta)
+        if (src == null) {
+            v.pdfLayer = null
+            if (announce) notice = "Halaman ini bukan halaman PDF. Buka PDF lewat Halaman › Impor PDF, lalu pakai Pilih teks di sana."
+            return
+        }
+        val rot = PageBackground.pdfRotation(meta.background)
+        PdfText.loadText(v.context, src.first, src.second) { t ->
+            if (view !== v || page.id != meta.id) return@loadText
+            v.pdfLayer = t?.let { PdfTextLayer(it, meta.width, meta.height, rot) }
+            if (announce) notice = when {
+                t == null -> "Teks di PDF ini tidak bisa dibaca."
+                t.isEmpty -> "Halaman PDF ini tidak berisi teks (mungkin hasil pindaian), jadi teksnya tidak bisa dipilih."
+                else -> "Ketuk kata untuk memilihnya (ketuk lagi: satu baris), atau tarik di atas teks. Geser halaman dengan dua jari."
+            }
+        }
+    }
+
+    private fun loadPdfFields(announce: Boolean) {
+        val v = view ?: return
+        val meta = page
+        val src = pdfSource(meta)
+        if (src == null) {
+            v.pdfFields = emptyList()
+            if (announce) notice = "Halaman ini bukan halaman PDF."
+            return
+        }
+        val rot = PageBackground.pdfRotation(meta.background)
+        PdfText.loadFields(v.context, src.first, src.second) { list ->
+            if (view !== v || page.id != meta.id) return@loadFields
+            v.pdfFields = list.map { f -> PdfFieldBox(f, PdfGeom.toPage(f.l, f.t, f.r, f.b, meta.width, meta.height, rot)) }
+            if (announce) notice = if (list.isEmpty()) {
+                "Halaman ini tidak punya kolom formulir PDF. Isi dengan Teks atau tulisan tangan, dan pakai Tanda tangan untuk menandatangani."
+            } else {
+                "${list.size} kolom formulir. Ketuk kolom untuk mengisinya; kotak centang diketuk untuk mencentang."
+            }
+        }
+    }
+
+    /** Dipanggil tiap halaman tampil: teks/kolom PDF halaman baru, penanda baca, dan nomor halaman. */
+    private fun onPageShown() {
+        val v = view ?: return
+        pdfSel = null
+        if (mode == InputMode.PDF) {
+            loadPdfLayer(announce = false)
+            if (pdfForm) loadPdfFields(announce = false) else v.pdfFields = emptyList()
+        } else {
+            v.pdfLayer = null
+            v.pdfFields = emptyList()
+        }
+        if (readMode) {
+            prefs.edit().putString("lastread_$noteId", page.id).apply()
+            if (resumePageId == page.id) resumeIndex = null
+        }
+        v.bookmarkRibbon = readMode && ribbonPageId == page.id
+    }
+
+    private fun pdfNoText() {
+        val now = System.currentTimeMillis()
+        if (now - pdfNoTextNoticeAt < 4000) return
+        pdfNoTextNoticeAt = now
+        notice = if (pdfSource(page) == null) "Halaman ini bukan halaman PDF." else "Tidak ada teks PDF di sini. Ketuk tepat di atas tulisan PDF."
+    }
+
+    /** Stabilo (0), garis bawah (1), atau coret (2) teks PDF yang dipilih. */
+    fun pdfMark(kind: Int) {
+        val v = view ?: return
+        val layer = v.pdfLayer ?: return
+        val r = v.pdfSelectionRange() ?: return
+        val line = colorOf(Tool.PEN)
+        val marks = layer.rects(r.first, r.last).map { rc ->
+            when (kind) {
+                0 -> {
+                    val h = rc.height()
+                    val inset = min(h / 2f, rc.width() / 2f)
+                    Stroke(Tool.HIGHLIGHTER, pdfMarkColor, h, floatArrayOf(rc.left + inset, rc.right - inset), floatArrayOf(rc.centerY(), rc.centerY()), floatArrayOf(0.5f, 0.5f))
+                }
+                1 -> {
+                    val w = max(0.8f, rc.height() * 0.07f)
+                    val y = rc.bottom - rc.height() * 0.12f
+                    Stroke(Tool.LINE, line, w, floatArrayOf(rc.left, rc.right), floatArrayOf(y, y), floatArrayOf(0.5f, 0.5f))
+                }
+                else -> {
+                    val w = max(0.8f, rc.height() * 0.07f)
+                    val y = rc.top + rc.height() * 0.5f
+                    Stroke(Tool.LINE, line, w, floatArrayOf(rc.left, rc.right), floatArrayOf(y, y), floatArrayOf(0.5f, 0.5f))
+                }
+            }
+        }
+        CrashLog.note("tanda teks PDF $kind: ${marks.size} baris")
+        v.addMarks(marks, emptyList(), emptyList())
+        v.clearPdfSelection()
+    }
+
+    fun pdfCopy(context: Context) {
+        val s = pdfSel ?: return
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+        cm.setPrimaryClip(ClipData.newPlainText("Teks PDF", s.text))
+        notice = "Teks disalin."
+        view?.clearPdfSelection()
+    }
+
+    /** Perluas pilihan ke seluruh baris yang tersentuh. */
+    fun pdfSelectLines() {
+        val v = view ?: return
+        val layer = v.pdfLayer ?: return
+        val r = v.pdfSelectionRange() ?: return
+        v.selectPdfRange(layer.lineRange(r.first).first, layer.lineRange(r.last).last)
+    }
+
+    fun pdfBeginEdit() {
+        pdfEditing = pdfSel?.text ?: return
+    }
+
+    /**
+     * Ganti teks PDF yang dipilih dengan [newText]: tulisan aslinya ditutup bidang berwarna kertas, lalu teks baru
+     * ditaruh di garis dasar yang sama dengan ukuran, jenis huruf, dan warna yang mirip. Penutup dan teksnya
+     * dikelompokkan, jadi bisa digeser, diubah, atau dihapus bersama (dan diurungkan).
+     */
+    fun pdfApplyEdit(newText: String) {
+        pdfEditing = null
+        val v = view ?: return
+        val layer = v.pdfLayer ?: return
+        val r = v.pdfSelectionRange() ?: return
+        val rects = layer.rects(r.first, r.last)
+        if (rects.isEmpty()) return
+        val meta = page
+        val (paper, ink) = sampleColors(meta, rects)
+        val pad = 0.8f
+        val covers = rects.map { rc -> CoverItem(rc.left - pad, rc.top - pad, rc.width() + pad * 2f, rc.height() + pad * 2f, paper) }
+        val size = layer.typicalSize(r.first, r.last).coerceIn(4f, 200f)
+        val font = if (layer.serifAt(r.first)) "sys:serif" else FontRegistry.DEFAULT
+        val text = newText.trimEnd()
+        val texts = ArrayList<TextItem>()
+        if (text.isNotBlank()) {
+            val first = rects[0]
+            val width = max(rects.maxOf { it.width() } * 1.2f, size * 4f) + size
+            // Jarak baris mengikuti PDF bila lebih dari satu baris.
+            val pitch = if (rects.size > 1) (rects.last().bottom - rects.first().bottom) / (rects.size - 1) else 0f
+            val runs = if (layer.boldAt(r.first)) TextRuns.EMPTY.styled(0, text.length, TextRuns.BOLD, true, text.length) else TextRuns.EMPTY
+            val probe = TextItem(first.left, 0f, width, text, size, ink, font, Align.LEFT, runs, pitch)
+            val baseOffset = InkRenderer.layoutFor(probe).getLineBaseline(0).toFloat()
+            // Garis dasar PDF: sedikit di atas tepi bawah kotak huruf (ruang untuk kaki huruf).
+            val baseline = first.bottom - size * 0.22f
+            texts.add(TextItem(first.left, baseline - baseOffset, width, text, size, ink, font, Align.LEFT, runs, pitch))
+        }
+        CrashLog.note("ubah teks PDF: ${rects.size} baris")
+        v.addMarks(emptyList(), texts, covers, groupIt = true)
+        v.clearPdfSelection()
+        notice = if (texts.isEmpty()) "Teks PDF ditutup." else "Teks diganti. Ketuk Pilih untuk menggeser atau mengubahnya lagi."
+    }
+
+    /**
+     * Warna kertas di sekitar kotak-kotak [rects] dan warna tulisan di dalamnya, dari gambar halaman PDF yang sudah
+     * tergambar. Bila belum ada gambarnya: putih dan hitam.
+     */
+    private fun sampleColors(meta: PageMeta, rects: List<RectF>): Pair<Int, Int> {
+        val src = pdfSource(meta) ?: return 0xFFFFFFFF.toInt() to 0xFF111111.toInt()
+        val bmp = PdfPages.anyCached(src.first, src.second) ?: return 0xFFFFFFFF.toInt() to 0xFF111111.toInt()
+        val rot = PageBackground.pdfRotation(meta.background)
+        fun px(x: Float, y: Float): Int? {
+            // Titik halaman → pecahan halaman PDF sebelum diputar → piksel gambar.
+            val u = x / meta.width
+            val w = y / meta.height
+            val (sx, sy) = when (rot) {
+                90 -> w to (1f - u)
+                180 -> (1f - u) to (1f - w)
+                270 -> (1f - w) to u
+                else -> u to w
+            }
+            val ix = (sx * bmp.width).toInt()
+            val iy = (sy * bmp.height).toInt()
+            if (ix !in 0 until bmp.width || iy !in 0 until bmp.height) return null
+            return runCatching { bmp.getPixel(ix, iy) }.getOrNull()
+        }
+        val outside = ArrayList<Int>()
+        val inside = ArrayList<Int>()
+        for (rc in rects) {
+            val d = max(1.5f, rc.height() * 0.12f)
+            for (k in 0..8) {
+                val x = rc.left + rc.width() * k / 8f
+                px(x, rc.top - d)?.let { outside.add(it) }
+                px(x, rc.bottom + d)?.let { outside.add(it) }
+            }
+            px(rc.left - d, rc.centerY())?.let { outside.add(it) }
+            px(rc.right + d, rc.centerY())?.let { outside.add(it) }
+            for (yy in 1..5) for (xx in 0..24) {
+                px(rc.left + rc.width() * xx / 24f, rc.top + rc.height() * yy / 6f)?.let { inside.add(it) }
+            }
+        }
+        if (outside.isEmpty()) return 0xFFFFFFFF.toInt() to 0xFF111111.toInt()
+        fun lum(c: Int) = 0.299f * android.graphics.Color.red(c) + 0.587f * android.graphics.Color.green(c) + 0.114f * android.graphics.Color.blue(c)
+        // Warna kertas: median menurut terang (tulisan yang kebetulan tersentuh tidak ikut).
+        val paper = outside.sortedBy { lum(it) }[outside.size * 2 / 3]
+        fun dist(a: Int) = abs(android.graphics.Color.red(a) - android.graphics.Color.red(paper)) +
+            abs(android.graphics.Color.green(a) - android.graphics.Color.green(paper)) + abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(paper))
+        val strong = inside.sortedByDescending { dist(it) }.take(max(1, inside.size / 12))
+        val ink = if (strong.isEmpty() || dist(strong[0]) < 60) 0xFF111111.toInt() else {
+            var rr = 0; var gg = 0; var bb = 0
+            for (c in strong) { rr += android.graphics.Color.red(c); gg += android.graphics.Color.green(c); bb += android.graphics.Color.blue(c) }
+            android.graphics.Color.rgb(rr / strong.size, gg / strong.size, bb / strong.size)
+        }
+        return (paper or 0xFF000000.toInt()) to ink
+    }
+
+    private fun pdfFieldTapped(f: PdfFieldBox) {
+        val v = view ?: return
+        when (f.field.kind) {
+            PdfField.Kind.CHECK, PdfField.Kind.RADIO -> {
+                val old = v.textInside(f.rect)
+                if (old != null) {
+                    v.swapText(old, null)
+                } else {
+                    val h = f.rect.height()
+                    val size = (min(h, f.rect.width()) * 0.9f).coerceIn(4f, 40f)
+                    val probe = TextItem(0f, 0f, size * 2f, "✓", size, 0xFF1F2430.toInt(), FontRegistry.DEFAULT, Align.CENTER)
+                    val lay = InkRenderer.layoutFor(probe)
+                    val y = f.rect.centerY() - lay.height / 2f
+                    v.swapText(null, TextItem(f.rect.centerX() - size, y, size * 2f, "✓", size, 0xFF1F2430.toInt(), FontRegistry.DEFAULT, Align.CENTER))
+                }
+            }
+            PdfField.Kind.SIGNATURE -> {
+                signatureTarget = RectF(f.rect)
+                signatureOpen = true
+            }
+            else -> pdfFieldEditing = f
+        }
+    }
+
+    /** Isi teks kolom formulir [f] yang sedang diisi (dialog) dengan [value]. */
+    fun pdfFillField(f: PdfFieldBox, value: String) {
+        pdfFieldEditing = null
+        val v = view ?: return
+        val old = v.textInside(f.rect)
+        val text = value.trimEnd()
+        if (text.isEmpty()) {
+            if (old != null) v.swapText(old, null)
+            return
+        }
+        val h = f.rect.height()
+        val size = if (f.field.multiline) (h * 0.3f).coerceIn(5f, 12f) else (h * 0.6f).coerceIn(4f, 14f)
+        val ink = 0xFF1F2430.toInt()
+        val probe = TextItem(0f, 0f, max(8f, f.rect.width() - 4f), text, size, ink, FontRegistry.DEFAULT)
+        val lay = InkRenderer.layoutFor(probe)
+        val y = if (f.field.multiline) f.rect.top + 2f else f.rect.centerY() - lay.getLineBottom(0) / 2f
+        val t = TextItem(f.rect.left + 2f, y, max(8f, f.rect.width() - 4f), text, size, ink, FontRegistry.DEFAULT)
+        // Isi lama dari PDF-nya sendiri ditutup dulu supaya tidak bertumpuk dengan isian baru.
+        if (old == null && f.field.value.isNotBlank() && f.field.kind != PdfField.Kind.CHECK) {
+            v.addMarks(emptyList(), emptyList(), listOf(CoverItem(f.rect.left + 0.5f, f.rect.top + 0.5f, f.rect.width() - 1f, f.rect.height() - 1f, 0xFFFFFFFF.toInt())))
+        }
+        v.swapText(old, t)
+    }
+
+    /** Isi lama kolom [f]: isian yang sudah ditulis di catatan, atau isi dari PDF-nya. */
+    fun pdfFieldValue(f: PdfFieldBox): String = view?.textInside(f.rect)?.text ?: f.field.value
+
+    fun openSignature() {
+        if (readMode) return
+        signatureTarget = null
+        signatureOpen = true
+    }
+
+    /** Sisipkan gambar tanda tangan [file] (PNG tembus pandang) ke halaman: di kolom tanda tangan, atau di tengah layar. */
+    fun insertSignature(file: File) {
+        signatureOpen = false
+        val target = signatureTarget
+        signatureTarget = null
+        main.launch {
+            val res = withContext(Dispatchers.IO) { runCatching { repo.placeSticker(noteId, file) }.getOrNull() }
+            if (res == null) {
+                notice = "Tanda tangan tidak bisa disisipkan."
+                return@launch
+            }
+            val (name, iw, ih) = res
+            val v = view ?: return@launch
+            CrashLog.note("sisip tanda tangan")
+            if (target != null) {
+                val k = min(target.width() / iw.coerceAtLeast(1), target.height() / ih.coerceAtLeast(1))
+                val w = iw * k
+                val h = ih * k
+                v.addItem(ImageItem(target.centerX() - w / 2f, target.centerY() - h / 2f, w, h, name), selectIt = false)
+                notice = "Tanda tangan dibubuhkan di kolomnya."
+            } else {
+                val w = 170f
+                val h = w * ih / iw.coerceAtLeast(1)
+                place({ x, y -> ImageItem(x, y, w, h, name) }, w, h)
+                notice = "Tanda tangan ditempel. Geser dan ubah ukurannya sesuai tempat tanda tangan."
+            }
+        }
+    }
+
+    /** Folder tanda tangan tersimpan (berlaku untuk semua catatan). */
+    fun signatureDir(context: Context): File = File(context.filesDir, "signatures").apply { mkdirs() }
+
+    /**
+     * Putar halaman PDF ini 90° searah jarum jam. Ukuran halaman bertukar, dan isi yang sudah ditulis ikut berputar
+     * supaya tetap di tempatnya di PDF.
+     */
+    fun rotatePage() {
+        if (readMode) return
+        val v = view ?: return
+        val meta = page
+        val src = PageBackground.pdfOf(meta.background)
+        if (src == null) {
+            notice = "Putar halaman berlaku untuk halaman PDF."
+            return
+        }
+        finishEditing(commit = true)
+        v.clearSelection()
+        val rot = (PageBackground.pdfRotation(meta.background) + 90) % 360
+        val nm = meta.copy(width = meta.height, height = meta.width, background = PageBackground.pdf(src.first, src.second, rot))
+        val rotated = rotateContent(v.contentSnapshot(), meta.height)
+        CrashLog.note("putar halaman ${index + 1} → $rot°")
+        pages[index] = nm
+        pageContent[nm.id] = rotated
+        dirtyPages.add(nm.id)
+        indexDirty.add(nm.id)
+        repo.savePages(noteId, pages.toList())
+        v.setPage(nm, rotated)
+        pdfSel = null
+        onPageShown()
+        scheduleThumb(nm.id)
+        scheduleSave()
+        notice = "Halaman diputar 90°. Ketuk Putar lagi untuk terus memutarnya."
+    }
+
+    /** Isi halaman setinggi [oldH] diputar 90° searah jarum jam: titik (x, y) → (oldH − y, x). */
+    private fun rotateContent(c: PageContent, oldH: Float): PageContent {
+        fun turnStroke(s: Stroke): Stroke {
+            val xs = FloatArray(s.size) { oldH - s.ys[it] }
+            val ys = FloatArray(s.size) { s.xs[it] }
+            return Stroke(s.tool, s.color, s.width, xs, ys, s.ps).also { n ->
+                n.group = s.group
+                n.z = s.z
+                n.times = s.times
+                n.masks = s.masks?.map { turnStroke(it) }
+            }
+        }
+        val ss = c.strokes.mapTo(ArrayList()) { turnStroke(it) }
+        val ts = c.texts.mapTo(ArrayList()) { t ->
+            // Teks ketik tetap tegak; pusat kotaknya yang dipindah.
+            val h = runCatching { InkRenderer.layoutFor(t).height.toFloat() }.getOrDefault(t.size * 1.3f)
+            val cx = oldH - (t.y + h / 2f)
+            val cy = t.x + t.width / 2f
+            t.moved(cx - t.width / 2f, cy - h / 2f, t.width, t.size)
+        }
+        val its = c.items.mapTo(ArrayList()) { it ->
+            val ncx = oldH - it.cy
+            val ncy = it.cx
+            when {
+                it is CoverItem -> CoverItem(ncx - it.h / 2f, ncy - it.w / 2f, it.h, it.w, it.color).also { n -> n.id = it.id; n.group = it.group; n.z = it.z }
+                it.canRotate -> it.placed(ncx - it.w / 2f, ncy - it.h / 2f, it.w, it.h, PageItem.normalizeDeg(it.rotation + 90f))
+                else -> it.placed(ncx - it.w / 2f, ncy - it.h / 2f, it.w, it.h)
+            }
+        }
+        return PageContent(ss, ts, its)
+    }
+
+    /** Nomor halaman halaman tertentu, untuk pilihan "Pilih halaman" di ekspor: "1-3, 5" → [0, 1, 2, 4]. */
+    fun parsePageList(text: String): List<Int>? {
+        val out = LinkedHashSet<Int>()
+        for (part in text.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() }) {
+            val m = Regex("^(\\d+)\\s*-\\s*(\\d+)$").find(part)
+            if (m != null) {
+                val a = m.groupValues[1].toInt()
+                val b = m.groupValues[2].toInt()
+                for (k in min(a, b)..max(a, b)) if (k in 1..pages.size) out.add(k - 1)
+            } else {
+                val k = part.toIntOrNull() ?: return null
+                if (k in 1..pages.size) out.add(k - 1)
+            }
+        }
+        return out.toList().takeIf { it.isNotEmpty() }
+    }
+
+    // ---------- nomor halaman ----------
+
+    var pageNumberSpec by mutableStateOf(PageNumberSpec.decode(repo.note(noteId)?.pageNumbers ?: ""))
+        private set
+
+    fun setPageNumbers(spec: PageNumberSpec?) {
+        pageNumberSpec = spec
+        repo.setPageNumbers(noteId, spec?.encode() ?: "")
+        CrashLog.note("nomor halaman: ${spec?.encode() ?: "mati"}")
+        refreshPageLabels()
+        view?.invalidateCache()
+        pageThumbs.clear()
+        makeThumb()
+        notice = if (spec == null) "Nomor halaman dimatikan." else "Nomor halaman dipasang di semua halaman (ikut ekspor dan cetak)."
+    }
+
+    /** Teks nomor tiap halaman untuk penggambar kertas. */
+    private fun refreshPageLabels() {
+        val spec = pageNumberSpec
+        InkRenderer.PageNumbers.spec = spec
+        InkRenderer.PageNumbers.labels = if (spec == null) emptyMap() else {
+            val m = HashMap<String, String>()
+            pages.forEachIndexed { i, p -> spec.label(i, pages.size)?.let { m[p.id] = it } }
+            m
+        }
+    }
+
+    // ---------- penanda bacaan terakhir ----------
+
+    /** Halaman terakhir dibaca yang ditawarkan saat masuk mode baca (indeks), atau null. */
+    var resumeIndex by mutableStateOf<Int?>(null)
+        private set
+    private var resumePageId: String? = null
+    /** Halaman yang diberi pita penanda di mode baca. */
+    private var ribbonPageId: String? = null
+
+    /** Masuk mode baca: tawarkan lanjut dari halaman terakhir dibaca bila bukan halaman ini. */
+    private fun offerResume() {
+        val saved = prefs.getString("lastread_$noteId", null)
+        val i = if (saved == null) -1 else pages.indexOfFirst { it.id == saved }
+        ribbonPageId = if (i >= 0) saved else null
+        if (i >= 0 && i != index) {
+            resumePageId = saved
+            resumeIndex = i
+        } else {
+            resumePageId = null
+            resumeIndex = null
+        }
+    }
+
+    fun resumeReading() {
+        val i = resumeIndex ?: return
+        resumeIndex = null
+        resumePageId = null
+        if (i in pages.indices && i != index) {
+            view?.beginPageTurn(if (i > index) 1 else -1)
+            showPage(i)
+        }
+    }
+
+    fun dismissResume() {
+        resumeIndex = null
+        resumePageId = null
+    }
+
+    /** Tandai halaman ini sebagai bacaan terakhir (tombol pita di mode baca). */
+    fun markReadHere() {
+        prefs.edit().putString("lastread_$noteId", page.id).apply()
+        ribbonPageId = page.id
+        view?.bookmarkRibbon = readMode
+        notice = "Halaman ${index + 1} ditandai sebagai bacaan terakhir."
+    }
+
     // ---------- halaman ----------
 
     fun addPage(after: Int = index) {
@@ -2803,6 +3371,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
         index = pages.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
         prefs.edit().putInt("page_$noteId", index).apply()
         repo.savePages(noteId, pages.toList())
+        refreshPageLabels()
+        if (pageNumberSpec != null) { view?.invalidateCache(); pageThumbs.clear() }
         // Sampul catatan memakai halaman pertama.
         if (from == 0 || target == 0) makeThumb()
         notice = "Halaman ${from + 1} dipindah ke urutan ${target + 1}."
@@ -2822,6 +3392,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
         pageThumbs.remove(removed.id)
         repo.savePages(noteId, pages.toList())
         repo.writeScope.launch { repo.deletePageFile(noteId, removed.id) }
+        refreshPageLabels()
+        if (pageNumberSpec != null) { view?.invalidateCache(); pageThumbs.clear() }
         when {
             i == index -> showPage(i.coerceAtMost(pages.lastIndex))
             i < index -> index -= 1
@@ -2988,6 +3560,7 @@ private sealed interface EditorDialog {
     data object InkLang : EditorDialog
     data object TableLayout : EditorDialog
     data object Emoji : EditorDialog
+    data object PageNumbers : EditorDialog
 }
 
 private enum class EditorSheet { ToolOptions, Pages }
@@ -3141,6 +3714,8 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
         c.canvasMenu?.let { CanvasMenuPopup(c, it) }
         if (c.viewTilted) StraightenChip(c, Modifier.align(Alignment.TopStart).padding(12.dp))
         if (c.readMode) ReadModeChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 14.dp else 10.dp))
+        if (c.readMode) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
+        if (!c.readMode && c.mode == InputMode.PDF && c.pdfSel != null) PdfActionBar(c, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         (c.convert as? ConvertState.Working)?.let { ConvertProgress(c, it.message, Modifier.align(Alignment.TopCenter).padding(top = 72.dp)) }
         InlineEditing(c, fonts, addedFont, addFont, ribbon = isTablet && !c.focusMode && c.mode == InputMode.TYPE)
         }
@@ -3194,6 +3769,9 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
     (c.convert as? ConvertState.Failed)?.let { ConvertSheet(c, it) }
     c.bgRemoval?.let { RemoveBgDialog(c, it) }
     c.voice?.let { VoiceDialog(c, it) }
+    c.pdfEditing?.let { t -> PdfEditDialog(t, onDismiss = { c.pdfEditing = null }) { c.pdfApplyEdit(it) } }
+    c.pdfFieldEditing?.let { f -> PdfFieldDialog(c, f) }
+    if (c.signatureOpen) SignatureDialog(c)
 
     when (val d = dialog) {
         null -> Unit
@@ -3251,6 +3829,7 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
             )
         }
         EditorDialog.Export -> ExportDialog(c, onDismiss = { dialog = null })
+        EditorDialog.PageNumbers -> PageNumbersDialog(c, onDismiss = { dialog = null })
         EditorDialog.InsertDate -> DateDialog(
             onDismiss = { dialog = null },
             onDate = { text -> c.insertDate(text); dialog = null },
@@ -3388,6 +3967,9 @@ private fun TabletEditor(
                 ToolTray(c)
                 BarDivider(Modifier.align(Alignment.CenterVertically))
                 when (c.mode) {
+                    InputMode.PDF -> Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
+                        PdfToolOptions(c)
+                    }
                     InputMode.SELECT -> Text(
                         "Ketuk untuk memilih. Lingkari tulisan atau objek dengan laso untuk memilih banyak. Geser untuk memindahkan, tarik sudutnya untuk mengubah ukuran.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -3496,6 +4078,15 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
             FeatureButton(Icons.Filled.PostAdd, "Tambah", onClick = { c.addPage() })
             FeatureButton(Icons.Filled.ContentCopy, "Duplikat", onClick = { c.duplicatePage() })
             FeatureButton(Icons.Filled.PictureAsPdf, "Impor PDF", onClick = insert.pdf)
+            FeatureButton(Icons.Filled.FormatListNumbered, "Nomor hal.", active = c.pageNumberSpec != null, onClick = { onDialog(EditorDialog.PageNumbers) })
+        }
+        FeatureGroup(c, "PDF", Icons.Filled.PictureAsPdf) {
+            FeatureButton(Icons.Filled.Highlight, "Pilih teks", active = c.mode == InputMode.PDF && !c.pdfForm, onClick = { c.selectPdfText() })
+            FeatureButton(Icons.Filled.CheckBox, "Formulir", active = c.mode == InputMode.PDF && c.pdfForm, onClick = { c.togglePdfForm() })
+            FeatureButton(Icons.Filled.Gesture, "Tanda tangan", onClick = { c.openSignature() })
+            FeatureButton(Icons.Filled.Rotate90DegreesCw, "Putar", onClick = { c.rotatePage() })
+            FeatureButton(Icons.Filled.MergeType, "Gabung PDF", onClick = insert.pdf)
+            FeatureButton(Icons.Filled.Share, "Ekspor hal.", onClick = { onDialog(EditorDialog.Export) })
         }
         Spacer(Modifier.width(8.dp))
     }
@@ -4556,6 +5147,8 @@ private fun ReadModeChip(c: EditorController, modifier: Modifier) {
             } else {
                 Spacer(Modifier.width(6.dp))
             }
+            Text("· hal. ${c.index + 1}/${c.pages.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = { c.markReadHere() }) { Icon(Icons.Filled.BookmarkAdd, contentDescription = "Tandai bacaan terakhir di sini") }
             TextButton(onClick = { c.applyReadMode(false) }) {
                 Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -5322,6 +5915,10 @@ private fun ExportDialog(c: EditorController, onDismiss: () -> Unit) {
     var format by rememberSaveable { mutableStateOf(ExportFormat.PNG) }
     var all by rememberSaveable { mutableStateOf(false) }
     var doc by rememberSaveable { mutableStateOf(DocContent.BOTH) }
+    // Pilih halaman tertentu (mis. "1-3, 5"): mengambil sebagian halaman jadi berkas baru.
+    var picking by rememberSaveable { mutableStateOf(false) }
+    var pickText by rememberSaveable { mutableStateOf("") }
+    val pick = if (picking) c.parsePageList(pickText) else null
     val busy = c.exportBusy
     AlertDialog(
         onDismissRequest = { if (busy == null) onDismiss() },
@@ -5343,8 +5940,25 @@ private fun ExportDialog(c: EditorController, onDismiss: () -> Unit) {
                     }
                     Text("Halaman", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ToolChip(selected = !all, onClick = { all = false }, label = { Text("Halaman ini (${c.index + 1})") })
-                        ToolChip(selected = all, onClick = { all = true }, label = { Text("Semua (${c.pages.size})") })
+                        ToolChip(selected = !all && !picking, onClick = { all = false; picking = false }, label = { Text("Halaman ini (${c.index + 1})") })
+                        ToolChip(selected = all && !picking, onClick = { all = true; picking = false }, label = { Text("Semua (${c.pages.size})") })
+                        ToolChip(selected = picking, onClick = { picking = true }, label = { Text("Pilih halaman…") })
+                    }
+                    if (picking) {
+                        OutlinedTextField(
+                            value = pickText,
+                            onValueChange = { pickText = it },
+                            label = { Text("Nomor halaman, mis. 1-3, 5") },
+                            singleLine = true,
+                            isError = pickText.isNotBlank() && pick == null,
+                            supportingText = {
+                                Text(
+                                    if (pick == null) "Ketik nomor halaman dari 1 sampai ${c.pages.size}."
+                                    else "${pick.size} halaman: ${pick.joinToString(", ") { (it + 1).toString() }.take(60)}",
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Nomor halaman yang diekspor" },
+                        )
                     }
                     if (format == ExportFormat.DOCX) {
                         Text("Isi dokumen", style = MaterialTheme.typography.labelLarge)
@@ -5393,8 +6007,9 @@ private fun ExportDialog(c: EditorController, onDismiss: () -> Unit) {
         confirmButton = {
             if (busy == null) {
                 Row {
-                    TextButton(onClick = { c.export(context, format, all, doc, ExportAction.SAVE) }) { Text("Simpan") }
-                    Button(onClick = { c.export(context, format, all, doc, ExportAction.SHARE) }) { Text("Bagikan") }
+                    val ok = !picking || pick != null
+                    TextButton(enabled = ok, onClick = { c.export(context, format, all, doc, ExportAction.SAVE, pick) }) { Text("Simpan") }
+                    Button(enabled = ok, onClick = { c.export(context, format, all, doc, ExportAction.SHARE, pick) }) { Text("Bagikan") }
                 }
             }
         },
