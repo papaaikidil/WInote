@@ -1256,13 +1256,17 @@ Kelompok baru **PDF** di bilah fitur (Pilih teks, Formulir, Tanda tangan, Putar,
   PDF dibaca langsung dari berkasnya (PdfBox), jadi pilihan pas dengan hurufnya. Bilah aksi di atas halaman:
   **Stabilo** (warna dipilih di bilah alat), **Garis bawah**, **Coret**, **Salin**, **Satu baris**, dan **Ubah teks**.
 - **Ubah teks asli PDF**: tulisan aslinya ditutup dengan warna kertas di bawahnya, lalu teks baru ditaruh tepat di
-  garis yang sama dengan ukuran, jenis huruf (serif/tanpa serif) dan tebal yang mirip. Penutup dan teks baru
+  garis yang sama dengan ukuran, jenis huruf (serif/tanpa serif) dan tebal yang mirip. Di dialognya teks lama sudah
+  terpilih semua (langsung ketik untuk mengganti, atau ketuk untuk menyunting sebagian). Teks satu baris yang jadi
+  lebih panjang tetap satu baris (melebar ke kanan sampai tepi halaman), tidak turun menimpa baris di bawahnya. Penutup dan teks baru
   dikelompokkan, jadi bisa dipindah, diurungkan, atau dihapus sekaligus. Kosongkan teksnya untuk menghapus tulisan.
 - **Isi formulir**: kolom formulir PDF (AcroForm) ditandai kotak tipis. Ketuk kolom teks untuk mengisi, kotak centang
   untuk mencentang, pilihan untuk memilih. Kolom tanda tangan membuka papan tanda tangan.
 - **Tanda tangan**: gambar tanda tangan sekali, simpan, lalu tempel di halaman mana saja. Tanda tangan tersimpan
   muncul lagi di daftar untuk dipakai ulang.
-- **Putar** halaman PDF 90° (coretan, teks, dan gambar di atasnya ikut berputar). **Gabung PDF** menambahkan halaman
+- **Putar** halaman PDF 90° searah jarum jam (coretan, stabilo, gambar, dan tanda tangan ikut berputar). Teks ketik
+  tidak bisa ikut berputar (tetap tegak, hanya digeser), jadi bila halaman sudah berisi teks ketik muncul pertanyaan
+  dulu. Paling pas: putar halaman dulu, baru isi atau ubah teksnya. **Gabung PDF** menambahkan halaman
   dari berkas PDF lain ke catatan ini. **Ekspor hal.** bisa mengambil sebagian halaman saja (mis. `1-3, 5`) jadi PDF baru.
 
 **Nomor halaman** (kelompok Halaman → Nomor hal.): tampil di setiap halaman dan ikut terekspor. Bisa diatur posisinya
