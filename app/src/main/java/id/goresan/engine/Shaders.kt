@@ -490,8 +490,9 @@ void main() {
         }
         if (uOutline == 1 && uOp == 0) {
             // Garis tepi menyatu: bagian dalam goresan (lebih dari uOutlineR dari tepinya) diisi uOutlineFill dan
-            // menutup apa pun di bawahnya; pita tepinya berwarna kuas tetapi digambar DI BELAKANG cat yang sudah ada,
-            // jadi hanya tampil di luar bentuk lama. Hasilnya garis tepi gabungan seluruh goresan.
+            // menutup apa pun di bawahnya; pita tepinya berwarna kuas dan tampil di atas cat/gambar yang ada, KECUALI
+            // di dalam isi gelembung lain. Isi gelembung ditandai alfa 254/255 (tak terlihat), jadi garis tepi baru
+            // hanya tersembunyi di dalam gelembung sebelumnya, bukan di balik gambar atau cat biasa di layer.
             float S = clamp(s.a, 0.0, 1.0);
             vec3 oc = S > 0.0 ? s.rgb / S : vec3(0.0);
             float mn = S;
@@ -504,8 +505,11 @@ void main() {
             float g = uOpacity * strokeGrain();
             float f = smoothstep(0.3, 0.7, mn) * g;
             float band = clamp(S * g - f, 0.0, 1.0);
-            vec4 behind = d + vec4(oc * band, band) * (1.0 - d.a);
-            r = vec4(uOutlineFill * f, f) + behind * (1.0 - f);
+            const float TAG = 254.0 / 255.0;
+            float inBubble = 1.0 - step(0.5 / 255.0, abs(d.a - TAG));
+            float bv = band * (1.0 - inBubble);
+            vec4 under = vec4(oc * bv, bv) + d * (1.0 - bv);
+            r = vec4(uOutlineFill * f * TAG, f * TAG) + under * (1.0 - f);
         } else {
         s *= uOpacity * strokeGrain();
         if (uOp == 0 && uGlaze == 1) {
