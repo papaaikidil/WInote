@@ -1247,3 +1247,28 @@ Tab baru di Studio Kuas: **Rendering · Wet Mix · Kuas ganda**.
   di dalam isi gelembung lain (isi gelembung diberi tanda alfa 254/255 yang tidak terlihat), jadi goresan yang
   bersilangan tetap menyatu.
 - Gelembung yang digambar dengan versi sebelumnya belum punya tanda itu, jadi goresan baru tidak menyatu dengannya.
+
+## Perubahan 0.1.134: Edit PDF di catatan, nomor halaman, dan penanda bacaan terakhir
+
+Kelompok baru **PDF** di bilah fitur (Pilih teks, Formulir, Tanda tangan, Putar, Gabung PDF, Ekspor hal.):
+
+- **Pilih teks PDF**: ketuk kata untuk memilihnya, ketuk lagi untuk satu baris, atau tarik di atas teks. Teks asli
+  PDF dibaca langsung dari berkasnya (PdfBox), jadi pilihan pas dengan hurufnya. Bilah aksi di atas halaman:
+  **Stabilo** (warna dipilih di bilah alat), **Garis bawah**, **Coret**, **Salin**, **Satu baris**, dan **Ubah teks**.
+- **Ubah teks asli PDF**: tulisan aslinya ditutup dengan warna kertas di bawahnya, lalu teks baru ditaruh tepat di
+  garis yang sama dengan ukuran, jenis huruf (serif/tanpa serif) dan tebal yang mirip. Penutup dan teks baru
+  dikelompokkan, jadi bisa dipindah, diurungkan, atau dihapus sekaligus. Kosongkan teksnya untuk menghapus tulisan.
+- **Isi formulir**: kolom formulir PDF (AcroForm) ditandai kotak tipis. Ketuk kolom teks untuk mengisi, kotak centang
+  untuk mencentang, pilihan untuk memilih. Kolom tanda tangan membuka papan tanda tangan.
+- **Tanda tangan**: gambar tanda tangan sekali, simpan, lalu tempel di halaman mana saja. Tanda tangan tersimpan
+  muncul lagi di daftar untuk dipakai ulang.
+- **Putar** halaman PDF 90° (coretan, teks, dan gambar di atasnya ikut berputar). **Gabung PDF** menambahkan halaman
+  dari berkas PDF lain ke catatan ini. **Ekspor hal.** bisa mengambil sebagian halaman saja (mis. `1-3, 5`) jadi PDF baru.
+
+**Nomor halaman** (kelompok Halaman → Nomor hal.): tampil di setiap halaman dan ikut terekspor. Bisa diatur posisinya
+(bawah tengah/kanan/kiri, atas tengah/kanan), formatnya (`1`, `Hal. 1`, `1 / 12`, `- 1 -`), mulai dari nomor berapa,
+ukuran huruf, dan halaman pertama boleh tanpa nomor.
+
+**Penanda bacaan terakhir**: di mode baca, halaman yang sedang dibaca disimpan otomatis. Saat masuk mode baca lagi,
+muncul "Terakhir dibaca: halaman N · Lanjutkan". Halaman itu diberi pita merah di pojok kanan atas. Tombol pita di
+chip Mode baca menandai halaman ini secara manual.
