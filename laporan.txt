@@ -1,0 +1,76 @@
+00:49:58.626  === Aplikasi dibuka · WInote Gambar 0.1.47 (47) · Google sdk_gphone64_x86_64 · Android 13
+00:49:58.736  Aktivitas: lanjut
+00:49:59.898  Buka karya kmwmu2chz2be6
+00:50:00.367  Permukaan kanvas dibuat
+00:50:00.445  Permukaan kanvas: sRGB
+00:50:00.462  GL: konteks dibuat
+00:50:02.086  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+00:50:02.177  GL: siap (1714 ms)
+00:50:02.178  GL: ukuran permukaan 2560x1800
+00:50:02.189  Karya dibuka 1600x1200, 1 layer, batas 110 layer (11 ms)
+00:50:05.643  !!! Kanvas macet 3465 ms. Posisi thread kanvas:
+00:50:05.646      android.opengl.GLES20.glGenTextures(Native Method)
+00:50:05.651      id.goresan.engine.Tex.<init>(GL.kt:49)
+00:50:05.652      id.goresan.engine.Tex.<init>(GL.kt:43)
+00:50:05.652      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4458)
+00:50:05.652      id.goresan.engine.Engine.onDrawFrame(Engine.kt:893)
+00:50:05.653      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+00:50:05.653      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+00:50:05.654      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+00:50:10.387  Frame lambat: 8208 ms
+00:50:10.657  Kanvas kembali merespons
+00:50:18.296  === Aplikasi dibuka · WInote Gambar 0.1.47 (47) · Google sdk_gphone64_x86_64 · Android 13
+00:50:18.398  Aktivitas: lanjut
+00:50:18.429  Impor png: 1 layer (50 ms)
+00:50:19.790  Buka karya kmwmu2ro80a79
+00:50:20.191  Permukaan kanvas dibuat
+00:50:20.246  Permukaan kanvas: sRGB
+00:50:20.253  GL: konteks dibuat
+00:50:21.441  GL: Android Emulator OpenGL ES Translator (Google SwiftShader)
+00:50:21.576  GL: siap (1322 ms)
+00:50:21.576  GL: ukuran permukaan 2560x1800
+00:50:21.613  Karya dibuka 1600x1200, 1 layer, batas 110 layer (36 ms)
+00:50:24.309  !!! Kanvas macet 2732 ms. Posisi thread kanvas:
+00:50:24.310      android.opengl.GLES20.glGenTextures(Native Method)
+00:50:24.317      id.goresan.engine.Tex.<init>(GL.kt:49)
+00:50:24.317      id.goresan.engine.Tex.<init>(GL.kt:43)
+00:50:24.318      id.goresan.engine.Engine.tlMaybeCapture(Engine.kt:4458)
+00:50:24.318      id.goresan.engine.Engine.onDrawFrame(Engine.kt:893)
+00:50:24.318      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+00:50:24.319      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+00:50:24.326      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+00:50:29.903  Frame lambat: 8326 ms
+00:50:30.343  Kanvas kembali merespons
+00:50:49.147  Frame lambat: 1328 ms
+00:51:01.414  !!! Kanvas macet 3336 ms. Posisi thread kanvas:
+00:51:01.415      android.opengl.GLES20.glBufferData(Native Method)
+00:51:01.421      id.goresan.engine.Engine.renderDabs(Engine.kt:2017)
+00:51:01.421      id.goresan.engine.Engine.brushPreview(Engine.kt:7133)
+00:51:01.422      id.goresan.ui.AppState.requestPreview$lambda$245(AppState.kt:2010)
+00:51:01.422      id.goresan.ui.AppState.$r8$lambda$Yf0movrXXvcDVzcDvygos_iBR54(Unknown Source:0)
+00:51:01.422      id.goresan.ui.AppState$$ExternalSyntheticLambda183.invoke(D8$$SyntheticClass:0)
+00:51:01.423      id.goresan.engine.Engine.onDrawFrame(Engine.kt:846)
+00:51:01.426      id.goresan.canvas.CanvasView$3.onDrawFrame(CanvasView.kt:119)
+00:51:01.427      android.opengl.GLSurfaceView$GLThread.guardedRun(GLSurfaceView.java:1573)
+00:51:01.427      android.opengl.GLSurfaceView$GLThread.run(GLSurfaceView.java:1272)
+00:51:03.745  Frame lambat: 5667 ms
+00:51:04.487  Kanvas kembali merespons
+00:51:22.488  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:26.452  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:27.465  Frame lambat: 150 ms
+00:51:29.782  Frame lambat: 236 ms
+00:51:31.168  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:34.826  Frame lambat: 121 ms
+00:51:36.287  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:39.526  Frame lambat: 104 ms
+00:51:40.979  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:44.495  Frame lambat: 159 ms
+00:51:45.921  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:51:49.537  Frame lambat: 320 ms
+00:51:53.245  Simpan: 1 layer dibaca dari GPU (18 ms)
+00:51:57.451  Frame lambat: 167 ms
+00:52:45.677  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:52:49.041  Frame lambat: 338 ms
+00:52:50.287  Sentuh: jari 0.0 mm (batas telapak 18.0 mm, ketukan 30.0 mm)
+00:52:53.894  Frame lambat: 316 ms
+00:52:57.598  Simpan: 1 layer dibaca dari GPU (14 ms)

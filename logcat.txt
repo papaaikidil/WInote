@@ -1,0 +1,40 @@
+11-19 00:51:56.314  8262  8262 D AndroidRuntime: Shutting down VM
+11-19 00:51:56.735  2774  8283 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+11-19 00:52:00.241  8302  8302 I AndroidRuntime: Using default boot image
+11-19 00:52:00.241  8302  8302 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:00.327  8302  8302 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:01.391  8302  8302 D AndroidRuntime: Shutting down VM
+11-19 00:52:02.307  8321  8321 I AndroidRuntime: Using default boot image
+11-19 00:52:02.307  8321  8321 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:02.387  8321  8321 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:03.439  8321  8321 D AndroidRuntime: Shutting down VM
+11-19 00:52:18.100  8402  8402 I AndroidRuntime: Using default boot image
+11-19 00:52:18.100  8402  8402 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:18.173  8402  8402 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:19.231  8402  8402 D AndroidRuntime: Shutting down VM
+11-19 00:52:23.154  8427  8427 I AndroidRuntime: Using default boot image
+11-19 00:52:23.154  8427  8427 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:23.236  8427  8427 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:24.304  8427  8427 D AndroidRuntime: Shutting down VM
+11-19 00:52:25.204  8447  8447 I AndroidRuntime: Using default boot image
+11-19 00:52:25.204  8447  8447 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:25.280  8447  8447 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:26.331  8447  8447 D AndroidRuntime: Shutting down VM
+11-19 00:52:29.263  8472  8472 I AndroidRuntime: Using default boot image
+11-19 00:52:29.263  8472  8472 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:29.334  8472  8472 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:30.415  8472  8472 D AndroidRuntime: Shutting down VM
+11-19 00:52:31.556  6999  7009 I id.hananote.app: Method exceeds compiler instruction limit: 20384 in void id.goresan.ui.BrushPanelKt.BrushStudio(id.goresan.ui.AppState, id.goresan.engine.Brush, androidx.compose.runtime.Composer, int)
+11-19 00:52:33.363  8497  8497 I AndroidRuntime: Using default boot image
+11-19 00:52:33.363  8497  8497 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:33.433  8497  8497 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:34.502  8497  8497 D AndroidRuntime: Shutting down VM
+11-19 00:52:37.449  8522  8522 I AndroidRuntime: Using default boot image
+11-19 00:52:37.449  8522  8522 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:37.519  8522  8522 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:38.594  8522  8522 D AndroidRuntime: Shutting down VM
+11-19 00:52:41.546  8547  8547 I AndroidRuntime: Using default boot image
+11-19 00:52:41.546  8547  8547 I AndroidRuntime: Leaving lock profiling enabled
+11-19 00:52:41.619  8547  8547 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-19 00:52:42.681  8547  8547 D AndroidRuntime: Shutting down VM
+11-19 00:52:59.122  8745  8746 D HostConnection: HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_vulkan_async_qsri ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs ANDROID_EMU_hwc_color_transform GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
