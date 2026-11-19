@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,8 +65,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import id.hananote.data.HighlighterColors
@@ -157,7 +163,10 @@ private fun PdfAction(
 /** Dialog ubah teks PDF: teks asli sudah terisi; disimpan sebagai penutup + teks pengganti. */
 @Composable
 internal fun PdfEditDialog(initial: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
-    var text by remember { mutableStateOf(initial) }
+    // Seluruh teks lama langsung terpilih: mengetik menggantinya, ketuk di dalam kotak untuk menyunting sebagian.
+    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Ubah teks PDF") },
@@ -169,7 +178,7 @@ internal fun PdfEditDialog(initial: String, onDismiss: () -> Unit, onApply: (Str
                     label = { Text("Teks baru") },
                     minLines = 2,
                     maxLines = 8,
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Teks baru" },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus).semantics { contentDescription = "Teks baru" },
                 )
                 Text(
                     "Tulisan aslinya ditutup warna kertas, lalu teks baru ditaruh di tempat yang sama dengan ukuran dan warna yang mirip. Kosongkan untuk menghapus tulisannya saja.",
@@ -178,7 +187,7 @@ internal fun PdfEditDialog(initial: String, onDismiss: () -> Unit, onApply: (Str
                 )
             }
         },
-        confirmButton = { Button(onClick = { onApply(text) }) { Text("Ganti") } },
+        confirmButton = { Button(onClick = { onApply(text.text) }) { Text("Ganti") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
     )
 }
@@ -366,7 +375,8 @@ private fun saveSignature(dir: File, lines: List<List<Offset>>, w: Int, h: Int, 
 @Composable
 internal fun PageNumbersDialog(c: EditorController, onDismiss: () -> Unit) {
     val cur = c.pageNumberSpec
-    var on by remember { mutableStateOf(cur != null) }
+    // Dibuka dari tombol Nomor hal.: langsung menyala, pilihan tampil; mematikan tetap lewat sakelar.
+    var on by remember { mutableStateOf(true) }
     var pos by remember { mutableIntStateOf(cur?.position ?: 0) }
     var fmt by remember { mutableIntStateOf(cur?.format ?: 0) }
     var start by remember { mutableStateOf((cur?.start ?: 1).toString()) }
@@ -377,9 +387,12 @@ internal fun PageNumbersDialog(c: EditorController, onDismiss: () -> Unit) {
         title = { Text("Nomor halaman") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).toggleable(value = on, role = Role.Switch, onValueChange = { on = it }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text("Tampilkan nomor halaman", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Switch(checked = on, onCheckedChange = { on = it }, modifier = Modifier.semantics { contentDescription = "Tampilkan nomor halaman" })
+                    Switch(checked = on, onCheckedChange = null)
                 }
                 if (on) {
                     Text("Letak", style = MaterialTheme.typography.labelLarge)
@@ -400,9 +413,12 @@ internal fun PageNumbersDialog(c: EditorController, onDismiss: () -> Unit) {
                         )
                         ToolChip(selected = big, onClick = { big = !big }, label = { Text("Huruf besar") })
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).toggleable(value = skip, role = Role.Switch, onValueChange = { skip = it }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text("Halaman pertama (sampul) tanpa nomor", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        Switch(checked = skip, onCheckedChange = { skip = it })
+                        Switch(checked = skip, onCheckedChange = null)
                     }
                     HorizontalDivider()
                     Text(

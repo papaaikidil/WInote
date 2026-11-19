@@ -1655,6 +1655,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
                 if (bmp != null && pages.any { it.id == meta.id }) pageThumbs[meta.id] = bmp.asImageBitmap()
             } finally {
                 thumbLoading.remove(meta.id)
+                // Berubah lagi selagi digambar: buat ulang dari keadaan terbaru.
+                if (meta.id in thumbStale) pages.firstOrNull { it.id == meta.id }?.let { requestThumb(it) }
             }
         }
     }
@@ -2986,10 +2988,21 @@ class EditorController(private val repo: Repository, val noteId: String) {
         val texts = ArrayList<TextItem>()
         if (text.isNotBlank()) {
             val first = rects[0]
-            val width = max(rects.maxOf { it.width() } * 1.2f, size * 4f) + size
             // Jarak baris mengikuti PDF bila lebih dari satu baris.
             val pitch = if (rects.size > 1) (rects.last().bottom - rects.first().bottom) / (rects.size - 1) else 0f
             val runs = if (layer.boldAt(r.first)) TextRuns.EMPTY.styled(0, text.length, TextRuns.BOLD, true, text.length) else TextRuns.EMPTY
+            val original = rects.maxOf { it.width() }
+            val room = max(original, meta.width - first.left - size)
+            val width = if (rects.size == 1) {
+                // Satu baris tetap satu baris: lebar kotak mengikuti panjang teks baru (sampai tepi kanan halaman),
+                // supaya teks yang lebih panjang tidak turun menimpa baris di bawahnya.
+                val wide = InkRenderer.layoutFor(TextItem(first.left, 0f, 100_000f, text, size, ink, font, Align.LEFT, runs, pitch))
+                val desired = (0 until wide.lineCount).maxOfOrNull { wide.getLineWidth(it) } ?: original
+                (max(desired, original) + size * 0.6f).coerceAtMost(room)
+            } else {
+                // Paragraf: dibungkus selebar paragraf aslinya.
+                (original + size * 0.6f).coerceAtMost(room)
+            }
             val probe = TextItem(first.left, 0f, width, text, size, ink, font, Align.LEFT, runs, pitch)
             val baseOffset = InkRenderer.layoutFor(probe).getLineBaseline(0).toFloat()
             // Garis dasar PDF: sedikit di atas tepi bawah kotak huruf (ruang untuk kaki huruf).
@@ -3148,7 +3161,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
      * Putar halaman PDF ini 90° searah jarum jam. Ukuran halaman bertukar, dan isi yang sudah ditulis ikut berputar
      * supaya tetap di tempatnya di PDF.
      */
-    fun rotatePage() {
+    /** Minta persetujuan memutar halaman yang sudah berisi teks ketik (teks tidak ikut berputar). */
+    var rotateAsk by mutableStateOf(false)
+
+    fun rotatePage(confirmed: Boolean = false) {
+        rotateAsk = false
         if (readMode) return
         val v = view ?: return
         val meta = page
@@ -3158,6 +3175,10 @@ class EditorController(private val repo: Repository, val noteId: String) {
             return
         }
         finishEditing(commit = true)
+        if (!confirmed && v.contentSnapshot().texts.isNotEmpty()) {
+            rotateAsk = true
+            return
+        }
         v.clearSelection()
         val rot = (PageBackground.pdfRotation(meta.background) + 90) % 360
         val nm = meta.copy(width = meta.height, height = meta.width, background = PageBackground.pdf(src.first, src.second, rot))
@@ -3236,7 +3257,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
         CrashLog.note("nomor halaman: ${spec?.encode() ?: "mati"}")
         refreshPageLabels()
         view?.invalidateCache()
-        pageThumbs.clear()
+        // Posisi, format, atau ukuran bisa berubah tanpa mengubah teks nomornya: semua gambar kecil dibuat ulang.
+        pages.forEach { refreshThumb(it) }
         makeThumb()
         notice = if (spec == null) "Nomor halaman dimatikan." else "Nomor halaman dipasang di semua halaman (ikut ekspor dan cetak)."
     }
@@ -3244,12 +3266,25 @@ class EditorController(private val repo: Repository, val noteId: String) {
     /** Teks nomor tiap halaman untuk penggambar kertas. */
     private fun refreshPageLabels() {
         val spec = pageNumberSpec
+        val old = InkRenderer.PageNumbers.labels
         InkRenderer.PageNumbers.spec = spec
-        InkRenderer.PageNumbers.labels = if (spec == null) emptyMap() else {
+        val now: Map<String, String> = if (spec == null) emptyMap() else {
             val m = HashMap<String, String>()
             pages.forEachIndexed { i, p -> spec.label(i, pages.size)?.let { m[p.id] = it } }
             m
         }
+        InkRenderer.PageNumbers.labels = now
+        // Nomor berubah (halaman ditambah, dipindah, dihapus): gambar ulang halaman dan gambar kecil yang terkena.
+        if (old != now) {
+            view?.invalidateCache()
+            for (p in pages) if (old[p.id] != now[p.id]) refreshThumb(p)
+        }
+    }
+
+    /** Gambar kecil halaman ini dibuat ulang; yang lama tetap tampil sampai yang baru siap. */
+    private fun refreshThumb(p: PageMeta) {
+        thumbStale.add(p.id)
+        requestThumb(p)
     }
 
     // ---------- penanda bacaan terakhir ----------
@@ -3373,7 +3408,6 @@ class EditorController(private val repo: Repository, val noteId: String) {
         prefs.edit().putInt("page_$noteId", index).apply()
         repo.savePages(noteId, pages.toList())
         refreshPageLabels()
-        if (pageNumberSpec != null) { view?.invalidateCache(); pageThumbs.clear() }
         // Sampul catatan memakai halaman pertama.
         if (from == 0 || target == 0) makeThumb()
         notice = "Halaman ${from + 1} dipindah ke urutan ${target + 1}."
@@ -3394,7 +3428,6 @@ class EditorController(private val repo: Repository, val noteId: String) {
         repo.savePages(noteId, pages.toList())
         repo.writeScope.launch { repo.deletePageFile(noteId, removed.id) }
         refreshPageLabels()
-        if (pageNumberSpec != null) { view?.invalidateCache(); pageThumbs.clear() }
         when {
             i == index -> showPage(i.coerceAtMost(pages.lastIndex))
             i < index -> index -= 1
@@ -3771,6 +3804,21 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
     c.bgRemoval?.let { RemoveBgDialog(c, it) }
     c.voice?.let { VoiceDialog(c, it) }
     c.pdfEditing?.let { t -> PdfEditDialog(t, onDismiss = { c.pdfEditing = null }) { c.pdfApplyEdit(it) } }
+    if (c.rotateAsk) {
+        AlertDialog(
+            onDismissRequest = { c.rotateAsk = false },
+            title = { Text("Putar halaman?") },
+            text = {
+                Text(
+                    "Teks ketik di halaman ini tidak ikut berputar: tetap tegak dan hanya digeser. Teks PDF yang diubah dan " +
+                        "isian formulir jadi tidak pas lagi dengan tulisan aslinya. Sebaiknya putar halaman dulu sebelum mengisi " +
+                        "atau mengubah teks. Coretan, stabilo, gambar, dan tanda tangan tetap ikut berputar.",
+                )
+            },
+            confirmButton = { Button(onClick = { c.rotatePage(confirmed = true) }) { Text("Tetap putar") } },
+            dismissButton = { TextButton(onClick = { c.rotateAsk = false }) { Text("Batal") } },
+        )
+    }
     c.pdfFieldEditing?.let { f -> PdfFieldDialog(c, f) }
     if (c.signatureOpen) SignatureDialog(c)
 

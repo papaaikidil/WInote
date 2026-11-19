@@ -171,8 +171,8 @@ ketuk_pt 70 108 3
 shot pilih-baris
 tap_node "Ubah teks pilihan" 3 || echo "UBAH TEKS TIDAK ADA"
 shot dialog-ubah
-adb shell input keycombination 113 29; sleep 1
-adb shell input text "Saya%syang%sbertanda%stangan%sdi%sbawah%sini%smenyatakan:"; sleep 2
+# Teks lama sudah terpilih semua: langsung ketik penggantinya (lebih panjang dari aslinya, harus tetap satu baris).
+adb shell input text "Saya%syang%sbertanda%stangan%sdi%sbawah%sini%sdengan%ssungguh-sungguh%smenyatakan%sbahwa"; sleep 2
 shot dialog-ubah-isi
 tap_node "Ganti" 4 || echo "GANTI TIDAK ADA"
 shot teks-diganti
@@ -206,7 +206,6 @@ tap_node "Tutup" 2 || true
 # 7. Nomor halaman.
 tap_node "Halaman" 2 || true
 tap_node "Nomor hal." 3 || echo "NOMOR HAL TIDAK ADA"
-tap_node "Tampilkan nomor halaman" 2 || true
 tap_node "Hal. 1" 1 || true
 shot dialog-nomor
 tap_node "Simpan" 4 || true
@@ -215,9 +214,11 @@ shot nomor-halaman
 # Kelompok PDF ditutup lalu dibuka lagi: harus bergeser masuk layar.
 tap_node "PDF" 2 || true; tap_node "PDF" 3 || true
 shot kelompok-pdf-digeser
-tap_node "Putar" 4 || echo "PUTAR TIDAK ADA"
+tap_node "Putar" 3 || echo "PUTAR TIDAK ADA"
+shot tanya-putar
+tap_node "Tetap putar" 4 || echo "TETAP PUTAR TIDAK ADA"
 shot diputar
-tap_node "Putar" 3 || true; tap_node "Putar" 3 || true; tap_node "Putar" 4 || true
+for k in 1 2 3; do tap_node "Putar" 3 || true; tap_node "Tetap putar" 3 || true; done
 shot putar-kembali
 # 9. Penanda bacaan terakhir: baca halaman 2, keluar, kembali ke halaman 1, masuk mode baca lagi.
 tap_node "Halaman berikutnya" 4 || echo "BERIKUTNYA TIDAK ADA"
@@ -231,7 +232,11 @@ tap_node "Lanjutkan" 5 || echo "LANJUTKAN TIDAK ADA"
 shot lanjut-baca
 tap_node "Sunting" 3 || true
 # 10. Ekspor sebagian halaman jadi PDF.
-tap_node "PDF" 2 || true; tap_node "PDF" 3 || true
+# Bilah fitur digeser ke ujung kanan (kelompok PDF di paling kanan).
+YB=$(dp 55)
+adb shell input swipe $((W*85/100)) $YB $((W*10/100)) $YB 400; sleep 1
+adb shell input swipe $((W*85/100)) $YB $((W*10/100)) $YB 400; sleep 2
+shot bilah-digeser
 tap_node "Ekspor hal." 3 || echo "EKSPOR TIDAK ADA"
 tap_node "PDF" 2 || true
 tap_node "Pilih halaman…" 2 || true
