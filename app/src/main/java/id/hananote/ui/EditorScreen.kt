@@ -82,6 +82,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -4096,6 +4097,7 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
  * Satu kelompok fitur: judul berbentuk pil yang bisa diketuk untuk membuka atau menyembunyikan
  * tombol-tombolnya. Saat tersembunyi, hanya judulnya yang tampil.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FeatureGroup(
     c: EditorController,
@@ -4106,13 +4108,29 @@ private fun FeatureGroup(
     val open = c.isGroupOpen(label)
     val bg = if (open) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
     val fg = if (open) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    // Kelompok yang baru dibuka digeser masuk layar supaya tombolnya tidak tersembunyi di ujung kanan bilah.
+    val reveal = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    var justOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(open, justOpened) {
+        if (open && justOpened) {
+            delay(260)
+            reveal.bringIntoView()
+            justOpened = false
+        }
+    }
+    Row(
+        Modifier.bringIntoViewRequester(reveal),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
             Modifier
                 .height(40.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(bg)
-                .toolClick(if (open) "Sembunyikan $label" else "Tampilkan $label") { c.toggleGroup(label) }
+                .toolClick(if (open) "Sembunyikan $label" else "Tampilkan $label") {
+                    justOpened = !open
+                    c.toggleGroup(label)
+                }
                 .padding(start = 10.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

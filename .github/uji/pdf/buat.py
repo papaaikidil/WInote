@@ -19,7 +19,7 @@ BT /F1 12 Tf 60 600 Td (Setuju:) Tj ET
 130 596 16 16 re S
 BT /F1 12 Tf 60 540 Td (Tanda tangan:) Tj ET
 170 500 m 330 500 l S
-BT /F3 12 Tf 60 440 Td (Catatan: dokumen ini dibuat untuk uji fitur edit PDF.) Tj ET"""
+BT /F3 12 Tf 60 572 Td (Catatan: dokumen ini dibuat untuk uji fitur edit PDF.) Tj ET"""
 page2 = """BT /F3 14 Tf 60 780 Td (Halaman kedua dokumen PDF.) Tj 0 -20 Td (Teks ini memakai huruf Times.) Tj ET"""
 
 obj(1, "<< /Type /Catalog /Pages 2 0 R /AcroForm 10 0 R >>")

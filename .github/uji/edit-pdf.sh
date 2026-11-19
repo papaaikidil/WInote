@@ -152,23 +152,24 @@ halaman
 # 1. Ketuk kata "minyak" (baris 2) lalu Stabilo.
 ketuk_pt 80 126 3
 shot pilih-kata
-tap_node "Stabilo" 3 || echo "STABILO TIDAK ADA"
+tap_node "Stabilo teks pilihan" 3 || echo "STABILO TIDAK ADA"
 shot stabilo
 # 2. Tarik di atas "Harga per kilogram" (baris 3) lalu Garis bawah.
 read A B < <(pct 61 145); read C D < <(pct 172 145)
 gerak garis $A $B $C $D 0
 sleep 2
 shot tarik-pilih
-tap_node "Garis bawah" 3 || echo "GARIS BAWAH TIDAK ADA"
+tap_node "Garis bawahi teks pilihan" 3 || echo "GARIS BAWAH TIDAK ADA"
 # 3. Coret "Catatan:" (Times, baris bawah).
-ketuk_pt 80 398 3
-tap_node "Coret" 3 || echo "CORET TIDAK ADA"
+ketuk_pt 80 266 3
+shot pilih-catatan
+tap_node "Coret teks pilihan" 3 || echo "CORET TIDAK ADA"
 shot garis-bawah-coret
 # 4. Ubah teks: ketuk "Yang" dua kali (satu baris), lalu ganti.
 ketuk_pt 70 108 2
 ketuk_pt 70 108 3
 shot pilih-baris
-tap_node "Ubah teks" 3 || echo "UBAH TEKS TIDAK ADA"
+tap_node "Ubah teks pilihan" 3 || echo "UBAH TEKS TIDAK ADA"
 shot dialog-ubah
 adb shell input keycombination 113 29; sleep 1
 adb shell input text "Saya%syang%sbertanda%stangan%sdi%sbawah%sini%smenyatakan:"; sleep 2
@@ -211,6 +212,9 @@ shot dialog-nomor
 tap_node "Simpan" 4 || true
 shot nomor-halaman
 # 8. Putar halaman PDF (isi ikut berputar).
+# Kelompok PDF ditutup lalu dibuka lagi: harus bergeser masuk layar.
+tap_node "PDF" 2 || true; tap_node "PDF" 3 || true
+shot kelompok-pdf-digeser
 tap_node "Putar" 4 || echo "PUTAR TIDAK ADA"
 shot diputar
 tap_node "Putar" 3 || true; tap_node "Putar" 3 || true; tap_node "Putar" 4 || true
@@ -227,6 +231,7 @@ tap_node "Lanjutkan" 5 || echo "LANJUTKAN TIDAK ADA"
 shot lanjut-baca
 tap_node "Sunting" 3 || true
 # 10. Ekspor sebagian halaman jadi PDF.
+tap_node "PDF" 2 || true; tap_node "PDF" 3 || true
 tap_node "Ekspor hal." 3 || echo "EKSPOR TIDAK ADA"
 tap_node "PDF" 2 || true
 tap_node "Pilih halaman…" 2 || true
@@ -235,7 +240,8 @@ adb shell input text "2"; sleep 2
 shot dialog-ekspor
 tap_node "Simpan" 8 || true
 shot ekspor-selesai
-adb shell ls -la /sdcard/Download/WInote/ /sdcard/Documents/WInote/ > $OUT/ekspor.txt 2>&1
+adb shell run-as $PKG ls -la cache/export > $OUT/ekspor.txt 2>&1
+adb shell "run-as $PKG sh -c 'cat cache/export/*.pdf'" > $OUT/ekspor.pdf 2>/dev/null
 adb shell run-as $PKG cat files/hana/notes.json > $OUT/notes.json 2>&1
 adb shell run-as $PKG ls -R files/hana/notes > $OUT/berkas.txt 2>&1
 adb shell run-as $PKG cat files/crash.txt > $OUT/crash.txt 2>&1

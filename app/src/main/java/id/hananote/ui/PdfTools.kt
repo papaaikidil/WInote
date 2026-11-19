@@ -116,24 +116,42 @@ internal fun PdfActionBar(c: EditorController, modifier: Modifier) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(end = 6.dp),
             )
-            ActionIcon(Icons.Filled.Highlight, "Stabilo") { c.pdfMark(0) }
-            ActionIcon(Icons.Filled.FormatUnderlined, "Garis bawah") { c.pdfMark(1) }
-            ActionIcon(Icons.Filled.FormatStrikethrough, "Coret") { c.pdfMark(2) }
-            ActionIcon(Icons.Filled.ContentCopy, "Salin") { c.pdfCopy(context) }
-            ActionIcon(Icons.Filled.SelectAll, "Satu baris") { c.pdfSelectLines() }
-            TextButton(onClick = { c.pdfBeginEdit() }) {
-                Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Ubah teks")
-            }
+            PdfAction(Icons.Filled.Highlight, "Stabilo", "Stabilo teks pilihan", tint = Color(c.pdfMarkColor)) { c.pdfMark(0) }
+            PdfAction(Icons.Filled.FormatUnderlined, "Garis bawah", "Garis bawahi teks pilihan") { c.pdfMark(1) }
+            PdfAction(Icons.Filled.FormatStrikethrough, "Coret", "Coret teks pilihan") { c.pdfMark(2) }
+            PdfAction(Icons.Filled.ContentCopy, "Salin", "Salin teks pilihan") { c.pdfCopy(context) }
+            PdfAction(Icons.Filled.SelectAll, "Satu baris", "Pilih satu baris") { c.pdfSelectLines() }
+            PdfAction(Icons.Filled.Edit, "Ubah teks", "Ubah teks pilihan") { c.pdfBeginEdit() }
             IconButton(onClick = { c.dismissPdfSelection() }) { Icon(Icons.Filled.Close, contentDescription = "Batal pilih") }
         }
     }
 }
 
+/** Tombol bilah aksi: ikon dengan nama di bawahnya, supaya jelas fungsinya tanpa menebak ikon. */
 @Composable
-private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick) { Icon(icon, contentDescription = label) }
+private fun PdfAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    description: String,
+    tint: Color = Color.Unspecified,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (tint != Color.Unspecified) {
+                Box(Modifier.size(22.dp).clip(RoundedCornerShape(50)).background(tint.copy(alpha = 0.55f)))
+            }
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    }
 }
 
 /** Dialog ubah teks PDF: teks asli sudah terisi; disimpan sebagai penutup + teks pengganti. */
