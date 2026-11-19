@@ -243,7 +243,9 @@ tap_node "Pilih halaman…" 2 || true
 tap_node "Nomor halaman yang diekspor" 2 || true
 adb shell input text "2"; sleep 2
 shot dialog-ekspor
-tap_node "Simpan" 8 || true
+# Tombol Selesai di papan ketik: papan ketik tertutup, tombol Simpan terlihat.
+adb shell input keyevent 66; sleep 2
+tap_node "Simpan" 8 || echo "SIMPAN EKSPOR TIDAK ADA"
 shot ekspor-selesai
 adb shell run-as $PKG ls -la cache/export > $OUT/ekspor.txt 2>&1
 adb shell "run-as $PKG sh -c 'cat cache/export/*.pdf'" > $OUT/ekspor.pdf 2>/dev/null
