@@ -1276,3 +1276,19 @@ ukuran huruf, dan halaman pertama boleh tanpa nomor.
 **Penanda bacaan terakhir**: di mode baca, halaman yang sedang dibaca disimpan otomatis. Saat masuk mode baca lagi,
 muncul "Terakhir dibaca: halaman N · Lanjutkan". Halaman itu diberi pita merah di pojok kanan atas. Tombol pita di
 chip Mode baca menandai halaman ini secara manual.
+
+## Perubahan 0.1.135: Orientasi halaman, putar tulisan terpilih, menu selotip lebih ringkas
+
+- **Orientasi halaman** (kelompok Halaman → **Orientasi**): pilih **Tegak** atau **Mendatar**, untuk **halaman ini** atau
+  **semua halaman**. Arahnya tersimpan bersama catatan, jadi tidak kembali tegak saat catatan ditutup lalu dibuka lagi.
+  Halaman baru ikut arah halaman sebelumnya. Bisa juga lewat menu tahan di gambar kecil halaman ("Jadikan mendatar" /
+  "Jadikan tegak"). Ukuran kertas tetap, hanya lebar dan tingginya bertukar; tulisan yang sudah ada tidak ikut berputar
+  (yang jatuh di luar kertas tetap tersimpan dan muncul lagi bila arahnya dikembalikan). Halaman PDF mengikuti arah
+  PDF-nya; untuk itu pakai PDF → Putar. Memutar tampilan dengan dua jari (tombol Luruskan) tetap hanya cara melihat.
+- **Putar tulisan yang dipilih**: lingkari tulisan tangan dengan alat Pilih, lalu seret lingkaran di atas kotak pilihan
+  untuk memutarnya ke sudut berapa saja (miring), menempel tiap 15° supaya mudah pas tegak lurus. Tombol **Putar 90°**
+  di bilah pilihan memutar 90° searah jarum jam tiap ketukan. Benda yang bisa diputar (gambar, stiker, selotip) ikut
+  berputar; teks ketik di dalam pilihan tetap tegak dan hanya berpindah tempat. Bisa diurungkan.
+- **Menu selotip**: tombol **Tipe** hanya berisi **Lurus** dan **Bebas**; bentuk bidang (Kotak, Kotak tumpul, Lingkaran,
+  Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
+  disorot.
