@@ -116,7 +116,11 @@ for y in 30 42 54 66; do gerak garis 15 $y 45 $y 7; gerak garis 55 $y 85 $y 7; d
 shot tulisan
 tap_node "Selotip" 3 || echo "TOMBOL SELOTIP TIDAK ADA"
 shot alat-selotip
-bentuk() { tap_node "Bentuk selotip" 2 || true; tap_node "$1" 2 || echo "BENTUK TIDAK KETEMU: $1"; }
+bentuk() {
+  local menu="Bentuk selotip"
+  case "$1" in Lurus|Bebas) menu="Tipe selotip" ;; esac
+  tap_node "$menu" 2 || true; tap_node "$1" 2 || echo "BENTUK TIDAK KETEMU: $1"
+}
 # Lurus (bawaan), bebas, dan bentuk-bentuk.
 gerak garis 14 30 46 30 0
 bentuk "Bebas"; gerak garis 54 30 86 31 10

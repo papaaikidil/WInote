@@ -1380,6 +1380,25 @@ class InkView(context: Context) : View(context) {
     }
 
     fun selectedItem(): PageItem? = selItem
+
+    /**
+     * Putar pilihan (tulisan tangan dan benda) [deg] derajat searah jarum jam pada titik tengahnya, bisa
+     * diurungkan. Teks ketik di dalamnya tetap tegak. False bila pilihan tidak bisa diputar.
+     */
+    fun rotateSelectionBy(deg: Float): Boolean {
+        if (!hasSelection || lifted != null || lasso != null || !selectionRotatable()) return false
+        dragCorner = 4
+        widthPreview = null
+        dragFrom.set(selRect)
+        dragTo.set(selRect)
+        dragRot0 = selRotation()
+        dragRot1 = PageItem.normalizeDeg(dragRot0 + deg)
+        lift()
+        dragging = true
+        selectUp(commit = true)
+        invalidate()
+        return true
+    }
     fun selectedText(): TextItem? = selText
 
     /**
@@ -1517,6 +1536,7 @@ class InkView(context: Context) : View(context) {
                 }
                 SelectionInfo(
                     kind, null, null, multi = true, grouped = grouped, arrangeable = arrangeable,
+                    rotatable = selectionRotatable(),
                     recolor = selStrokes.isNotEmpty() || selTexts.isNotEmpty() || selItems.any { it is TapeItem }, ink = ink,
                 )
             }
@@ -2509,8 +2529,22 @@ class InkView(context: Context) : View(context) {
                 InkRenderer.drawText(canvas, preview)
             } else {
                 dragMatrix(liftMatrix)
-                canvas.concat(liftMatrix)
-                drawContent(canvas, l.strokes.map { it.second }, l.texts.map { it.second }, l.items.map { it.second }, null)
+                val turn = dragRot1 - dragRot0
+                if (abs(turn) > 0.05f && !isSingle && (l.texts.isNotEmpty() || l.items.any { !it.second.canRotate })) {
+                    // Pilihan diputar: tulisan tangan dan benda yang bisa diputar ikut berputar; teks ketik dan
+                    // benda lain tetap tegak di tempat barunya, sama seperti hasil akhirnya nanti.
+                    canvas.save()
+                    canvas.concat(liftMatrix)
+                    drawContent(canvas, l.strokes.map { it.second }, emptyList(), l.items.map { it.second }.filter { it.canRotate }, null)
+                    canvas.restore()
+                    drawContent(
+                        canvas, emptyList(), l.texts.map { uprightText(it.second, liftMatrix, 1f) },
+                        l.items.map { it.second }.filter { !it.canRotate }.map { placeLifted(it, liftMatrix, 1f, 1f, turn) }, null,
+                    )
+                } else {
+                    canvas.concat(liftMatrix)
+                    drawContent(canvas, l.strokes.map { it.second }, l.texts.map { it.second }, l.items.map { it.second }, null)
+                }
             }
         }
         canvas.restore()
@@ -2582,7 +2616,37 @@ class InkView(context: Context) : View(context) {
         return true
     }
 
-    private fun selectionRotatable() = selItem?.canRotate == true
+    /**
+     * Bisa diputar dengan pegangan: satu benda yang bisa diputar, atau pilihan berisi tulisan tangan/benda
+     * (teks ketik dan benda yang tidak bisa diputar ikut berpindah tetapi tetap tegak).
+     */
+    private fun selectionRotatable(): Boolean {
+        selItem?.let { return it.canRotate }
+        if (selText != null) return false
+        return selStrokes.isNotEmpty() || selItems.any { it.canRotate }
+    }
+
+    /** Teks ketik dalam pilihan yang diputar: tetap tegak, titik tengahnya ikut berputar. */
+    private fun uprightText(t: TextItem, m: Matrix, sx: Float): TextItem {
+        InkRenderer.textBounds(t, box)
+        val ox = box.centerX() - t.x
+        val oy = box.centerY() - t.y
+        uprightPts[0] = box.centerX(); uprightPts[1] = box.centerY()
+        m.mapPoints(uprightPts)
+        return t.moved(uprightPts[0] - ox * sx, uprightPts[1] - oy * sx, t.width * sx, t.size * sx)
+    }
+
+    /** Benda dalam pilihan: titik tengah dan ukurannya mengikuti [m]; sudutnya bertambah [turn] bila bisa diputar. */
+    private fun placeLifted(it: PageItem, m: Matrix, sx: Float, sy: Float, turn: Float): PageItem {
+        uprightPts[0] = it.cx; uprightPts[1] = it.cy
+        m.mapPoints(uprightPts)
+        val nw = it.w * sx
+        val nh = it.h * sy
+        val rot = if (it.canRotate) PageItem.normalizeDeg(it.rotation + turn) else it.rotation
+        return it.placed(uprightPts[0] - nw / 2f, uprightPts[1] - nh / 2f, nw, nh, rot)
+    }
+
+    private val uprightPts = FloatArray(2)
 
     private fun drawSelection(canvas: Canvas) {
         lasso?.let { pts ->
@@ -2641,7 +2705,8 @@ class InkView(context: Context) : View(context) {
                 anglePaint.color = accentColor
                 anglePaint.textSize = 13f * density
                 anglePaint.isFakeBoldText = true
-                val deg = dragRot1.roundToInt()
+                // Miring ke kiri ditulis negatif (-10°), bukan 350°.
+                val deg = dragRot1.roundToInt().let { if (it > 180) it - 360 else it }
                 canvas.drawText("$deg°", hx, hy - 18f * density, anglePaint)
             }
         }
@@ -5903,11 +5968,7 @@ class InkView(context: Context) : View(context) {
         val pts = FloatArray(2)
         val newStrokes = l.strokes.map { transformStroke(it.second, liftMatrix, ws) }
         val newItems = l.items.map { (_, it) ->
-            pts[0] = it.cx; pts[1] = it.cy
-            liftMatrix.mapPoints(pts)
-            val nw = it.w * sx
-            val nh = it.h * sy
-            val placed = it.placed(pts[0] - nw / 2f, pts[1] - nh / 2f, nw, nh, PageItem.normalizeDeg(it.rotation + turn))
+            val placed = placeLifted(it, liftMatrix, sx, sy, turn)
             // Tabel diubah ukurannya: teks sel mengalir ulang, baris yang tidak muat dipertinggi.
             if (placed is TableItem && (abs(sx - 1f) > 0.01f || abs(sy - 1f) > 0.01f)) InkRenderer.fitTable(placed) else placed
         }
@@ -5918,6 +5979,9 @@ class InkView(context: Context) : View(context) {
         val newTexts = l.texts.map { (_, t) ->
             if (preview != null && (dragCorner == 5 || dragCorner == 6) && l.texts.size == 1) {
                 preview
+            } else if (abs(turn) > 0.05f) {
+                // Diputar bersama tulisan tangan: teks ketik tetap tegak, tengahnya ikut berputar.
+                uprightText(t, liftMatrix, sx)
             } else {
                 pts[0] = t.x; pts[1] = t.y
                 liftMatrix.mapPoints(pts)

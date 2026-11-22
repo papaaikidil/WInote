@@ -85,6 +85,17 @@ enum class InputMode { INK, SHAPE, SELECT, TYPE, TAPE, PDF }
 enum class TapeShape(val label: String) {
     STRAIGHT("Lurus"), FREE("Bebas"), RECT("Kotak"), ROUNDED("Kotak tumpul"), ELLIPSE("Lingkaran"),
     TRIANGLE("Segitiga"), DIAMOND("Belah ketupat"), HEXAGON("Segi enam"), STAR("Bintang"), HEART("Hati"),
+    ;
+
+    /** Pita (ditarik seperti goresan): Lurus atau Bebas. Selain itu bidang berbentuk. */
+    val isBand: Boolean get() = this == STRAIGHT || this == FREE
+
+    companion object {
+        /** Tipe pita. */
+        val BANDS: List<TapeShape> = entries.filter { it.isBand }
+        /** Bentuk bidang (kotak, lingkaran, bintang, ...). */
+        val AREAS: List<TapeShape> = entries.filter { !it.isBand }
+    }
 }
 
 /** Warna selotip: lembut tapi cukup pekat untuk menutupi tulisan. */

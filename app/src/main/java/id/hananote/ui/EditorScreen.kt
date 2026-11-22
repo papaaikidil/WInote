@@ -66,6 +66,8 @@ import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.StayCurrentLandscape
+import androidx.compose.material.icons.filled.StayCurrentPortrait
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
@@ -83,6 +85,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -199,6 +202,7 @@ import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -531,6 +535,17 @@ class EditorController(private val repo: Repository, val noteId: String) {
         runCatching { TapeShape.valueOf(prefs.getString("tape_shape", "STRAIGHT") ?: "STRAIGHT") }.getOrDefault(TapeShape.STRAIGHT)
     )
         private set
+    /** Tipe pita terakhir (Lurus/Bebas) dan bentuk bidang terakhir, untuk dua tombol pilihan selotip. */
+    var tapeBand by mutableStateOf(
+        runCatching { TapeShape.valueOf(prefs.getString("tape_band", "STRAIGHT") ?: "STRAIGHT") }.getOrDefault(TapeShape.STRAIGHT)
+            .takeIf { it.isBand } ?: TapeShape.STRAIGHT
+    )
+        private set
+    var tapeArea by mutableStateOf(
+        runCatching { TapeShape.valueOf(prefs.getString("tape_area", "RECT") ?: "RECT") }.getOrDefault(TapeShape.RECT)
+            .takeIf { !it.isBand } ?: TapeShape.RECT
+    )
+        private set
     var ruler by mutableStateOf(false)
         private set
     var selection by mutableStateOf<SelectionInfo?>(null)
@@ -731,9 +746,14 @@ class EditorController(private val repo: Repository, val noteId: String) {
             if (info?.table == true && !info.multi && !prefs.getBoolean("hint_table_lines", false)) {
                 prefs.edit().putBoolean("hint_table_lines", true).apply()
                 notice = "Geser garis di dalam tabel untuk mengubah lebar kolom atau tinggi baris. Ketuk dua kali untuk mengetik."
-            } else if (info?.rotatable == true && !prefs.getBoolean("hint_rotate", false)) {
-                prefs.edit().putBoolean("hint_rotate", true).apply()
-                notice = "Seret lingkaran di atas ${info.kind.lowercase()} untuk memutarnya sesuka hati."
+            } else if (info?.rotatable == true && !prefs.getBoolean(if (info.multi) "hint_rotate_ink" else "hint_rotate", false)) {
+                prefs.edit().putBoolean(if (info.multi) "hint_rotate_ink" else "hint_rotate", true).apply()
+                notice = if (info.multi) {
+                    "Seret lingkaran di atas kotak pilihan untuk memutar tulisan sesuka hati (menempel tiap 15°), " +
+                        "atau ketuk Putar untuk 90°."
+                } else {
+                    "Seret lingkaran di atas ${info.kind.lowercase()} untuk memutarnya sesuka hati."
+                }
             }
         }
         v.onOpenLink = { linkToOpen = it }
@@ -1250,8 +1270,9 @@ class EditorController(private val repo: Repository, val noteId: String) {
 
     fun chooseTapeShape(k: TapeShape) {
         tapeShape = k
+        if (k.isBand) tapeBand = k else tapeArea = k
         selectTape()
-        prefs.edit().putString("tape_shape", k.name).apply()
+        prefs.edit().putString("tape_shape", k.name).putString(if (k.isBand) "tape_band" else "tape_area", k.name).apply()
     }
 
     /** Tutup ([covered]) atau buka semua selotip di halaman ini. */
@@ -2415,7 +2436,12 @@ class EditorController(private val repo: Repository, val noteId: String) {
     /** Putar gambar atau stiker 90° searah jarum jam, beserta tulisan di atasnya. */
     fun rotateSelection() {
         val v = view ?: return
-        val item = v.selectedItem() ?: return
+        val item = v.selectedItem()
+        if (item == null) {
+            // Tulisan tangan (dan benda) yang dilingkari: putar 90° searah jarum jam tiap ketukan.
+            v.rotateSelectionBy(90f)
+            return
+        }
         if (!item.canRotate) return
         // Ke kelipatan 90° berikutnya, jadi benda yang miring sedikit langsung lurus kembali.
         val next = PageItem.normalizeDeg(kotlin.math.floor(item.rotation / 90f + 0.01f) * 90f + 90f)
@@ -3435,6 +3461,44 @@ class EditorController(private val repo: Repository, val noteId: String) {
         }
     }
 
+    /** Halaman [i] mendatar (lebar lebih dari tinggi). */
+    fun isLandscape(i: Int = index): Boolean = pages.getOrNull(i)?.let { it.width > it.height } ?: false
+
+    /**
+     * Arah kertas: tegak atau mendatar, untuk halaman [at] saja atau semua halaman. Ukuran kertasnya tetap,
+     * hanya lebar dan tingginya bertukar, dan tersimpan bersama catatan (tidak kembali saat ditutup).
+     * Isi halaman tidak ikut berputar. Halaman PDF dilewati: arahnya mengikuti PDF, ubah dengan Putar.
+     */
+    fun setOrientation(landscape: Boolean, toAll: Boolean, at: Int = index) {
+        if (readMode) return
+        finishEditing(commit = true)
+        var changed = 0
+        var pdf = 0
+        for (k in pages.indices) {
+            if (!toAll && k != at) continue
+            val p = pages[k]
+            if (p.width == p.height || (p.width > p.height) == landscape) continue
+            if (PageBackground.pdfOf(p.background) != null) { pdf++; continue }
+            pages[k] = p.copy(width = p.height, height = p.width)
+            refreshThumb(pages[k])
+            changed++
+        }
+        val arah = if (landscape) "mendatar" else "tegak"
+        CrashLog.note("arah kertas $arah: $changed halaman" + if (toAll) " (semua)" else "")
+        if (changed > 0) {
+            repo.savePages(noteId, pages.toList())
+            view?.updatePageMeta(page)
+            makeThumb()
+        }
+        val skip = if (pdf > 0) " Halaman PDF ($pdf) dilewati, putar lewat PDF → Putar." else ""
+        notice = when {
+            changed == 0 && pdf > 0 -> "Halaman PDF mengikuti arah PDF-nya; putar lewat PDF → Putar."
+            changed == 0 -> if (toAll) "Semua halaman sudah $arah." else "Halaman ini sudah $arah."
+            toAll -> "$changed halaman jadi $arah.$skip"
+            else -> "Halaman ${at + 1} jadi $arah.$skip"
+        }
+    }
+
     fun applyPaper(w: Float, h: Float, template: PaperTemplate, color: Int, background: String, toAll: Boolean) {
         CrashLog.note("kertas: ${template.name}, latar ${background.substringBefore(':').ifEmpty { "polos" }}" + if (toAll) " (semua)" else "")
         for (k in pages.indices) {
@@ -3595,6 +3659,7 @@ private sealed interface EditorDialog {
     data object TableLayout : EditorDialog
     data object Emoji : EditorDialog
     data object PageNumbers : EditorDialog
+    data class Orientation(val index: Int) : EditorDialog
 }
 
 private enum class EditorSheet { ToolOptions, Pages }
@@ -3879,6 +3944,7 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
         }
         EditorDialog.Export -> ExportDialog(c, onDismiss = { dialog = null })
         EditorDialog.PageNumbers -> PageNumbersDialog(c, onDismiss = { dialog = null })
+        is EditorDialog.Orientation -> OrientationDialog(c, d.index, onDismiss = { dialog = null })
         EditorDialog.InsertDate -> DateDialog(
             onDismiss = { dialog = null },
             onDate = { text -> c.insertDate(text); dialog = null },
@@ -4035,7 +4101,9 @@ private fun TabletEditor(
                         if (c.mode == InputMode.TAPE) {
                             // Selotip: bentuk (menu ringkas) dan tutup/buka/lepas semua, lalu warna dan ketebalan.
                             Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
-                                TapeShapePicker(c)
+                                TapeTypePicker(c)
+                                Spacer(Modifier.width(6.dp))
+                                TapeAreaPicker(c)
                                 TapeActionIcons(c)
                             }
                             BarDivider(Modifier.align(Alignment.CenterVertically))
@@ -4128,6 +4196,11 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
             FeatureButton(Icons.Filled.ContentCopy, "Duplikat", onClick = { c.duplicatePage() })
             FeatureButton(Icons.Filled.PictureAsPdf, "Impor PDF", onClick = insert.pdf)
             FeatureButton(Icons.Filled.FormatListNumbered, "Nomor hal.", active = c.pageNumberSpec != null, onClick = { onDialog(EditorDialog.PageNumbers) })
+            FeatureButton(
+                if (c.isLandscape()) Icons.Filled.StayCurrentLandscape else Icons.Filled.StayCurrentPortrait,
+                "Orientasi",
+                onClick = { onDialog(EditorDialog.Orientation(c.index)) },
+            )
         }
         FeatureGroup(c, "PDF", Icons.Filled.PictureAsPdf) {
             FeatureButton(Icons.Filled.Highlight, "Pilih teks", active = c.mode == InputMode.PDF && !c.pdfForm, onClick = { c.selectPdfText() })
@@ -4516,6 +4589,14 @@ private fun PageThumb(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tambah halaman sesudahnya") }, leadingIcon = { Icon(Icons.Filled.Add, null) }, onClick = { menu = false; c.addPage(i); onOpened() })
                 DropdownMenuItem(text = { Text("Duplikat") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menu = false; c.duplicatePage(i); onOpened() })
+                if (PageBackground.pdfOf(p.background) == null && p.width != p.height) {
+                    val land = p.width > p.height
+                    DropdownMenuItem(
+                        text = { Text(if (land) "Jadikan tegak" else "Jadikan mendatar") },
+                        leadingIcon = { Icon(if (land) Icons.Filled.StayCurrentPortrait else Icons.Filled.StayCurrentLandscape, null) },
+                        onClick = { menu = false; c.setOrientation(!land, toAll = false, at = i) },
+                    )
+                }
                 if (i > 0) {
                     DropdownMenuItem(text = { Text("Pindah ke sebelumnya") }, leadingIcon = { Icon(Icons.Filled.ArrowUpward, null) }, onClick = { menu = false; c.movePage(i, i - 1) })
                 }
@@ -4732,9 +4813,13 @@ private fun ToolOptions(c: EditorController, onCustom: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text("Tipe", style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                TapeShapeChoices(c, TapeShape.BANDS)
+            }
             Text("Bentuk", style = MaterialTheme.typography.labelLarge)
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
-                TapeShapeChoices(c)
+                TapeShapeChoices(c, TapeShape.AREAS)
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                 TapeActions(c)
@@ -4876,7 +4961,11 @@ private fun FocusToolbar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { ShapeChoices(c) }
                             }
                             if (c.mode == InputMode.TAPE) {
-                                Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { TapeShapeChoices(c) }
+                                Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                                    TapeShapeChoices(c, TapeShape.BANDS)
+                                    BarDivider(Modifier.align(Alignment.CenterVertically))
+                                    TapeShapeChoices(c, TapeShape.AREAS)
+                                }
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { TapeActions(c) }
                             }
                             if (c.styleTool != Tool.ERASER) {
@@ -4965,10 +5054,10 @@ private fun ShapeChoices(c: EditorController) {
     }
 }
 
-/** Pilihan bentuk selotip hafalan: pita lurus, pita bebas, dan bidang (kotak, lingkaran, segitiga, ...). */
+/** Pilihan selotip hafalan sebagai ikon: [shapes] berisi tipe pita (Lurus, Bebas) atau bentuk bidang. */
 @Composable
-private fun TapeShapeChoices(c: EditorController) {
-    TapeShape.entries.forEach { k ->
+private fun TapeShapeChoices(c: EditorController, shapes: List<TapeShape>) {
+    shapes.forEach { k ->
         val selected = k == c.tapeShape
         Box(
             Modifier
@@ -4984,28 +5073,63 @@ private fun TapeShapeChoices(c: EditorController) {
     }
 }
 
-/** Bentuk selotip yang dipakai, sebagai satu tombol yang membuka daftar semua bentuk (untuk bilah tablet). */
+/** Tipe selotip: pita Lurus atau Bebas (untuk bilah tablet). */
 @Composable
-private fun TapeShapePicker(c: EditorController) {
+private fun TapeTypePicker(c: EditorController) {
+    TapeMenuButton(
+        c = c,
+        shown = c.tapeBand,
+        label = c.tapeBand.label,
+        active = c.tapeShape.isBand,
+        description = "Tipe selotip",
+        choices = TapeShape.BANDS,
+    )
+}
+
+/** Bentuk selotip: kotak, lingkaran, segitiga, bintang, hati, ... (untuk bilah tablet). */
+@Composable
+private fun TapeAreaPicker(c: EditorController) {
+    val active = !c.tapeShape.isBand
+    TapeMenuButton(
+        c = c,
+        shown = c.tapeArea,
+        label = if (active) c.tapeArea.label else "Bentuk",
+        active = active,
+        description = "Bentuk selotip",
+        choices = TapeShape.AREAS,
+    )
+}
+
+/** Tombol yang membuka daftar pilihan selotip; disorot bila pilihan di dalamnya sedang dipakai. */
+@Composable
+private fun TapeMenuButton(
+    c: EditorController,
+    shown: TapeShape,
+    label: String,
+    active: Boolean,
+    description: String,
+    choices: List<TapeShape>,
+) {
     var open by remember { mutableStateOf(false) }
+    val fg = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Box {
         Row(
             Modifier
                 .height(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
+                .background(if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                 .clickable { open = true }
-                .semantics { contentDescription = "Bentuk selotip" }
+                .semantics { contentDescription = description }
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TapeShapeIcon(c.tapeShape, Color(c.colorOf(Tool.TAPE)))
+            TapeShapeIcon(shown, if (active) Color(c.colorOf(Tool.TAPE)) else MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(6.dp))
-            Text(c.tapeShape.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(label, style = MaterialTheme.typography.labelLarge, color = fg)
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = fg)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            TapeShape.entries.forEach { k ->
+            choices.forEach { k ->
                 DropdownMenuItem(
                     text = { Text(k.label) },
                     leadingIcon = { TapeShapeIcon(k, if (k == c.tapeShape) Color(c.colorOf(Tool.TAPE)) else MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -5302,7 +5426,7 @@ private fun SelectionBar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
                 TextButton(onClick = insert.transcribe) { Text("Ubah jadi teks") }
             }
             if (sel.rotatable) {
-                TextButton(onClick = { c.rotateSelection() }) { Text("Putar") }
+                TextButton(onClick = { c.rotateSelection() }) { Text(if (sel.multi) "Putar 90°" else "Putar") }
             }
             if (sel.image) {
                 Box {
@@ -7093,3 +7217,84 @@ private fun continueList(old: TextFieldValue, new: TextFieldValue): TextFieldVal
 /** Ketebalan dalam milimeter, satuan yang biasa dipakai untuk mata pena. */
 private fun mmLabel(pt: Float): String =
     String.format(Locale.US, "%.1f", pt * 25.4f / 72f).replace('.', ',') + " mm"
+
+
+/** Arah kertas: tegak atau mendatar, untuk halaman ini atau semua halaman. */
+@Composable
+private fun OrientationDialog(c: EditorController, at: Int, onDismiss: () -> Unit) {
+    var land by remember { mutableStateOf(c.isLandscape(at)) }
+    var toAll by remember { mutableStateOf(false) }
+    val isPdf = c.pages.getOrNull(at)?.let { PageBackground.pdfOf(it.background) != null } == true
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Orientasi halaman") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OrientationChoice("Tegak", landscape = false, selected = !land) { land = false }
+                    OrientationChoice("Mendatar", landscape = true, selected = land) { land = true }
+                }
+                Text("Terapkan ke", style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ToolChip(selected = !toAll, onClick = { toAll = false }, label = { Text("Halaman ini") })
+                    ToolChip(selected = toAll, onClick = { toAll = true }, label = { Text("Semua halaman") })
+                }
+                Text(
+                    "Ukuran kertas tetap, hanya arahnya yang diputar, dan tersimpan bersama catatan. Halaman baru " +
+                        "mengikuti arah halaman sebelumnya. Tulisan yang sudah ada tidak ikut berputar; yang jatuh di luar " +
+                        "kertas tetap tersimpan dan muncul lagi bila arahnya dikembalikan." +
+                        if (isPdf) " Halaman PDF mengikuti arah PDF-nya: putar lewat PDF → Putar." else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { c.setOrientation(land, toAll, at); onDismiss() }) { Text("Terapkan") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
+    )
+}
+
+/** Satu pilihan arah: gambar kertas kecil bergaris dan namanya. */
+@Composable
+private fun OrientationChoice(label: String, landscape: Boolean, selected: Boolean, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val line = MaterialTheme.colorScheme.outlineVariant
+    Column(
+        Modifier
+            .width(120.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.Canvas(
+                Modifier
+                    .then(if (landscape) Modifier.size(width = 70.dp, height = 50.dp) else Modifier.size(width = 50.dp, height = 70.dp)),
+            ) {
+                val r = 4.dp.toPx()
+                drawRoundRect(Color.White, cornerRadius = androidx.compose.ui.geometry.CornerRadius(r))
+                drawRoundRect(
+                    if (selected) accent else line,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+                )
+                val gap = 8.dp.toPx()
+                var y = gap * 1.6f
+                while (y < size.height - gap * 0.6f) {
+                    drawLine(line, androidx.compose.ui.geometry.Offset(6.dp.toPx(), y), androidx.compose.ui.geometry.Offset(size.width - 6.dp.toPx(), y), strokeWidth = 1.dp.toPx())
+                    y += gap
+                }
+            }
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
