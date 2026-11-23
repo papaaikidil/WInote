@@ -1293,6 +1293,16 @@ chip Mode baca menandai halaman ini secara manual.
   Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
   disorot.
 
+## Perubahan 0.1.139: Bilah alat ringkas (pilihan kuas)
+
+- Deretan alat tulis di bilah tablet sekarang ringkas: **satu tombol pilihan kuas** (gambar dan nama alat yang
+  sedang dipakai) dan **satu tombol pengaturan** (warna dan ketebalan, atau cara menghapus, bentuk, tipe selotip).
+- Ketuk tombolnya: pilihan muncul **tegak ke bawah**. Pilihan kuas berisi Pena, Pensil, Kuas, Qalam, Cat air,
+  Spidol, Stabilo, Penghapus, lalu Bentuk, Selotip, dan Pilih. Pengaturan penghapus berisi Kuas halus / Sebagian /
+  Goresan utuh, Termasuk gambar, kekuatan kuas, dan ketebalan.
+- Tombol panah kecil di sebelah kiri tombol kuas menjajarkan lagi semua alat, warna, dan ketebalan di bilah seperti
+  dulu (dan sebaliknya). Pilihan ini diingat.
+
 ## Perubahan 0.1.138: Garis dan warna tabel ala Word
 
 - Pilih tabel, lalu **Garis & warna** (atau dari bilah ketik saat mengisi sel):
