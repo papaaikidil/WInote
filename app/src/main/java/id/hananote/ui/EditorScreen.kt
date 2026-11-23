@@ -7897,7 +7897,7 @@ private fun NewTextBar(c: EditorController, fonts: List<FontEntry>, onAddFont: (
             Spacer(Modifier.width(6.dp))
             return
         }
-        null -> Unit
+        BarPanel.CELL_FILL, null -> Unit
     }
     TextButton(onClick = { panel = BarPanel.FONT }) {
         Text(fonts.firstOrNull { it.id == c.lastFont }?.name ?: "Huruf", maxLines = 1)
