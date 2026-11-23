@@ -179,7 +179,8 @@ sel() { echo $(( TX0 + (TX1 - TX0) * (2 * $2 + 1) / 6 )) $(( TY0 + (TY1 - TY0) *
 
 # ---------- 1. Sisipkan tabel di halaman 2 ----------
 tap_node "Halaman berikutnya" 3 || true
-tap_node "Sisipkan" 2 || echo "SISIPKAN TIDAK ADA"
+# Kelompok Sisipkan mungkin sudah terbuka (pilihan terakhir diingat).
+find_node "Tabel" | grep -q . || tap_node "Sisipkan" 2 || echo "SISIPKAN TIDAK ADA"
 tap_node "Tabel" 3 || echo "TABEL TIDAK ADA"
 tap_node "Sisipkan" 3 || echo "SISIPKAN TABEL TIDAK ADA"
 sleep 1
@@ -233,6 +234,7 @@ shot mode-baca
 tap_node "Keluar dari mode baca" 3 || true
 # ---------- 5. Tersimpan: tutup lalu buka lagi ----------
 tap_node "Kembali ke rak" 5 || echo "KEMBALI KE RAK TIDAK ADA"
+find_node "Dokumen PDF" | grep -q . || tap_node "Buku Pertama" 4 || true
 tap_node "Dokumen PDF" 6 || echo "BUKA CATATAN TIDAK ADA"
 sleep 3
 shot dibuka-lagi
