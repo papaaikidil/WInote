@@ -201,10 +201,10 @@ shot dialog-warna
 tap_node "Terapkan" 3 || echo "TERAPKAN TIDAK ADA"
 shot tabel-bergaya
 # ---------- 3. Ketik isi sel, warna satu kolom, dan buka dialog dari bilah ketik ----------
-kotak_tabel
-# Tutup kelompok Sisipkan (punya tombol "Teks" juga), lalu pilih mode Teks di baki pena dan ketuk sel pertama.
+# Tutup kelompok Sisipkan (punya tombol "Teks" juga), pilih mode Teks di baki pena, lalu ketuk sel judul pertama.
 find_node "Tabel" | grep -q . && tap_node "Sisipkan" 2
 tap_node "Teks" 2 || true
+kotak_tabel
 adb shell input tap $(sel 0 0); sleep 2
 adb shell input text "Barang"; sleep 1
 tap_node "Sel berikutnya" 1 || echo "SEL BERIKUTNYA TIDAK ADA"
@@ -217,7 +217,6 @@ tap_node "Sel berikutnya" 1 || true
 adb shell input text "10"; sleep 1
 tap_node "Sel berikutnya" 1 || true
 adb shell input text "5000"; sleep 1
-adb shell input keyevent 4; sleep 1
 shot sel-terisi
 tap_node "Warna sel" 2 || echo "WARNA SEL TIDAK ADA"
 shot panel-warna-sel
@@ -243,7 +242,9 @@ sleep 3
 shot dibuka-lagi
 # ---------- 6. Tanpa garis sama sekali ----------
 kotak_tabel
-tap_node "Pilih" 2 || true
+tap_node "Pensil" 2 || true
+tap_node "Pilih" 2 || echo "PILIH TIDAK ADA"
+kotak_tabel
 adb shell input tap $(( (TX0 + TX1) / 2 )) $(( (TY0 + TY1) / 2 )); sleep 2
 shot dipilih-lagi
 tap_node "Garis & warna" 3 || echo "GARIS WARNA KEDUA TIDAK ADA"
