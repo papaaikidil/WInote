@@ -202,6 +202,8 @@ tap_node "Terapkan" 3 || echo "TERAPKAN TIDAK ADA"
 shot tabel-bergaya
 # ---------- 3. Ketik isi sel, warna satu kolom, dan buka dialog dari bilah ketik ----------
 kotak_tabel
+# Tutup kelompok Sisipkan (punya tombol "Teks" juga), lalu pilih mode Teks di baki pena dan ketuk sel pertama.
+find_node "Tabel" | grep -q . && tap_node "Sisipkan" 2
 tap_node "Teks" 2 || true
 adb shell input tap $(sel 0 0); sleep 2
 adb shell input text "Barang"; sleep 1

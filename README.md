@@ -1293,6 +1293,23 @@ chip Mode baca menandai halaman ini secara manual.
   Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
   disorot.
 
+## Perubahan 0.1.138: Garis dan warna tabel ala Word
+
+- Pilih tabel, lalu **Garis & warna** (atau dari bilah ketik saat mengisi sel):
+  - **Garis yang tampil** seperti menu Batas di Word: Semua garis, Garis luar saja, Garis dalam saja, Tanpa garis,
+    atau nyalakan/matikan satu per satu (Atas, Bawah, Kiri, Kanan, Dalam mendatar, Dalam tegak).
+  - **Tebal garis**: Bawaan, ½, ¾, 1, 1½, 2¼, 3, 4½, atau 6 pt.
+  - **Warna garis**, **warna isi sel**, dan **warna baris judul** (pilihan warna muda ala Word, warna tegas, atau
+    warna sendiri). Baris judul bisa dinyalakan atau dimatikan.
+  - **Baris selang-seling**: baris isi berganti warna supaya tabel panjang mudah dibaca.
+  - Pratinjau di dalam jendela langsung mengikuti pilihan.
+- **Warna satu sel, satu baris, atau satu kolom**: saat mengetik di sel, ketuk **Warna sel**, pilih Sel ini / Baris /
+  Kolom / Semua sel, lalu warnanya. Baris baru ikut warna baris di atasnya.
+- Huruf di sel berwarna gelap otomatis jadi putih supaya tetap terbaca.
+- Garis yang dimatikan tetap tampil **putus-putus samar** saat menyunting (seperti "Lihat Garis Kisi" di Word) supaya
+  sel mudah ditemukan; garis itu tidak tampil di mode baca, ekspor, atau cetak.
+- Catatan yang dibuka di WInote versi lama tetap aman: tabelnya tampil dengan garis dan warna bawaan.
+
 ## Perubahan 0.1.137: Fitur catatan ala Goodnotes
 
 - **Bentuk otomatis**: gambar lingkaran, kotak, segitiga, garis, atau panah seperti biasa, lalu **tahan pena sebentar**
