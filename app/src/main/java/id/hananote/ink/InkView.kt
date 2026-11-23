@@ -2604,10 +2604,24 @@ class InkView(context: Context) : View(context) {
         var uy = my - cy
         val len = hypot(ux, uy)
         if (len < 0.5f) { ux = 0f; uy = -1f } else { ux /= len; uy /= len }
-        handlePos[0] = mx
-        handlePos[1] = my
-        handlePos[2] = mx + ux * 30f * density
-        handlePos[3] = my + uy * 30f * density
+        // Pegangan putar di atas kotak; bila tertutup bilah pilihan di atas kanvas, pindah ke bawah kotak.
+        // Selama pegangan diseret, sisinya tidak berganti supaya tidak melompat.
+        if (!(lifted != null && dragCorner == 4)) {
+            handleBelow = my + uy * 30f * density - 14f * density < (selectionBarTop + 60f) * density
+        }
+        if (handleBelow) {
+            val bx = (corners[4] + corners[6]) / 2f
+            val by = (corners[5] + corners[7]) / 2f
+            handlePos[0] = bx
+            handlePos[1] = by
+            handlePos[2] = bx - ux * 30f * density
+            handlePos[3] = by - uy * 30f * density
+        } else {
+            handlePos[0] = mx
+            handlePos[1] = my
+            handlePos[2] = mx + ux * 30f * density
+            handlePos[3] = my + uy * 30f * density
+        }
         val off = 14f * density
         sidePos[0] = (corners[2] + corners[4]) / 2f + off
         sidePos[1] = (corners[3] + corners[5]) / 2f
@@ -2647,6 +2661,10 @@ class InkView(context: Context) : View(context) {
     }
 
     private val uprightPts = FloatArray(2)
+
+    /** Jarak atas bilah pilihan dari tepi atas kanvas (dp); pegangan putar menghindari bilah itu. */
+    var selectionBarTop = 12f
+    private var handleBelow = false
 
     private fun drawSelection(canvas: Canvas) {
         lasso?.let { pts ->

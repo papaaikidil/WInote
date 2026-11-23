@@ -3808,6 +3808,7 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
                 v.fingerDraws = c.fingerDraws
                 v.deskColor = desk
                 v.accentColor = accent
+                v.selectionBarTop = if (isTablet && c.focusMode) 80f else 12f
             },
         )
         c.canvasMenu?.let { CanvasMenuPopup(c, it) }
