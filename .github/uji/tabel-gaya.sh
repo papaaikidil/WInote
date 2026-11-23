@@ -161,8 +161,9 @@ kotak_tabel() {
 from PIL import Image
 im = Image.open('/tmp/t.png').convert('RGB'); W, H = im.size; px = im.load()
 xs = []; ys = []
-for y in range(0, H, 2):
-    for x in range(0, W, 2):
+# Hanya di area halaman: di bawah bilah alat dan di kanan daftar halaman (yang juga punya titik warna biru).
+for y in range(int(H * 0.33), int(H * 0.96), 2):
+    for x in range(int(W * 0.12), int(W * 0.97), 2):
         r, g, b = px[x, y]
         if abs(r - 47) < 30 and abs(g - 67) < 30 and abs(b - 181) < 35:
             xs.append(x); ys.append(y)
