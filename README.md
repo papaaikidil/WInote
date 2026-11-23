@@ -1293,6 +1293,37 @@ chip Mode baca menandai halaman ini secara manual.
   Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
   disorot.
 
+## Perubahan 0.1.137: Fitur catatan ala Goodnotes
+
+- **Bentuk otomatis**: gambar lingkaran, kotak, segitiga, garis, atau panah seperti biasa, lalu **tahan pena sebentar**
+  di ujung goresan: goresan langsung jadi bentuk yang rapi (garis masih bisa diarahkan selama pena ditahan). Bisa
+  dimatikan di Alat → Bentuk otomatis.
+- **Cari di dalam catatan** (ikon kaca pembesar di atas): kata dicari di teks ketik, stiker, tabel, mind map, link,
+  tulisan tangan yang sudah terbaca, dan teks asli PDF di semua halaman. Hasilnya disorot kuning, bisa dituju satu per
+  satu (panah atas/bawah) atau dipilih dari daftar hasil.
+- **Daftar isi** (ikon daftar di atas): halaman bisa dijadikan bab atau sub-bab dengan judul sendiri (judulnya diusulkan
+  dari isi halaman), diubah namanya, atau dihapus. PDF yang punya daftar isi bawaan langsung tampil di bagian "Daftar
+  isi bawaan PDF". Ketuk bab untuk melompat ke halamannya. Halaman juga bisa dimasukkan dari menu gambar kecil halaman.
+- **Link ke halaman atau catatan lain**: Sisipkan → Link sekarang punya tiga pilihan: Website, Halaman (di catatan ini),
+  atau Catatan lain (bisa langsung ke halaman tertentu). Ketuk link lalu Buka untuk melompat.
+- **Kartu hafalan** (Alat → Kartu hafalan): tiap **selotip hafalan otomatis jadi kartu**: depannya potongan halaman
+  dengan selotip tertutup, belakangnya terbuka. Bisa juga menulis kartu tanya-jawab sendiri. Saat belajar, jawab dulu
+  dalam hati, ketuk Tampilkan jawaban, lalu pilih Lupa, Ragu, atau Ingat: kartu yang sudah hafal diulang makin jarang
+  (1, 3, 7, 14, lalu 30 hari), yang lupa diulang lagi di sesi yang sama.
+- **Mode presentasi + laser** (Alat → Presentasi): bila tablet tersambung ke proyektor atau monitor (kabel USB-C ke
+  HDMI atau layar nirkabel), layar itu hanya menampilkan halaman yang sedang dibuka, tanpa tombol, dan ikut berganti
+  saat halaman dipindah atau ditulisi. Laser merah (pena atau satu jari) tampil di tablet dan di layar presentasi, lalu
+  hilang sendiri; tidak tersimpan di catatan. Dua jari tetap menggeser halaman. Tanpa layar lain, halaman tampil layar
+  penuh di tablet. Laser juga bisa dipakai sendiri (Alat → Laser).
+- **Pindai dokumen dengan kamera**: Sisipkan → Pindai (menambah halaman ke catatan yang sedang dibuka) atau Catatan
+  baru → Pindai dokumen dengan kamera (jadi catatan baru). Tepi kertas dikenali otomatis, bisa dipotong, diluruskan,
+  dan diberi filter; hasilnya jadi halaman PDF yang bisa ditulisi. Pemindai memakai Layanan Google Play (unduhan
+  pertama perlu internet).
+- **Folder bertingkat**: buku bisa berisi **sub-buku** (Pilihan buku → Sub-buku baru, atau tombol +), dan sub-buku
+  bisa berisi sub-buku lagi. Jalur folder tampil di atas (Rak › Kuliah › Semester 3), dan buku bisa dipindahkan ke
+  buku lain (Pilihan buku → Pindahkan buku ke…). Menghapus buku ikut memindahkan sub-bukunya ke Sampah, dan
+  memulihkannya mengembalikan semuanya.
+
 ## Perubahan 0.1.136: Bilah fitur turun ke bawah, bentuk pindah ke alat Bentuk
 
 - **Bilah fitur di atas**: baris atas hanya berisi judul kelompok (Sisipkan, Suara, Tulisan, Alat, Halaman, PDF).

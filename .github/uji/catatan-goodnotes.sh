@@ -196,7 +196,7 @@ adb shell input keyevent 4; sleep 1
 find_node "Daftar isi bawaan PDF" | grep -q . || tap_node "Daftar isi" 4 || true
 tap_node "Lampiran huruf Times" 4 || echo "BAB PDF TIDAK ADA"
 shot ke-bab-pdf
-adb shell run-as $PKG sh -c "cat files/hana/notes/*/outline.json" < /dev/null > $OUT/daftar-isi.json 2>&1
+adb shell "run-as $PKG sh -c 'cat files/hana/notes/*/outline.json'" < /dev/null > $OUT/daftar-isi.json 2>&1
 # ---------- 4. Link ke halaman lain ----------
 tap_node "Halaman sebelumnya" 3 || true
 tap_node "Link" 3 || echo "LINK TIDAK ADA"
@@ -207,7 +207,7 @@ tap_node "Sisipkan" 3 || echo "SISIPKAN LINK TIDAK ADA"
 shot link-tersisip
 tap_node "Buka" 4 || echo "BUKA LINK TIDAK ADA"
 shot link-dibuka
-adb shell run-as $PKG sh -c "ls -la files/hana/notes/*/" < /dev/null > $OUT/berkas.txt 2>&1
+adb shell "run-as $PKG sh -c 'ls -la files/hana/notes/*/'" < /dev/null > $OUT/berkas.txt 2>&1
 tap_node "Halaman sebelumnya" 3 || true
 # ---------- 5. Kartu hafalan: selotip di atas "kilogram" + satu kartu tanya-jawab ----------
 tap_node "Selotip" 3 || echo "SELOTIP TIDAK ADA"
@@ -245,15 +245,16 @@ tap_node "Ingat" 3 || true
 shot belajar-selesai
 tap_node "Kembali ke daftar" 3 || true
 shot kartu-jadwal
-adb shell run-as $PKG sh -c "cat files/hana/notes/*/cards.json" < /dev/null > $OUT/kartu.json 2>&1
+adb shell "run-as $PKG sh -c 'cat files/hana/notes/*/cards.json'" < /dev/null > $OUT/kartu.json 2>&1
 tap_node "Tutup kartu hafalan" 2 || adb shell input keyevent 4
 sleep 1
-# ---------- 6. Presentasi ke layar lain (layar tambahan emulator) + laser ----------
+# ---------- 6. Presentasi: mulai tanpa layar lain, lalu layar tambahan dicolok (emulator: overlay display) ----------
+find_node "Presentasi" | grep -q . || tap_node "Alat" 2 || true
+tap_node "Presentasi" 4 || echo "PRESENTASI TIDAK ADA"
+shot presentasi-tablet
 adb shell settings put global overlay_display_devices 1280x720/213
 sleep 6
-adb shell dumpsys display | grep -iE "mDisplayId|FLAG_PRESENTATION|overlay" | head -20 > $OUT/layar.txt 2>&1
-find_node "Presentasi" | grep -q . || tap_node "Alat" 2 || true
-tap_node "Presentasi" 5 || echo "PRESENTASI TIDAK ADA"
+adb shell dumpsys display | grep -iE "FLAG_PRESENTATION" | head -5 > $OUT/layar.txt 2>&1
 shot presentasi-mulai
 # Laser: jalur panjang dijalankan di latar supaya tangkapan layar diambil saat jari masih bergerak.
 read A B < <(pct 120 330); read C D < <(pct 300 300); read E F < <(pct 470 340); read G I < <(pct 300 410)
@@ -272,15 +273,12 @@ sleep 2
 shot laser-hilang
 tap_node "Halaman berikutnya" 4 || true
 shot presentasi-halaman-2
-tap_node "Selesai" 3 || echo "SELESAI PRESENTASI TIDAK ADA"
-shot presentasi-selesai
+# Layar dicabut: presentasi kembali layar penuh di tablet.
 adb shell settings delete global overlay_display_devices
 sleep 5
-# Tanpa layar lain: layar penuh di tablet dengan laser.
-find_node "Presentasi" | grep -q . || tap_node "Alat" 2 || true
-tap_node "Presentasi" 4 || true
-shot presentasi-tablet
-tap_node "Selesai" 3 || true
+shot layar-dicabut
+tap_node "Selesai" 3 || echo "SELESAI PRESENTASI TIDAK ADA"
+shot presentasi-selesai
 tap_node "Halaman sebelumnya" 3 || true
 # ---------- 7. Sub-buku (folder bertingkat) dan pemindai ----------
 tap_node "Kembali ke rak" 5 || echo "KEMBALI KE RAK TIDAK ADA"
@@ -290,7 +288,7 @@ tap_node "Sub-buku baru" 3 || echo "SUB-BUKU BARU TIDAK ADA"
 tap_node "Nama buku" 1 || true
 adb shell input text "Bab%s1"; sleep 1
 adb shell input keyevent 4; sleep 1
-tap_node "Buat" 4 || echo "BUAT SUB-BUKU TIDAK ADA"
+tap_node "Buat buku" 4 || echo "BUAT SUB-BUKU TIDAK ADA"
 shot sub-buku-ada
 tap_node "Bab 1" 4 || echo "BUKA SUB-BUKU TIDAK ADA"
 shot di-sub-buku
@@ -299,7 +297,7 @@ tap_node "Sub-buku baru" 3 || true
 tap_node "Nama buku" 1 || true
 adb shell input text "Pertemuan%s1"; sleep 1
 adb shell input keyevent 4; sleep 1
-tap_node "Buat" 4 || true
+tap_node "Buat buku" 4 || echo "BUAT SUB-SUB-BUKU TIDAK ADA"
 shot sub-sub-buku
 tap_node "Pilihan buku" 2 || true
 tap_node "Pindahkan buku ke…" 3 || echo "PINDAHKAN BUKU TIDAK ADA"
@@ -310,7 +308,7 @@ tap_node "Catatan baru" 3 || true
 shot catatan-baru-pindai
 tap_node "Pindai dokumen dengan kamera…" 8 || echo "PINDAI TIDAK ADA"
 shot pemindai
-adb shell run-as $PKG sh -c "cat files/hana/books.json" < /dev/null > $OUT/buku.json 2>&1
+adb shell "run-as $PKG sh -c 'cat files/hana/books.json'" < /dev/null > $OUT/buku.json 2>&1
 adb logcat -d | grep -iE "FATAL|AndroidRuntime|hananote" | tail -80 > $OUT/logcat.txt
 grep -c "FATAL" $OUT/logcat.txt
 echo selesai

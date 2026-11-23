@@ -4428,9 +4428,17 @@ fun EditorScreen(
         c.canvasMenu?.let { CanvasMenuPopup(c, it) }
         if (c.viewTilted) StraightenChip(c, Modifier.align(Alignment.TopStart).padding(12.dp))
         if (c.readMode) ReadModeChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 14.dp else 10.dp))
-        if (c.readMode && !c.searchOpen) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
+        if (c.readMode && !c.searchOpen && !c.presenting) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
         if (c.searchOpen) NoteSearchBar(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.readMode) 64.dp else 10.dp))
-        if (c.presenting) PresentationChip(c, Modifier.align(Alignment.BottomCenter).padding(bottom = if (isTablet) 20.dp else 84.dp))
+        if (c.presenting) {
+            // Di atas (di bawah bilah layar penuh / chip mode baca), supaya tidak tertutup pesan di bawah.
+            val top = when {
+                c.readMode -> if (c.focusMode) 72.dp else 66.dp
+                c.focusMode && isTablet -> 80.dp
+                else -> 12.dp
+            }
+            PresentationChip(c, Modifier.align(Alignment.TopCenter).padding(top = top))
+        }
         if (!c.readMode && c.mode == InputMode.PDF && c.pdfSel != null) PdfActionBar(c, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         (c.convert as? ConvertState.Working)?.let { ConvertProgress(c, it.message, Modifier.align(Alignment.TopCenter).padding(top = 72.dp)) }
         InlineEditing(c, fonts, addedFont, addFont, ribbon = isTablet && !c.focusMode && c.mode == InputMode.TYPE)
@@ -4926,12 +4934,13 @@ private fun FeatureButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     val fg = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     Column(
         Modifier
-            .width(64.dp)
+            // Label panjang (Bentuk otomatis, Kartu hafalan) tampil utuh: tombolnya ikut melebar.
+            .widthIn(min = 64.dp)
             .height(52.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(bg)
             .toolClick(label, onClick)
-            .padding(top = 6.dp),
+            .padding(top = 6.dp, start = 6.dp, end = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(22.dp))
