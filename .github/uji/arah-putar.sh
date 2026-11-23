@@ -111,6 +111,7 @@ sleep 15
 shot awal
 find_bounds "Selotip" > /dev/null
 cp $OUT/ui-last.xml $OUT/ui-awal.xml
+python3 -m pip install --quiet --break-system-packages pillow >/dev/null 2>&1 || python3 -m pip install --quiet pillow >/dev/null 2>&1
 # ---------- 1. Putar tulisan yang dipilih ----------
 # Tiga baris tulisan tangan di tengah halaman.
 for y in 40 46 52; do gerak garis 35 $y 60 $y 7; done
@@ -129,16 +130,18 @@ W, H, den = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
 dp = den / 160
 cx = int(W * 0.475)
 top = int(H * 0.40)
-xs = ys = c = 0
-for y in range(int(top - 60 * dp), int(top - 16 * dp)):
+xs = []; ys = []
+for y in range(int(top - 80 * dp), int(top - 14 * dp)):
     for x in range(int(cx - 30 * dp), int(cx + 30 * dp)):
         r, g, b = im.getpixel((x, y))
         if r + g + b < 360:
-            xs += x; ys += y; c += 1
-if c:
-    print(xs // c, ys // c)
+            xs.append(x); ys.append(y)
+# Median: lingkaran pegangan (padat) mengalahkan garis putus-putus kotak.
+if xs:
+    xs.sort(); ys.sort()
+    print(xs[len(xs) // 2], ys[len(ys) // 2])
 else:
-    print(cx, int(top - 36 * dp))
+    print(cx, int(top - 50 * dp))
 PY
 )
 echo "pegangan putar: $HX $HY" | tee $OUT/pegangan.txt
@@ -179,7 +182,7 @@ tap_node "Terapkan" 4 || echo "TERAPKAN TIDAK ADA"
 shot jadi-mendatar
 tap_node "Tambah" 4 || echo "TAMBAH TIDAK ADA"
 shot halaman-baru-mendatar
-adb shell run-as $PKG sh -c 'cat files/hana/notes/*/pages.json' > $OUT/halaman-sebelum-tutup.json 2>&1
+adb shell "run-as $PKG sh -c 'cat files/hana/notes/*/pages.json'" < /dev/null > $OUT/halaman-sebelum-tutup.json 2>&1
 # Tutup aplikasi lalu buka lagi: tetap mendatar.
 sleep 4
 adb shell input keyevent KEYCODE_HOME; sleep 4
