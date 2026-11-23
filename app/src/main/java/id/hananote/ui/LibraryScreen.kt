@@ -689,7 +689,7 @@ private fun SubBooksRow(repo: Repository, children: List<Book>, all: List<Book>,
                     Spacer(Modifier.height(8.dp))
                     Text(b.title, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
-                        "${counts[b.id] ?: 0} catatan" + if (sub > 0) " · $sub" else "",
+                        "${counts[b.id] ?: 0} catatan" + if (sub > 0) "\n$sub sub-buku" else "",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
