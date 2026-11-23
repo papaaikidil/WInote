@@ -1,0 +1,80 @@
+11-23 04:56:29.636 10013 10013 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:30.671 10013 10013 D AndroidRuntime: Shutting down VM
+11-23 04:56:31.548   515  1878 D CoreBackPreview: Window{aa2a04 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 04:56:31.554   515  1878 W InputManager-JNI: Input channel object 'aa2a04 id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 04:56:31.621  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:56:35.996 10042 10042 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:35.999 10042 10042 I AndroidRuntime: Using default boot image
+11-23 04:56:35.999 10042 10042 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:36.092 10042 10042 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:37.124 10042 10042 D AndroidRuntime: Shutting down VM
+11-23 04:56:38.239  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-23 04:56:40.049 10067 10067 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:40.051 10067 10067 I AndroidRuntime: Using default boot image
+11-23 04:56:40.051 10067 10067 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:40.125 10067 10067 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:41.152 10067 10067 D AndroidRuntime: Shutting down VM
+11-23 04:56:42.041   515  1790 D CoreBackPreview: Window{d922120 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@60334aa, mPriority=0}
+11-23 04:56:42.214  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:56:45.485 10097 10097 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:45.489 10097 10097 I AndroidRuntime: Using default boot image
+11-23 04:56:45.489 10097 10097 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:45.587 10097 10097 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:46.644 10097 10097 D AndroidRuntime: Shutting down VM
+11-23 04:56:47.530   515  1186 D CoreBackPreview: Window{d922120 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 04:56:47.534   515  1186 W InputManager-JNI: Input channel object 'd922120 id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 04:56:47.568  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:56:47.625 10121 10121 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:47.630 10121 10121 I AndroidRuntime: Using default boot image
+11-23 04:56:47.630 10121 10121 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:47.718 10121 10121 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:48.736 10121 10121 D AndroidRuntime: Shutting down VM
+11-23 04:56:49.784  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-23 04:56:51.660 10146 10146 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:51.663 10146 10146 I AndroidRuntime: Using default boot image
+11-23 04:56:51.663 10146 10146 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:51.752 10146 10146 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:52.785 10146 10146 D AndroidRuntime: Shutting down VM
+11-23 04:56:53.674   515  1186 D CoreBackPreview: Window{27f8c3c u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@66e6e6, mPriority=0}
+11-23 04:56:54.212  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:56:57.113 10177 10177 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:56:57.117 10177 10177 I AndroidRuntime: Using default boot image
+11-23 04:56:57.117 10177 10177 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:56:57.216 10177 10177 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:56:58.305 10177 10177 D AndroidRuntime: Shutting down VM
+11-23 04:56:59.193   515  1869 D CoreBackPreview: Window{27f8c3c u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 04:56:59.205   515  2503 W InputManager-JNI: Input channel object '27f8c3c id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 04:56:59.258   515  1869 D CoreBackPreview: Window{47dcece u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@9d53701, mPriority=0}
+11-23 04:56:59.411  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:57:07.651 10220 10220 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:57:07.655 10220 10220 I AndroidRuntime: Using default boot image
+11-23 04:57:07.655 10220 10220 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:57:07.751 10220 10220 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:57:08.808 10220 10220 D AndroidRuntime: Shutting down VM
+11-23 04:57:09.697   515  2570 D CoreBackPreview: Window{47dcece u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 04:57:09.700   515  2570 W InputManager-JNI: Input channel object '47dcece id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 04:57:09.738  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:57:12.740 10248 10248 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:57:12.742 10248 10248 I AndroidRuntime: Using default boot image
+11-23 04:57:12.742 10248 10248 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:57:12.825 10248 10248 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:57:13.841 10248 10248 D AndroidRuntime: Shutting down VM
+11-23 04:57:19.166 10277 10277 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:57:19.169 10277 10277 I AndroidRuntime: Using default boot image
+11-23 04:57:19.169 10277 10277 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:57:19.269 10277 10277 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:57:20.309 10277 10277 D AndroidRuntime: Shutting down VM
+11-23 04:57:25.625 10306 10306 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:57:25.629 10306 10306 I AndroidRuntime: Using default boot image
+11-23 04:57:25.629 10306 10306 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:57:25.726 10306 10306 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:57:26.760 10306 10306 D AndroidRuntime: Shutting down VM
+11-23 04:57:28.289  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=16908290 fieldName=null extras=null}, false)
+11-23 04:57:31.320  1600  1600 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 04:57:32.314 10342 10342 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 04:57:32.318 10342 10342 I AndroidRuntime: Using default boot image
+11-23 04:57:32.318 10342 10342 I AndroidRuntime: Leaving lock profiling enabled
+11-23 04:57:32.413 10342 10342 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 04:57:33.440 10342 10342 D AndroidRuntime: Shutting down VM
+11-23 04:57:38.729 10373 10373 W sh      : type=1400 audit(0.0:66): avc: denied { ioctl } for path="socket:[110766]" dev="sockfs" ino=110766 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
+11-23 04:57:38.729 10373 10373 W sh      : type=1400 audit(0.0:67): avc: denied { ioctl } for path="socket:[110768]" dev="sockfs" ino=110768 ioctlcmd=0x5401 scontext=u:r:runas_app:s0:c174,c256,c512,c768 tcontext=u:r:su:s0 tclass=unix_stream_socket permissive=0 app=id.hananote.app
