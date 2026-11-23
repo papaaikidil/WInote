@@ -362,6 +362,27 @@ fun ShapeKindIcon(kind: ShapeKind, color: Color, modifier: Modifier = Modifier) 
             ShapeKind.TRIANGLE -> drawPath(Path().apply {
                 moveTo(w / 2f, p); lineTo(w - p, h - p); lineTo(p, h - p); close()
             }, color, style = line)
+            ShapeKind.ROUNDED -> drawRoundRect(
+                color, Offset(p, p), Size(w - 2 * p, h - 2 * p),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()), style = line,
+            )
+            ShapeKind.DIAMOND, ShapeKind.HEXAGON, ShapeKind.STAR, ShapeKind.HEART -> {
+                val unit = id.hananote.ink.Tapes.polygon(
+                    when (kind) {
+                        ShapeKind.DIAMOND -> id.hananote.data.TapeShape.DIAMOND
+                        ShapeKind.HEXAGON -> id.hananote.data.TapeShape.HEXAGON
+                        ShapeKind.STAR -> id.hananote.data.TapeShape.STAR
+                        else -> id.hananote.data.TapeShape.HEART
+                    }
+                )
+                if (unit != null) {
+                    drawPath(Path().apply {
+                        moveTo(p + unit[0] * (w - 2 * p), p + unit[1] * (h - 2 * p))
+                        for (i in 2 until unit.size step 2) lineTo(p + unit[i] * (w - 2 * p), p + unit[i + 1] * (h - 2 * p))
+                        close()
+                    }, color, style = line)
+                }
+            }
         }
     }
 }

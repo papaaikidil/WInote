@@ -111,7 +111,8 @@ val TapeColors: List<Int> = listOf(
 )
 
 enum class ShapeKind(val label: String) {
-    LINE("Garis"), ARROW("Panah"), RECT("Kotak"), ELLIPSE("Lingkaran"), TRIANGLE("Segitiga")
+    LINE("Garis"), ARROW("Panah"), RECT("Kotak"), ROUNDED("Kotak tumpul"), ELLIPSE("Lingkaran"), TRIANGLE("Segitiga"),
+    DIAMOND("Belah ketupat"), HEXAGON("Segi enam"), STAR("Bintang"), HEART("Hati"),
 }
 
 val StickyColors: List<Int> = listOf(

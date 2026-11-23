@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import id.hananote.data.ShapeKind
 import id.hananote.data.Stroke
+import id.hananote.data.TapeShape
 import id.hananote.data.Tool
 import java.io.File
 import kotlin.math.atan2
@@ -43,6 +44,45 @@ object Shapes {
             ShapeKind.TRIANGLE -> {
                 val cx = (l + r) / 2f
                 listOf(stroke(floatArrayOf(cx, r, l, cx), floatArrayOf(t, b, b, t), color, width))
+            }
+            ShapeKind.ROUNDED -> {
+                // Kotak bersudut bulat: empat busur seperempat lingkaran disambung garis lurus.
+                val rad = min(r - l, b - t) * 0.22f
+                val xs = ArrayList<Float>()
+                val ys = ArrayList<Float>()
+                val corners = arrayOf(
+                    floatArrayOf(r - rad, t + rad, -90f), floatArrayOf(r - rad, b - rad, 0f),
+                    floatArrayOf(l + rad, b - rad, 90f), floatArrayOf(l + rad, t + rad, 180f),
+                )
+                for (cn in corners) {
+                    for (i in 0..8) {
+                        val ang = Math.toRadians((cn[2] + i * 90f / 8f).toDouble())
+                        xs.add(cn[0] + rad * cos(ang).toFloat())
+                        ys.add(cn[1] + rad * sin(ang).toFloat())
+                    }
+                }
+                xs.add(xs[0]); ys.add(ys[0])
+                listOf(stroke(xs.toFloatArray(), ys.toFloatArray(), color, width))
+            }
+            ShapeKind.DIAMOND, ShapeKind.HEXAGON, ShapeKind.STAR, ShapeKind.HEART -> {
+                // Titik-titik sama dengan bentuk selotip dulu, dipasang ke kotak yang ditarik dan ditutup.
+                val unit = Tapes.polygon(
+                    when (kind) {
+                        ShapeKind.DIAMOND -> TapeShape.DIAMOND
+                        ShapeKind.HEXAGON -> TapeShape.HEXAGON
+                        ShapeKind.STAR -> TapeShape.STAR
+                        else -> TapeShape.HEART
+                    }
+                ) ?: return emptyList()
+                val n = unit.size / 2
+                val xs = FloatArray(n + 1)
+                val ys = FloatArray(n + 1)
+                for (i in 0 until n) {
+                    xs[i] = l + unit[i * 2] * (r - l)
+                    ys[i] = t + unit[i * 2 + 1] * (b - t)
+                }
+                xs[n] = xs[0]; ys[n] = ys[0]
+                listOf(stroke(xs, ys, color, width))
             }
             ShapeKind.ELLIPSE -> {
                 val n = 73

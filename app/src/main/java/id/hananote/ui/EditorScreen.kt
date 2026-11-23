@@ -533,19 +533,10 @@ class EditorController(private val repo: Repository, val noteId: String) {
     )
         private set
     /** Bentuk selotip hafalan yang terakhir dipilih. */
+    /** Tipe selotip: pita Lurus atau Bebas (bentuk seperti kotak dan bintang ada di alat Bentuk). */
     var tapeShape by mutableStateOf(
         runCatching { TapeShape.valueOf(prefs.getString("tape_shape", "STRAIGHT") ?: "STRAIGHT") }.getOrDefault(TapeShape.STRAIGHT)
-    )
-        private set
-    /** Tipe pita terakhir (Lurus/Bebas) dan bentuk bidang terakhir, untuk dua tombol pilihan selotip. */
-    var tapeBand by mutableStateOf(
-        runCatching { TapeShape.valueOf(prefs.getString("tape_band", "STRAIGHT") ?: "STRAIGHT") }.getOrDefault(TapeShape.STRAIGHT)
             .takeIf { it.isBand } ?: TapeShape.STRAIGHT
-    )
-        private set
-    var tapeArea by mutableStateOf(
-        runCatching { TapeShape.valueOf(prefs.getString("tape_area", "RECT") ?: "RECT") }.getOrDefault(TapeShape.RECT)
-            .takeIf { !it.isBand } ?: TapeShape.RECT
     )
         private set
     var ruler by mutableStateOf(false)
@@ -1274,10 +1265,10 @@ class EditorController(private val repo: Repository, val noteId: String) {
     }
 
     fun chooseTapeShape(k: TapeShape) {
+        if (!k.isBand) return
         tapeShape = k
-        if (k.isBand) tapeBand = k else tapeArea = k
         selectTape()
-        prefs.edit().putString("tape_shape", k.name).putString(if (k.isBand) "tape_band" else "tape_area", k.name).apply()
+        prefs.edit().putString("tape_shape", k.name).apply()
     }
 
     /** Tutup ([covered]) atau buka semua selotip di halaman ini. */
@@ -4108,8 +4099,6 @@ private fun TabletEditor(
                             // Selotip: bentuk (menu ringkas) dan tutup/buka/lepas semua, lalu warna dan ketebalan.
                             Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
                                 TapeTypePicker(c)
-                                Spacer(Modifier.width(6.dp))
-                                TapeAreaPicker(c)
                                 TapeActionIcons(c)
                             }
                             BarDivider(Modifier.align(Alignment.CenterVertically))
@@ -4835,10 +4824,6 @@ private fun ToolOptions(c: EditorController, onCustom: () -> Unit) {
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                 TapeShapeChoices(c, TapeShape.BANDS)
             }
-            Text("Bentuk", style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
-                TapeShapeChoices(c, TapeShape.AREAS)
-            }
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                 TapeActions(c)
             }
@@ -4981,8 +4966,6 @@ private fun FocusToolbar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
                             if (c.mode == InputMode.TAPE) {
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                                     TapeShapeChoices(c, TapeShape.BANDS)
-                                    BarDivider(Modifier.align(Alignment.CenterVertically))
-                                    TapeShapeChoices(c, TapeShape.AREAS)
                                 }
                                 Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { TapeActions(c) }
                             }
@@ -5096,25 +5079,11 @@ private fun TapeShapeChoices(c: EditorController, shapes: List<TapeShape>) {
 private fun TapeTypePicker(c: EditorController) {
     TapeMenuButton(
         c = c,
-        shown = c.tapeBand,
-        label = c.tapeBand.label,
-        active = c.tapeShape.isBand,
+        shown = c.tapeShape,
+        label = c.tapeShape.label,
+        active = true,
         description = "Tipe selotip",
         choices = TapeShape.BANDS,
-    )
-}
-
-/** Bentuk selotip: kotak, lingkaran, segitiga, bintang, hati, ... (untuk bilah tablet). */
-@Composable
-private fun TapeAreaPicker(c: EditorController) {
-    val active = !c.tapeShape.isBand
-    TapeMenuButton(
-        c = c,
-        shown = c.tapeArea,
-        label = if (active) c.tapeArea.label else "Bentuk",
-        active = active,
-        description = "Bentuk selotip",
-        choices = TapeShape.AREAS,
     )
 }
 

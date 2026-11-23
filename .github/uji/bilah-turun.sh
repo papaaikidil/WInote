@@ -138,6 +138,24 @@ tap_node "Halaman" 2 || true
 tap_node "Orientasi" 3 || echo "ORIENTASI TIDAK ADA"
 shot dialog-orientasi
 tap_node "Batal" 2 || true
+# Selotip: hanya tipe Lurus/Bebas, tombol Bentuk selotip sudah tidak ada.
+tap_node "Selotip" 3 || echo "SELOTIP TIDAK ADA"
+shot selotip-tanpa-bentuk
+if [ -n "$(find_bounds "Bentuk selotip")" ]; then echo "BENTUK SELOTIP MASIH ADA"; else echo "bentuk selotip sudah hilang"; fi
+tap_node "Tipe selotip" 2 || true
+shot menu-tipe-selotip
+adb shell input keyevent 4; sleep 1
+# Alat Bentuk: kotak tumpul, belah ketupat, segi enam, bintang, hati.
+tap_node "Bentuk" 3 || echo "ALAT BENTUK TIDAK ADA"
+shot alat-bentuk
+DAFTAR=("Kotak tumpul:22:32:38:48" "Belah ketupat:44:32:58:48" "Segi enam:64:32:80:48" "Bintang:30:55:45:72" "Hati:55:55:70:72")
+for item in "${DAFTAR[@]}"; do
+  IFS=: read -r nama x0 y0 x1 y1 <<< "$item"
+  tap_node "$nama" 2 < /dev/null || echo "BENTUK TIDAK KETEMU: $nama"
+  gerak garis $x0 $y0 $x1 $y1 0 < /dev/null
+done
+shot bentuk-baru
+tap_node "Pena" 2 || true
 # Tablet tegak (seperti di Xiaomi Pad 7 posisi berdiri).
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1

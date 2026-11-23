@@ -58,7 +58,7 @@ object Tapes {
     }
 
     /** Titik sudut bentuk bersudut dalam 0..1 (x, y bergantian); null untuk bentuk lain. */
-    private fun polygon(kind: TapeShape): FloatArray? = when (kind) {
+    fun polygon(kind: TapeShape): FloatArray? = when (kind) {
         TapeShape.TRIANGLE -> TRIANGLE
         TapeShape.DIAMOND -> DIAMOND
         TapeShape.HEXAGON -> HEXAGON

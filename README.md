@@ -1292,3 +1292,14 @@ chip Mode baca menandai halaman ini secara manual.
 - **Menu selotip**: tombol **Tipe** hanya berisi **Lurus** dan **Bebas**; bentuk bidang (Kotak, Kotak tumpul, Lingkaran,
   Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
   disorot.
+
+## Perubahan 0.1.136: Bilah fitur turun ke bawah, bentuk pindah ke alat Bentuk
+
+- **Bilah fitur di atas**: baris atas hanya berisi judul kelompok (Sisipkan, Suara, Tulisan, Alat, Halaman, PDF).
+  Diketuk: tombol-tombol kelompok itu **turun** di baris bawahnya. Diketuk lagi: barisnya **naik** dan tersembunyi.
+  Ketuk kelompok lain untuk langsung berganti isi. Tidak lagi melebar ke samping, jadi kelompok lain tidak terdorong
+  keluar layar (terutama saat tablet berdiri). Kelompok terakhir yang dibuka diingat.
+- **Selotip**: tombol Bentuk dihapus; selotip hanya Lurus dan Bebas. Selotip berbentuk yang sudah ada di catatan tetap
+  tampil dan bisa dibuka/ditutup seperti biasa.
+- **Alat Bentuk** (ikon segitiga di deretan pena) sekarang punya Kotak tumpul, Belah ketupat, Segi enam, Bintang, dan
+  Hati, selain Garis, Panah, Kotak, Lingkaran, dan Segitiga.
