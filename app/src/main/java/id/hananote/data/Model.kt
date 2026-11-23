@@ -443,6 +443,14 @@ class TableItem(
         return rebuilt(cells = next)
     }
 
+    /** Sel yang terkena dari sel ([r], [c]): [scope] 0 sel itu, 1 seluruh barisnya, 2 seluruh kolomnya, 3 semua sel. */
+    fun scopeCells(r: Int, c: Int, scope: Int): List<Pair<Int, Int>> = when (scope) {
+        1 -> (0 until cols).map { r to it }
+        2 -> (0 until rows).map { it to c }
+        3 -> (0 until rows).flatMap { rr -> (0 until cols).map { rr to it } }
+        else -> listOf(r to c)
+    }
+
     /** Warna isi sel-sel [targets] (pasangan baris, kolom) diganti; 0 = mengikuti warna tabel. */
     fun withCellFill(targets: List<Pair<Int, Int>>, fill: Int): TableItem {
         val next = cellFills.toMutableList()

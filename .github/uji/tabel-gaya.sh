@@ -226,7 +226,9 @@ shot kolom-hijau
 tap_node "Kembali" 1 || true
 tap_node "Garis & warna" 3 || echo "GARIS WARNA DARI SEL TIDAK ADA"
 shot dialog-dari-sel
-tap_node "Batal" 2 || adb shell input keyevent 4
+tap_node "Tebal garis 1 pt" 1 || echo "TEBAL 1 TIDAK ADA"
+tap_node "Terapkan" 3 || echo "TERAPKAN DARI SEL TIDAK ADA"
+shot dari-sel-diterapkan
 tap_node "Selesai" 2 || adb shell input keyevent 4
 sleep 1
 shot garis-bantu

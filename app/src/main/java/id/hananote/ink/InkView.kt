@@ -3562,13 +3562,22 @@ class InkView(context: Context) : View(context) {
      */
     fun fillCellEdit(fill: Int, scope: Int) {
         val t = cellTable() ?: return
-        val targets = when (scope) {
-            1 -> (0 until t.cols).map { cellR to it }
-            2 -> (0 until t.rows).map { it to cellC }
-            3 -> (0 until t.rows).flatMap { r -> (0 until t.cols).map { r to it } }
-            else -> listOf(cellR to cellC)
+        setTableLive(t.withCellFill(t.scopeCells(cellR, cellC, scope), fill))
+    }
+
+    /**
+     * Ubah tabel bernomor [id] di halaman ini sebagai satu langkah urungkan: lewat sel yang sedang diketik bila
+     * tabelnya sedang disunting, atau langsung (tetap terpilih bila tadinya terpilih). Hasil false bila tabelnya
+     * sudah tidak ada.
+     */
+    fun restyleTable(id: Long, change: (TableItem) -> TableItem): Boolean {
+        if (cellTableId == id && cellTable() != null) {
+            restyleCellTable(change)
+            return true
         }
-        setTableLive(t.withCellFill(targets, fill))
+        val t = items.firstOrNull { it.id == id } as? TableItem ?: return false
+        val next = InkRenderer.fitTable(change(t))
+        return if (selItem === t) { replaceSelectedItem(next, moveInk = false); true } else replaceItem(t, next)
     }
 
     /** Ubah garis dan warna tabel yang selnya sedang diketik (jadi satu langkah urungkan bersama ketikannya). */

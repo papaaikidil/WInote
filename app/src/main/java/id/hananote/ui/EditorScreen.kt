@@ -1669,28 +1669,51 @@ class EditorController(private val repo: Repository, val noteId: String) {
         v.replaceSelectedItem(InkRenderer.fitTable(t.withLayout(rows, cols, colFrac, rowFrac, header, height)), moveInk = false)
     }
 
-    /** Dialog garis dan warna tabel sedang terbuka. */
-    var tableLookOpen by mutableStateOf(false)
+    /**
+     * Tabel yang garis dan warnanya sedang diatur (dialog terbuka). Disimpan saat dialog dibuka, karena membuka
+     * dialog bisa mengakhiri ketikan di selnya.
+     */
+    var tableLook by mutableStateOf<TableItem?>(null)
 
     /** Tabel yang garis dan warnanya diatur: tabel yang selnya sedang diketik, atau tabel yang dipilih. */
     fun tableForStyle(): TableItem? = view?.typingCell()?.first ?: selectedTable()
 
     fun openTableLook() {
-        if (tableForStyle() != null) tableLookOpen = true
+        tableLook = tableForStyle()
     }
 
     /** Terapkan garis, tebal garis, dan warna tabel (bisa diurungkan). */
     fun applyTableStyle(style: TableStyle, color: Int, header: Boolean, clearCellFills: Boolean) {
         val v = view ?: return
+        val target = tableLook ?: return
+        tableLook = null
         CrashLog.note("garis & warna tabel: garis ${style.borders}, tebal ${style.lineWidth}")
-        val change = { t: TableItem -> t.withStyle(style, color, header, clearCellFills) }
-        if (v.typingCell() != null) {
-            v.restyleCellTable(change)
-            typeStyleTick++
+        if (!v.restyleTable(target.id) { it.withStyle(style, color, header, clearCellFills) }) {
+            notice = "Tabelnya sudah tidak ada di halaman ini."
             return
         }
-        val t = selectedTable() ?: return
-        v.replaceSelectedItem(InkRenderer.fitTable(change(t)), moveInk = false)
+        typeStyleTick++
+    }
+
+    /** Sel yang akan diberi warna sendiri lewat pemilih warna (pemilihnya bisa mengakhiri ketikan di sel). */
+    var cellFillPick by mutableStateOf<CellFillPick?>(null)
+
+    fun pickCellFill(scope: Int) {
+        val (t, r, col) = view?.typingCell() ?: return
+        cellFillPick = CellFillPick(t.id, r, col, scope)
+    }
+
+    fun applyCellFillPick(fill: Int) {
+        val p = cellFillPick ?: return
+        cellFillPick = null
+        val v = view ?: return
+        CrashLog.note("warna sel tabel (warna sendiri)")
+        if (v.typingCell()?.first?.id == p.tableId) {
+            v.fillCellEdit(fill, p.scope)
+        } else {
+            v.restyleTable(p.tableId) { t -> t.withCellFill(t.scopeCells(p.r, p.c, p.scope), fill) }
+        }
+        typeStyleTick++
     }
 
     /** Warna isi sel yang sedang diketik: [scope] 0 sel ini, 1 barisnya, 2 kolomnya, 3 semua sel; 0 = tanpa warna. */
@@ -4534,15 +4557,12 @@ fun EditorScreen(
     c.bgRemoval?.let { RemoveBgDialog(c, it) }
     c.voice?.let { VoiceDialog(c, it) }
     c.pdfEditing?.let { t -> PdfEditDialog(t, onDismiss = { c.pdfEditing = null }) { c.pdfApplyEdit(it) } }
-    if (c.tableLookOpen) {
-        val t = c.tableForStyle()
-        if (t == null) {
-            LaunchedEffect(Unit) { c.tableLookOpen = false }
-        } else {
-            TableStyleDialog(t, onDismiss = { c.tableLookOpen = false }) { style, color, header, clear ->
-                c.applyTableStyle(style, color, header, clear)
-                c.tableLookOpen = false
-            }
+    c.cellFillPick?.let {
+        ColorPickerDialog(0xFFDEEAF6.toInt(), onDismiss = { c.cellFillPick = null }) { col -> c.applyCellFillPick(col) }
+    }
+    c.tableLook?.let { t ->
+        TableStyleDialog(t, onDismiss = { c.tableLook = null }) { style, color, header, clear ->
+            c.applyTableStyle(style, color, header, clear)
         }
     }
     if (c.rotateAsk) {
@@ -7628,11 +7648,13 @@ private fun FloatingBar(anchor: android.graphics.RectF, content: @Composable () 
 
 private enum class BarPanel { FONT, COLOR, CELL_FILL }
 
+/** Sel tabel yang akan diberi warna sendiri: nomor tabel, baris, kolom, dan cakupannya (lihat [TableItem.scopeCells]). */
+class CellFillPick(val tableId: Long, val r: Int, val c: Int, val scope: Int)
+
 /** Warna isi sel yang sedang diketik: untuk sel ini, barisnya, kolomnya, atau semua sel. */
 @Composable
 private fun CellFillPanel(c: EditorController) {
     var scope by remember { mutableIntStateOf(0) }
-    var custom by remember { mutableStateOf(false) }
     val scopes = listOf("Sel ini", "Baris", "Kolom", "Semua sel")
     scopes.forEachIndexed { i, label ->
         FilterChip(
@@ -7647,9 +7669,8 @@ private fun CellFillPanel(c: EditorController) {
     TableFillColors.forEachIndexed { i, col ->
         ColorDot(Color(col), false, { c.typeCellFill(col, scope) }, size = 24.dp, description = "Sel ${TableFillNames[i]}")
     }
-    CustomColorDot(onClick = { custom = true }, size = 24.dp)
+    CustomColorDot(onClick = { c.pickCellFill(scope) }, size = 24.dp)
     Spacer(Modifier.width(6.dp))
-    if (custom) ColorPickerDialog(0xFFDEEAF6.toInt(), onDismiss = { custom = false }) { c.typeCellFill(it, scope); custom = false }
 }
 
 /** Bilah alat teks yang sedang diketik: huruf, ukuran, warna, perataan, daftar, salin/tempel, selesai. */
