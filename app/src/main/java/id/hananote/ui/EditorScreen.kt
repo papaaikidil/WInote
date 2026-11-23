@@ -183,6 +183,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.window.Popup
@@ -214,6 +215,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -285,6 +287,8 @@ import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.AutoFixNormal
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -1667,6 +1671,18 @@ class EditorController(private val repo: Repository, val noteId: String) {
         val t = v.selectedItem() as? TableItem ?: return
         CrashLog.note("atur tabel ${rows}x$cols")
         v.replaceSelectedItem(InkRenderer.fitTable(t.withLayout(rows, cols, colFrac, rowFrac, header, height)), moveInk = false)
+    }
+
+    /**
+     * Bilah alat ringkas (tablet): alat tulis dan pengaturannya disembunyikan di dua tombol yang membuka daftar
+     * tegak. Bila tidak, semua alat, warna, dan ketebalan berjajar di bilah. Diingat antar catatan.
+     */
+    var trayCompact by mutableStateOf(prefs.getBoolean("tray_compact", true))
+        private set
+
+    fun toggleTrayCompact() {
+        trayCompact = !trayCompact
+        prefs.edit().putBoolean("tray_compact", trayCompact).apply()
     }
 
     /**
@@ -4781,6 +4797,41 @@ private fun TabletEditor(
                     Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) { typeRibbon() }
                     return@Row
                 }
+                // Bilah ringkas: kuas dan pengaturannya di dua tombol yang membuka daftar tegak ke bawah.
+                IconButton(onClick = { c.toggleTrayCompact() }, modifier = Modifier.align(Alignment.CenterVertically)) {
+                    Icon(
+                        if (c.trayCompact) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
+                        contentDescription = if (c.trayCompact) "Jajarkan semua alat di bilah" else "Ringkas bilah alat",
+                        modifier = Modifier.rotate(90f),
+                    )
+                }
+                if (c.trayCompact) {
+                    Row(
+                        Modifier.align(Alignment.CenterVertically),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        BrushPicker(c)
+                        if (c.mode != InputMode.SELECT && c.mode != InputMode.PDF) ToolSettingsPicker(c, onDialog)
+                    }
+                    when (c.mode) {
+                        InputMode.PDF -> {
+                            BarDivider(Modifier.align(Alignment.CenterVertically))
+                            Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) { PdfToolOptions(c) }
+                        }
+                        InputMode.SELECT -> {
+                            BarDivider(Modifier.align(Alignment.CenterVertically))
+                            Text(
+                                "Ketuk untuk memilih. Lingkari dengan laso untuk memilih banyak.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                            )
+                        }
+                        else -> Unit
+                    }
+                    return@Row
+                }
                 ToolTray(c)
                 BarDivider(Modifier.align(Alignment.CenterVertically))
                 when (c.mode) {
@@ -5751,6 +5802,242 @@ private fun ToolTray(c: EditorController) {
             contentAlignment = Alignment.BottomCenter,
         ) {
             SelectGlyph(MaterialTheme.colorScheme.onSurface, c.mode == InputMode.SELECT)
+        }
+    }
+}
+
+/** Nama alat yang sedang dipakai, untuk tombol pilihan kuas. */
+private fun currentToolLabel(c: EditorController): String = when (c.mode) {
+    InputMode.SHAPE -> "Bentuk"
+    InputMode.TAPE -> "Selotip"
+    InputMode.SELECT -> "Pilih"
+    InputMode.PDF -> "PDF"
+    else -> c.tool.label
+}
+
+/** Gambar kecil alat yang sedang dipakai, untuk tombol dan daftar pilihan kuas. */
+@Composable
+private fun SmallToolGlyph(c: EditorController, which: String) {
+    Box(Modifier.size(width = 26.dp, height = 36.dp).clipToBounds(), contentAlignment = Alignment.BottomCenter) {
+        val m = Modifier.size(width = 26.dp, height = 40.dp)
+        when (which) {
+            "Bentuk" -> ShapeGlyph(Color(c.colorOf(Tool.LINE)), true, m)
+            "Selotip" -> TapeGlyph(Color(c.colorOf(Tool.TAPE)), true, m)
+            "Pilih", "PDF" -> SelectGlyph(MaterialTheme.colorScheme.onSurface, true, m)
+            else -> Tool.entries.firstOrNull { it.name == which }?.let { ToolGlyph(it, Color(c.colorOf(it)), true, m) }
+        }
+    }
+}
+
+/** Kunci gambar alat yang sedang dipakai (nama Tool, atau Bentuk/Selotip/Pilih). */
+private fun currentGlyphKey(c: EditorController): String = when (c.mode) {
+    InputMode.SHAPE -> "Bentuk"
+    InputMode.TAPE -> "Selotip"
+    InputMode.SELECT -> "Pilih"
+    InputMode.PDF -> "PDF"
+    else -> c.tool.name
+}
+
+/** Tombol bilah ringkas: isi singkat, lalu panah; ketuk untuk membuka daftar tegak. */
+@Composable
+private fun TrayDropButton(description: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Row(
+        Modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+            .toolClick(onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description }
+            .padding(start = 8.dp, end = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content()
+        Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Satu baris pilihan di daftar tegak, disorot bila sedang dipakai. */
+@Composable
+private fun TrayMenuRow(label: String, selected: Boolean, onClick: () -> Unit, leading: @Composable () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) scheme.primaryContainer else Color.Transparent)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = label; this.selected = selected }
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) { leading() }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) scheme.onPrimaryContainer else scheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun TraySection(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 4.dp),
+    )
+}
+
+/** Pilihan kuas: satu tombol berisi alat yang sedang dipakai; ketuk untuk daftar semua alat, tegak ke bawah. */
+@Composable
+private fun BrushPicker(c: EditorController) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TrayDropButton("Pilihan kuas: ${currentToolLabel(c)}", onClick = { open = true }) {
+            SmallToolGlyph(c, currentGlyphKey(c))
+            Spacer(Modifier.width(6.dp))
+            Text(currentToolLabel(c), style = MaterialTheme.typography.labelLarge)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Column(Modifier.width(240.dp).padding(horizontal = 6.dp)) {
+                TraySection("Alat tulis")
+                Tool.tray.forEach { t ->
+                    TrayMenuRow(t.label, c.mode == InputMode.INK && c.tool == t, onClick = { open = false; c.selectTool(t) }) {
+                        SmallToolGlyph(c, t.name)
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                TrayMenuRow("Bentuk", c.mode == InputMode.SHAPE, onClick = { open = false; c.selectShapes() }) { SmallToolGlyph(c, "Bentuk") }
+                TrayMenuRow("Selotip", c.mode == InputMode.TAPE, onClick = { open = false; c.selectTape() }) { SmallToolGlyph(c, "Selotip") }
+                TrayMenuRow("Pilih", c.mode == InputMode.SELECT, onClick = { open = false; c.selectPointer() }) { SmallToolGlyph(c, "Pilih") }
+            }
+        }
+    }
+}
+
+/**
+ * Pengaturan alat yang sedang dipakai dalam satu tombol: warna dan ketebalan (atau cara menghapus, bentuk, tipe
+ * selotip). Ketuk untuk membuka semua pilihannya, tegak ke bawah.
+ */
+@Composable
+private fun ToolSettingsPicker(c: EditorController, onDialog: (EditorDialog) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val t = c.styleTool
+    val eraser = t == Tool.ERASER
+    Box {
+        TrayDropButton("Pengaturan ${currentToolLabel(c)}", onClick = { open = true }) {
+            when {
+                eraser -> {
+                    Icon(Icons.Filled.AutoFixNormal, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(c.eraserMode.label, style = MaterialTheme.typography.labelLarge)
+                }
+                c.mode == InputMode.SHAPE -> {
+                    ShapeKindIcon(c.shapeKind, Color(c.colorOf(t)))
+                    Spacer(Modifier.width(6.dp))
+                    Text(c.shapeKind.label, style = MaterialTheme.typography.labelLarge)
+                }
+                c.mode == InputMode.TAPE -> {
+                    TapeShapeIcon(c.tapeShape, Color(c.colorOf(t)))
+                    Spacer(Modifier.width(6.dp))
+                    Text(c.tapeShape.label, style = MaterialTheme.typography.labelLarge)
+                }
+                else -> {
+                    Box(Modifier.size(20.dp).clip(CircleShape).background(Color(c.colorOf(t))).border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), CircleShape))
+                }
+            }
+            if (!eraser || c.eraserMode != EraserMode.WHOLE) {
+                Spacer(Modifier.width(8.dp))
+                Text(mmLabel(c.widthOf(t)), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Column(Modifier.width(300.dp).padding(horizontal = 6.dp)) {
+                when {
+                    eraser -> {
+                        TraySection("Cara menghapus")
+                        EraserMode.entries.forEach { m ->
+                            TrayMenuRow(m.label, c.eraserMode == m, onClick = { c.chooseEraserMode(m) }) {
+                                RadioButton(selected = c.eraserMode == m, onClick = null)
+                            }
+                        }
+                        if (c.eraserMode != EraserMode.BRUSH) {
+                            TrayMenuRow("Termasuk gambar", c.eraseImages, onClick = { c.toggleEraseImages() }) {
+                                Checkbox(checked = c.eraseImages, onCheckedChange = null)
+                            }
+                        } else {
+                            TraySection("Kekuatan kuas")
+                            listOf("Tipis" to 0.18f, "Sedang" to 0.35f, "Kuat" to 0.65f).forEach { (label, v) ->
+                                val on = kotlin.math.abs(c.eraserStrength - v) < 0.01f
+                                TrayMenuRow(label, on, onClick = { c.chooseEraserStrength(v) }) {
+                                    RadioButton(selected = on, onClick = null)
+                                }
+                            }
+                        }
+                    }
+                    c.mode == InputMode.SHAPE -> {
+                        TraySection("Bentuk")
+                        ShapeKind.entries.forEach { k ->
+                            TrayMenuRow(k.label, c.shapeKind == k, onClick = { c.chooseShape(k) }) {
+                                ShapeKindIcon(k, if (c.shapeKind == k) Color(c.colorOf(t)) else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    c.mode == InputMode.TAPE -> {
+                        TraySection("Tipe selotip")
+                        TapeShape.BANDS.forEach { k ->
+                            TrayMenuRow(k.label, c.tapeShape == k, onClick = { c.chooseTapeShape(k) }) {
+                                TapeShapeIcon(k, if (c.tapeShape == k) Color(c.colorOf(t)) else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        TraySection("Semua selotip di halaman ini")
+                        TrayMenuRow("Tutup semua", false, onClick = { open = false; c.setAllTapes(true) }) { Icon(Icons.Filled.VisibilityOff, null) }
+                        TrayMenuRow("Buka semua", false, onClick = { open = false; c.setAllTapes(false) }) { Icon(Icons.Filled.Visibility, null) }
+                        TrayMenuRow("Lepas semua", false, onClick = { open = false; c.removeAllTapes() }) { Icon(Icons.Filled.DeleteSweep, null) }
+                    }
+                }
+                if (!eraser) {
+                    TraySection("Warna")
+                    val palette = when (t) {
+                        Tool.HIGHLIGHTER -> HighlighterColors
+                        Tool.WATERCOLOR -> WatercolorColors
+                        Tool.TAPE -> TapeColors
+                        else -> InkColors
+                    }
+                    val current = c.colorOf(t)
+                    val dots = palette + (if (current !in palette) listOf(current) else emptyList())
+                    dots.chunked(6).forEachIndexed { row, part ->
+                        Row(Modifier.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            part.forEach { col -> ColorDot(Color(col), col == current, { c.setColor(col) }, size = 26.dp) }
+                            if (row == (dots.size - 1) / 6) CustomColorDot({ open = false; onDialog(EditorDialog.CustomColor) }, size = 26.dp)
+                        }
+                    }
+                }
+                if (!eraser || c.eraserMode != EraserMode.WHOLE) {
+                    TraySection("Ketebalan · ${mmLabel(c.widthOf(t))}")
+                    val ink = if (eraser) MaterialTheme.colorScheme.onSurfaceVariant else Color(c.colorOf(t))
+                    t.presets.forEachIndexed { k, w ->
+                        val on = abs(w - c.widthOf(t)) < 0.05f
+                        TrayMenuRow(mmLabel(w), on, onClick = { c.setWidth(w) }) {
+                            val d = (7 + k * 6).dp
+                            Box(Modifier.size(d).clip(CircleShape).background(ink).border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape))
+                        }
+                    }
+                    Slider(
+                        value = c.widthOf(t),
+                        onValueChange = { c.setWidth(it) },
+                        valueRange = t.minWidth..t.maxWidth,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    if (!eraser && c.mode != InputMode.TAPE) StrokePreview(c, Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 12.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+            }
         }
     }
 }
