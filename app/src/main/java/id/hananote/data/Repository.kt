@@ -476,7 +476,8 @@ class Repository private constructor(context: Context) {
     }.getOrNull()?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotEmpty() }
 
     /** Catatan baru dari PDF: tiap halaman PDF menjadi satu halaman yang bisa ditulisi. */
-    fun createNoteFromPdf(context: Context, bookId: String, uri: Uri): Note? {
+    /** Catatan baru dari PDF [uri]; [title] kosong = nama berkasnya (untuk hasil pindaian: judul bertanggal). */
+    fun createNoteFromPdf(context: Context, bookId: String, uri: Uri, title: String = ""): Note? {
         val id = UUID.randomUUID().toString()
         val imported = importPdf(context, id, uri)
         if (imported == null) {
@@ -489,8 +490,12 @@ class Repository private constructor(context: Context) {
         }
         return synchronized(lock) {
             val now = System.currentTimeMillis()
-            val title = displayName(context, uri) ?: "Dokumen PDF"
-            val note = Note(id, bookId, title, now, now, pages.size, order = topNoteOrder(bookId))
+            val name = if (title.isNotEmpty()) {
+                title + " " + java.text.SimpleDateFormat("d MMM HH.mm", java.util.Locale.forLanguageTag("id-ID")).format(now)
+            } else {
+                displayName(context, uri) ?: "Dokumen PDF"
+            }
+            val note = Note(id, bookId, name, now, now, pages.size, order = topNoteOrder(bookId))
             writePages(id, pages)
             _notes.value = _notes.value + note
             saveNotes()
@@ -828,6 +833,37 @@ class Repository private constructor(context: Context) {
         writeAtomic(indexFile(noteId, pageId), text)
     }
 
+    // ---------- kartu hafalan ----------
+
+    private fun cardsFile(noteId: String) = File(noteDir(noteId), "cards.json")
+
+    fun loadCards(noteId: String): List<StudyCard> {
+        val f = cardsFile(noteId)
+        if (!f.exists()) return emptyList()
+        return runCatching {
+            val a = JSONArray(f.readText())
+            (0 until a.length()).map { i ->
+                val o = a.getJSONObject(i)
+                StudyCard(
+                    o.optString("id"), o.optString("f"), o.optString("b"), o.optString("p"), o.optString("k"),
+                    o.optInt("x", 0), o.optLong("d", 0L),
+                )
+            }.filter { it.id.isNotEmpty() }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveCards(noteId: String, cards: List<StudyCard>) {
+        if (!noteDir(noteId).exists()) return
+        val a = JSONArray()
+        for (c in cards) {
+            a.put(
+                JSONObject().put("id", c.id).put("f", c.front).put("b", c.back).put("p", c.pageId).put("k", c.tapeKey)
+                    .put("x", c.box).put("d", c.due)
+            )
+        }
+        writeAtomic(cardsFile(noteId), a.toString())
+    }
+
     // ---------- daftar isi ----------
 
     private fun outlineFile(noteId: String) = File(noteDir(noteId), "outline.json")
@@ -893,7 +929,8 @@ class Repository private constructor(context: Context) {
     /** Baris pertama isi halaman (teks ketik atau tulisan tangan terbaca), untuk usulan judul bab. */
     fun firstLine(noteId: String, pageId: String): String =
         runCatching { searchableText(noteId, pageId) }.getOrDefault("")
-            .lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }?.take(60).orEmpty()
+            // Baris yang terlalu pendek (misalnya lingkaran yang terbaca sebagai huruf "o") dilewati.
+            .lineSequence().map { it.trim() }.firstOrNull { l -> l.count { it.isLetterOrDigit() } >= 3 }?.take(60).orEmpty()
 
     /** Cuplikan isi halaman pertama (teks ketik dan tulisan tangan yang sudah terbaca), untuk widget. */
     fun snippet(noteId: String, maxChars: Int = 180): String {

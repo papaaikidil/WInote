@@ -71,6 +71,10 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.StayCurrentLandscape
 import androidx.compose.material.icons.filled.StayCurrentPortrait
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.Toc
@@ -264,6 +268,8 @@ import id.hananote.data.TextLists
 import id.hananote.data.TextRuns
 import id.hananote.data.EraserMode
 import id.hananote.data.OutlineEntry
+import id.hananote.data.TapeItem
+import id.hananote.data.StudyCard
 import id.hananote.data.PageBackground
 import id.hananote.data.CrashLog
 import id.hananote.data.PaperTexture
@@ -753,9 +759,11 @@ class EditorController(private val repo: Repository, val noteId: String) {
     fun attach(v: InkView) {
         view = v
         v.readOnly = readMode
+        v.laser = if (laserOn) laserTrail else null
         v.onStrokesChanged = {
             v.page?.let { dirtyPages.add(it.id); indexDirty.add(it.id); scheduleThumb(it.id) }
             scheduleSave()
+            presentationFollow(changed = true)
         }
         v.onHistoryChanged = { u, r -> canUndo = u; canRedo = r }
         v.onStylusSeen = { onStylus() }
@@ -982,6 +990,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
     }
 
     fun close() {
+        stopPresentation()
         InkRenderer.PageNumbers.spec = null
         InkRenderer.PageNumbers.labels = emptyMap()
         PdfText.release()
@@ -2996,6 +3005,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
         val v = view ?: return
         pdfSel = null
         markSearchPage()
+        presentationFollow(changed = false)
         if (mode == InputMode.PDF) {
             loadPdfLayer(announce = false)
             if (pdfForm) loadPdfFields(announce = false) else v.pdfFields = emptyList()
@@ -3605,10 +3615,38 @@ class EditorController(private val repo: Repository, val noteId: String) {
 
     fun outlinePage(e: OutlineEntry): Int = pages.indexOfFirst { it.id == e.pageId }
 
-    /** Usulan judul bab untuk halaman ke-[i]: baris pertama isinya, atau "Halaman N". */
-    fun outlineSuggestion(i: Int): String {
+    /**
+     * Usulan judul bab untuk halaman ke-[i]: judul di daftar isi bawaan PDF, baris pertama teks PDF-nya, baris
+     * pertama tulisan/ketikan di halaman itu, atau "Halaman N".
+     */
+    suspend fun outlineSuggestion(i: Int): String {
         val p = pages.getOrNull(i) ?: return ""
-        return repo.firstLine(noteId, p.id).ifEmpty { "Halaman ${i + 1}" }
+        pdfOutline.firstOrNull { it.pageId == p.id }?.let { return it.title }
+        val src = pdfSource(p)
+        val ctx = view?.context
+        if (src != null && ctx != null) {
+            val text = PdfText.cachedText(src.first, src.second) ?: suspendCancellableCoroutine<id.hananote.ink.PdfPageText?> { cont ->
+                PdfText.loadText(ctx, src.first, src.second) { t -> if (cont.isActive) cont.resume(t) }
+            }
+            if (text != null && !text.isEmpty) {
+                // Baris pertama yang cukup panjang (huruf satu baris PDF punya nomor baris yang sama).
+                val first = StringBuilder()
+                var line = -1
+                for (k in text.chars.indices) {
+                    val ln = text.line.getOrElse(k) { 0 }
+                    if (ln != line) {
+                        if (first.trim().count { it.isLetter() } >= 3) break
+                        first.clear()
+                        line = ln
+                    }
+                    first.append(text.chars[k])
+                }
+                val t = first.trim().toString()
+                if (t.count { it.isLetter() } >= 3) return t.take(60)
+            }
+        }
+        val own = withContext(repo.writeDispatcher) { repo.firstLine(noteId, p.id) }
+        return own.ifEmpty { "Halaman ${i + 1}" }
     }
 
     private fun saveOutlineNow() {
@@ -3651,6 +3689,271 @@ class EditorController(private val repo: Repository, val noteId: String) {
         if (i >= 0) showPage(i)
     }
 
+    // ---------- presentasi dan laser ----------
+
+    private val laserTrail = id.hananote.ink.LaserTrail()
+
+    /** Laser aktif: pena atau satu jari menunjuk dengan jejak merah yang hilang sendiri (tidak disimpan). */
+    var laserOn by mutableStateOf(false)
+        private set
+
+    /** Sedang presentasi: ke layar lain (proyektor/monitor) bila ada, atau layar penuh di tablet ini. */
+    var presenting by mutableStateOf(false)
+        private set
+
+    /** Nama layar presentasi yang sedang dipakai; kosong bila hanya tampil di tablet. */
+    var presentScreen by mutableStateOf("")
+        private set
+
+    private var presentation: PagePresentation? = null
+    private var presentJob: Job? = null
+    private var displayWatch: android.hardware.display.DisplayManager.DisplayListener? = null
+    private var focusBeforePresent = false
+
+    fun toggleLaser() = setLaser(!laserOn)
+
+    fun setLaser(on: Boolean) {
+        laserOn = on
+        laserTrail.clear()
+        view?.laser = if (on) laserTrail else null
+        CrashLog.note("laser: $on")
+        if (on && !presenting && !prefs.getBoolean("hint_laser", false)) {
+            prefs.edit().putBoolean("hint_laser", true).apply()
+            notice = "Laser aktif: tunjuk dengan pena atau satu jari, jejaknya hilang sendiri dan tidak disimpan. " +
+                "Dua jari tetap menggeser halaman."
+        }
+    }
+
+    /** Mulai presentasi. Halaman tampil di layar lain yang tersambung; laser langsung aktif. */
+    fun startPresentation(context: Context) {
+        if (presenting) return
+        CrashLog.note("presentasi mulai")
+        finishEditing(commit = true)
+        presenting = true
+        focusBeforePresent = focusMode
+        setLaser(true)
+        val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+        if (dm != null) {
+            val watch = object : android.hardware.display.DisplayManager.DisplayListener {
+                override fun onDisplayAdded(displayId: Int) {
+                    if (presenting && presentation == null) showOnScreen(context)
+                }
+                override fun onDisplayRemoved(displayId: Int) {
+                    if (presentation?.display?.displayId == displayId) {
+                        presentation = null
+                        screenGone()
+                    }
+                }
+                override fun onDisplayChanged(displayId: Int) {
+                    if (presentation?.display?.displayId == displayId) refreshPresentation()
+                }
+            }
+            dm.registerDisplayListener(watch, android.os.Handler(android.os.Looper.getMainLooper()))
+            displayWatch = watch
+        }
+        if (!showOnScreen(context)) {
+            if (!focusMode) toggleFocus()
+            notice = "Belum ada layar lain yang tersambung, jadi halaman tampil layar penuh di tablet dengan laser. " +
+                "Sambungkan proyektor atau monitor (kabel USB-C ke HDMI, atau layar nirkabel) dan halaman langsung tampil di sana."
+        }
+    }
+
+    /** Tampilkan di layar presentasi pertama yang ada. Hasil false bila tidak ada layar lain. */
+    private fun showOnScreen(context: Context): Boolean {
+        val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java) ?: return false
+        val d = dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).firstOrNull() ?: return false
+        val p = runCatching { PagePresentation(context, d, laserTrail).also { it.show() } }.getOrElse {
+            CrashLog.note("presentasi gagal: ${it.message}")
+            return false
+        }
+        p.setOnDismissListener {
+            if (presentation === p) {
+                presentation = null
+                screenGone()
+            }
+        }
+        presentation = p
+        presentScreen = d.name?.takeIf { it.isNotBlank() } ?: "layar lain"
+        // Ada layar lain: tablet kembali ke tampilan biasa supaya tombol dan halaman lain tetap terjangkau.
+        if (focusMode && !focusBeforePresent) toggleFocus()
+        notice = "Presentasi tampil di $presentScreen. Yang tampil di sana hanya halaman dan laser; tombol tetap di tablet."
+        refreshPresentation()
+        return true
+    }
+
+    private fun screenGone() {
+        presentScreen = ""
+        presentJob?.cancel()
+        if (presenting) {
+            notice = "Layar presentasi terputus. Halaman tampil layar penuh di tablet."
+            if (!focusMode) toggleFocus()
+        }
+    }
+
+    fun stopPresentation() {
+        if (!presenting) return
+        CrashLog.note("presentasi selesai")
+        presenting = false
+        presentJob?.cancel()
+        val ctx = view?.context
+        displayWatch?.let { w -> ctx?.getSystemService(android.hardware.display.DisplayManager::class.java)?.unregisterDisplayListener(w) }
+        displayWatch = null
+        val p = presentation
+        presentation = null
+        presentScreen = ""
+        runCatching { p?.dismiss() }
+        setLaser(false)
+        if (focusMode != focusBeforePresent) toggleFocus()
+    }
+
+    /** Gambar ulang halaman di layar presentasi (setelah pindah halaman atau isinya berubah). */
+    private fun refreshPresentation(wait: Long = 0L) {
+        val pr = presentation ?: return
+        val p = pages.getOrNull(index) ?: return
+        val v = view
+        val live = if (v?.page?.id == p.id) v.contentSnapshot() else pageContent[p.id]?.copy()
+        presentJob?.cancel()
+        presentJob = main.launch {
+            if (wait > 0) delay(wait)
+            val w = pr.targetWidth(p.width, p.height)
+            val bmp = runCatching {
+                val content = live ?: withContext(repo.writeDispatcher) { repo.loadContent(noteId, p.id) }
+                withContext(Dispatchers.Default) { InkRenderer.renderThumbnail(p, content, w, repo.noteDir(noteId)) }
+            }.getOrNull() ?: return@launch
+            if (presentation === pr) pr.showPage(bmp, p.width, p.height) else bmp.recycle()
+        }
+    }
+
+    /** Dipanggil tiap pindah halaman atau isi berubah. */
+    private fun presentationFollow(changed: Boolean) {
+        if (!changed) laserTrail.clear()
+        if (presentation != null) refreshPresentation(if (changed) 160L else 0L)
+    }
+
+    // ---------- kartu hafalan ----------
+
+    /** Semua kartu hafalan catatan ini: kartu tanya-jawab ditambah satu kartu untuk tiap selotip. */
+    val cards = mutableStateListOf<StudyCard>()
+    var cardsLoading by mutableStateOf(false)
+        private set
+
+    /** Muat kartu. Kartu selotip diambil dari semua halaman; tingkat hafalnya disimpan di cards.json. */
+    fun loadCards() {
+        flush()
+        cardsLoading = true
+        val metas = pages.toList()
+        val v = view
+        val live = HashMap<String, PageContent>()
+        v?.page?.let { live[it.id] = v.contentSnapshot() }
+        for (p in metas) if (p.id !in live) pageContent[p.id]?.let { live[p.id] = it.copy() }
+        main.launch {
+            val merged = withContext(repo.writeDispatcher) {
+                val saved = repo.loadCards(noteId)
+                val tapes = LinkedHashMap<String, String>()
+                for (p in metas) {
+                    val content = live[p.id] ?: runCatching { repo.loadContent(noteId, p.id) }.getOrNull() ?: continue
+                    content.items.filterIsInstance<TapeItem>()
+                        .sortedWith(compareBy({ it.y }, { it.x }))
+                        .forEach { tapes["${p.id}:${it.id}"] = p.id }
+                }
+                val known = saved.filter { it.isTape }.associateBy { it.tapeKey }
+                val out = ArrayList<StudyCard>()
+                for ((key, pid) in tapes) out.add(known[key] ?: StudyCard(UUID.randomUUID().toString(), "", "", pid, key))
+                val ids = metas.map { it.id }.toSet()
+                for (c in saved) if (!c.isTape) out.add(if (c.pageId.isEmpty() || c.pageId in ids) c else c.copy(pageId = ""))
+                repo.saveCards(noteId, out)
+                out
+            }
+            cards.clear()
+            cards.addAll(merged)
+            cardsLoading = false
+        }
+    }
+
+    private fun saveCardsNow() {
+        val list = cards.toList()
+        repo.writeScope.launch { repo.saveCards(noteId, list) }
+    }
+
+    /** Kartu tanya-jawab baru; bila [here] true, kartu ditautkan ke halaman yang sedang dibuka. */
+    fun addCard(front: String, back: String, here: Boolean) {
+        val f = front.trim()
+        if (f.isEmpty()) return
+        cards.add(StudyCard(UUID.randomUUID().toString(), f, back.trim(), if (here) page.id else ""))
+        saveCardsNow()
+    }
+
+    fun editCard(id: String, front: String, back: String) {
+        val i = cards.indexOfFirst { it.id == id }
+        if (i < 0 || front.isBlank()) return
+        cards[i] = cards[i].copy(front = front.trim(), back = back.trim())
+        saveCardsNow()
+    }
+
+    fun deleteCard(id: String) {
+        val i = cards.indexOfFirst { it.id == id }
+        if (i < 0 || cards[i].isTape) return
+        cards.removeAt(i)
+        saveCardsNow()
+    }
+
+    /** Hafalan kartu diulang dari awal (jadi kartu baru lagi). */
+    fun resetCard(id: String) {
+        val i = cards.indexOfFirst { it.id == id }
+        if (i < 0) return
+        cards[i] = cards[i].copy(box = 0, due = 0L)
+        saveCardsNow()
+    }
+
+    /** Nilai kartu setelah jawabannya dilihat: 0 lupa, 1 ragu, 2 ingat. */
+    fun rateCard(id: String, rating: Int): StudyCard? {
+        val i = cards.indexOfFirst { it.id == id }
+        if (i < 0) return null
+        val r = cards[i].rated(rating)
+        cards[i] = r
+        saveCardsNow()
+        return r
+    }
+
+    fun cardPage(card: StudyCard): Int = if (card.pageId.isEmpty()) -1 else pages.indexOfFirst { it.id == card.pageId }
+
+    /**
+     * Gambar kartu selotip: potongan halaman di sekitar selotipnya. [open] false: selotipnya tertutup (pertanyaan);
+     * true: terbuka (jawaban). Selotip lain di potongan itu selalu tertutup.
+     */
+    suspend fun tapeCardImage(card: StudyCard, open: Boolean, widthPx: Int): Bitmap? {
+        val parts = card.tapeKey.split(':', limit = 2)
+        val pid = parts[0]
+        val tid = parts.getOrNull(1)?.toLongOrNull() ?: return null
+        val p = pages.firstOrNull { it.id == pid } ?: return null
+        val v = view
+        val live = if (v?.page?.id == pid) v.contentSnapshot() else pageContent[pid]?.copy()
+        val content = live ?: withContext(repo.writeDispatcher) { runCatching { repo.loadContent(noteId, pid) }.getOrNull() } ?: return null
+        val dir = repo.noteDir(noteId)
+        return withContext(Dispatchers.Default) {
+            val target = content.items.firstOrNull { it is TapeItem && it.id == tid } ?: return@withContext null
+            val items = content.items.mapTo(ArrayList<PageItem>()) { item ->
+                if (item is TapeItem) (item.placed(item.x, item.y, item.w, item.h) as TapeItem).also { it.covered = !(open && item.id == tid) }
+                else item
+            }
+            val shown = PageContent(ArrayList(content.strokes), ArrayList(content.texts), items)
+            val box = RectF()
+            InkRenderer.itemBounds(target, box)
+            val padY = maxOf(box.height() * 1.5f, p.width * 0.1f)
+            val crop = RectF(0f, box.top - padY, p.width, box.bottom + padY)
+            if (box.width() > p.width) { crop.left = box.left - 20f; crop.right = box.right + 20f }
+            if (!crop.intersect(0f, 0f, p.width, p.height)) return@withContext null
+            val s = widthPx / crop.width()
+            val h = (crop.height() * s).toInt().coerceIn(1, 4096)
+            val bmp = Bitmap.createBitmap(widthPx, h, Bitmap.Config.ARGB_8888)
+            val cv = android.graphics.Canvas(bmp)
+            cv.scale(s, s)
+            cv.translate(-crop.left, -crop.top)
+            InkRenderer.drawPage(cv, p, shown, dir, s)
+            bmp
+        }
+    }
+
     // ---------- halaman ----------
 
     fun addPage(after: Int = index) {
@@ -3668,9 +3971,9 @@ class EditorController(private val repo: Repository, val noteId: String) {
     }
 
     /** Tambahkan halaman-halaman PDF setelah halaman ini, siap ditulisi. */
-    fun importPdfPages(context: Context, uri: Uri) {
+    fun importPdfPages(context: Context, uri: Uri, scanned: Boolean = false) {
         flush()
-        notice = "Membuka PDF…"
+        notice = if (scanned) "Menambahkan hasil pindaian…" else "Membuka PDF…"
         main.launch {
             val res = withContext(Dispatchers.IO) { runCatching { repo.importPdf(context.applicationContext, noteId, uri) }.getOrNull() }
             if (res == null) {
@@ -3687,7 +3990,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
             }
             repo.savePages(noteId, pages.toList())
             showPage(at)
-            notice = "${sizes.size} halaman PDF ditambahkan. Tulisi langsung di atasnya."
+            notice = if (scanned) "${sizes.size} halaman pindaian ditambahkan. Tulisi langsung di atasnya."
+            else "${sizes.size} halaman PDF ditambahkan. Tulisi langsung di atasnya."
         }
     }
 
@@ -3954,6 +4258,7 @@ private sealed interface EditorDialog {
     data class Orientation(val index: Int) : EditorDialog
     /** Daftar isi; [addFor]: langsung tambahkan halaman ke-[addFor] sebagai bab. */
     data class Outline(val addFor: Int? = null) : EditorDialog
+    data object Flashcards : EditorDialog
 }
 
 private enum class EditorSheet { ToolOptions, Pages }
@@ -4125,6 +4430,7 @@ fun EditorScreen(
         if (c.readMode) ReadModeChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 14.dp else 10.dp))
         if (c.readMode && !c.searchOpen) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
         if (c.searchOpen) NoteSearchBar(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.readMode) 64.dp else 10.dp))
+        if (c.presenting) PresentationChip(c, Modifier.align(Alignment.BottomCenter).padding(bottom = if (isTablet) 20.dp else 84.dp))
         if (!c.readMode && c.mode == InputMode.PDF && c.pdfSel != null) PdfActionBar(c, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         (c.convert as? ConvertState.Working)?.let { ConvertProgress(c, it.message, Modifier.align(Alignment.TopCenter).padding(top = 72.dp)) }
         InlineEditing(c, fonts, addedFont, addFont, ribbon = isTablet && !c.focusMode && c.mode == InputMode.TYPE)
@@ -4145,12 +4451,15 @@ fun EditorScreen(
             micLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
+    // Pindai dokumen: halaman hasil pindaian ditambahkan sesudah halaman ini.
+    val scanDoc = rememberDocScanner(onPdf = { uri, _ -> c.importPdfPages(context, uri, scanned = true) }, onError = { c.notice = it })
     val insert = InsertActions(
         image = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         link = { dialog = EditorDialog.InsertLink },
         sticker = { dialog = EditorDialog.InsertSticker },
         emoji = { dialog = EditorDialog.Emoji },
         pdf = { runCatching { pickPdf.launch(arrayOf("application/pdf")) } },
+        scan = scanDoc,
         table = { dialog = EditorDialog.InsertTable },
         text = { c.newText() },
         date = { dialog = EditorDialog.InsertDate },
@@ -4259,6 +4568,7 @@ fun EditorScreen(
         EditorDialog.PageNumbers -> PageNumbersDialog(c, onDismiss = { dialog = null })
         is EditorDialog.Orientation -> OrientationDialog(c, d.index, onDismiss = { dialog = null })
         is EditorDialog.Outline -> OutlineSheet(c, d.addFor, onDismiss = { dialog = null })
+        EditorDialog.Flashcards -> FlashcardsSheet(c, onDismiss = { dialog = null })
         EditorDialog.InsertDate -> DateDialog(
             onDismiss = { dialog = null },
             onDate = { text -> c.insertDate(text); dialog = null },
@@ -4306,6 +4616,7 @@ private class InsertActions(
     val sticker: () -> Unit,
     val emoji: () -> Unit,
     val pdf: () -> Unit,
+    val scan: () -> Unit,
     val table: () -> Unit,
     val text: () -> Unit,
     val date: () -> Unit,
@@ -4524,6 +4835,7 @@ private fun FeatureGroupButtons(c: EditorController, group: String?, insert: Ins
             FeatureButton(Icons.Filled.TextFields, "Teks", onClick = insert.text)
             FeatureButton(Icons.Filled.CheckBox, "Centang", onClick = { c.newText(TextLists.BOX) })
             FeatureButton(Icons.Filled.Image, "Gambar", onClick = insert.image)
+            FeatureButton(Icons.Filled.DocumentScanner, "Pindai", onClick = insert.scan)
             FeatureButton(Icons.Filled.EmojiEmotions, "Stiker", onClick = insert.sticker)
             FeatureButton(Icons.Filled.Mood, "Emoji", onClick = insert.emoji)
             val clip by InkClipboard.clip.collectAsState()
@@ -4545,6 +4857,10 @@ private fun FeatureGroupButtons(c: EditorController, group: String?, insert: Ins
         "Alat" -> {
             FeatureButton(Icons.Filled.Straighten, "Penggaris", active = c.ruler, onClick = { c.toggleRuler() })
             FeatureButton(Icons.Filled.Category, "Bentuk otomatis", active = c.autoShape, onClick = { c.toggleAutoShape() })
+            FeatureButton(Icons.Filled.Style, "Kartu hafalan", onClick = { onDialog(EditorDialog.Flashcards) })
+            val ctx = LocalContext.current
+            FeatureButton(Icons.Filled.Slideshow, "Presentasi", active = c.presenting, onClick = { if (c.presenting) c.stopPresentation() else c.startPresentation(ctx) })
+            FeatureButton(Icons.Filled.Adjust, "Laser", active = c.laserOn, onClick = { c.toggleLaser() })
             FeatureButton(Icons.Filled.TouchApp, "Jari", active = c.fingerDraws, onClick = { c.toggleFinger() })
             FeatureButton(Icons.Filled.Tune, "Kertas", onClick = { onDialog(EditorDialog.Paper) })
             FeatureButton(Icons.Filled.Share, "Ekspor", onClick = { onDialog(EditorDialog.Export) })
@@ -5651,11 +5967,52 @@ private fun ReadModeChip(c: EditorController, modifier: Modifier) {
             }
             Text("· hal. ${c.index + 1}/${c.pages.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             IconButton(onClick = { c.markReadHere() }) { Icon(Icons.Filled.BookmarkAdd, contentDescription = "Tandai bacaan terakhir di sini") }
+            val ctx = LocalContext.current
+            if (!c.presenting) {
+                IconButton(onClick = { c.startPresentation(ctx) }) { Icon(Icons.Filled.Slideshow, contentDescription = "Presentasi") }
+            }
             TextButton(onClick = { c.applyReadMode(false) }) {
                 Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Sunting")
             }
+        }
+    }
+}
+
+/** Kendali presentasi di tablet: pindah halaman, laser, dan selesai. */
+@Composable
+private fun PresentationChip(c: EditorController, modifier: Modifier) {
+    Surface(modifier, shape = RoundedCornerShape(50), tonalElevation = 4.dp, shadowElevation = 8.dp) {
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(start = 14.dp, end = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Slideshow, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (c.presentScreen.isNotEmpty()) "Presentasi di ${c.presentScreen}" else "Presentasi di tablet",
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 220.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = { c.showPage(c.index - 1) }, enabled = c.index > 0) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Halaman sebelumnya")
+            }
+            Text("${c.index + 1}/${c.pages.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = { c.showPage(c.index + 1) }, enabled = c.index < c.pages.lastIndex) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Halaman berikutnya")
+            }
+            FilterChip(
+                selected = c.laserOn,
+                onClick = { c.toggleLaser() },
+                label = { Text("Laser") },
+                leadingIcon = { Icon(Icons.Filled.Adjust, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            )
+            Spacer(Modifier.width(4.dp))
+            TextButton(onClick = { c.stopPresentation() }) { Text("Selesai") }
         }
     }
 }
@@ -5851,6 +6208,11 @@ private fun InsertMenu(insert: InsertActions, labeled: Boolean) {
                 onClick = { open = false; insert.mindMap() },
             )
             DropdownMenuItem(
+                text = { Text("Pindai dokumen") },
+                leadingIcon = { Icon(Icons.Filled.DocumentScanner, null) },
+                onClick = { open = false; insert.scan() },
+            )
+            DropdownMenuItem(
                 text = { Text("Tabel") },
                 leadingIcon = { Icon(Icons.Filled.GridOn, null) },
                 onClick = { open = false; insert.table() },
@@ -5890,6 +6252,23 @@ private fun MoreMenu(c: EditorController, onDialog: (EditorDialog) -> Unit, incl
                 text = { Text("Ekspor (PNG, JPG, Word)") },
                 leadingIcon = { Icon(Icons.Filled.Share, null) },
                 onClick = { open = false; onDialog(EditorDialog.Export) },
+            )
+            DropdownMenuItem(
+                text = { Text("Kartu hafalan") },
+                leadingIcon = { Icon(Icons.Filled.Style, null) },
+                onClick = { open = false; onDialog(EditorDialog.Flashcards) },
+            )
+            val ctx = LocalContext.current
+            DropdownMenuItem(
+                text = { Text(if (c.presenting) "Selesai presentasi" else "Presentasi") },
+                leadingIcon = { Icon(Icons.Filled.Slideshow, null) },
+                onClick = { open = false; if (c.presenting) c.stopPresentation() else c.startPresentation(ctx) },
+            )
+            DropdownMenuItem(
+                text = { Text("Laser") },
+                leadingIcon = { Icon(Icons.Filled.Adjust, null) },
+                trailingIcon = { Switch(checked = c.laserOn, onCheckedChange = null) },
+                onClick = { open = false; c.toggleLaser() },
             )
             DropdownMenuItem(
                 text = {

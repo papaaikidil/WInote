@@ -111,12 +111,34 @@ object NoteSearch {
         }
     }
 
-    /** Teks asli halaman PDF: kotak tepat per baris. */
+    /**
+     * Teks asli halaman PDF: kotak tepat per baris. Huruf PDF tidak selalu punya spasi di antara baris, jadi
+     * spasi ditambahkan di pergantian baris supaya kata di ujung baris dan cuplikannya tidak menempel.
+     */
     fun inPdf(layer: PdfTextLayer, q: String, page: Int, pageId: String, out: MutableList<NoteHit>) {
-        val chars = layer.src.chars
-        for (at in occurrences(chars, q)) {
-            val rects = layer.rects(at, at + q.length - 1)
-            for (r in rects) out.add(NoteHit(page, pageId, RectF(r), snippet(chars, at, q.length)))
+        val src = layer.src
+        val chars = src.chars
+        val shown = StringBuilder(chars.length + 32)
+        val orig = IntArray(chars.length * 2 + 1)
+        for (i in chars.indices) {
+            if (i > 0 && src.line.getOrNull(i) != src.line.getOrNull(i - 1) &&
+                !chars[i].isWhitespace() && !chars[i - 1].isWhitespace()
+            ) {
+                orig[shown.length] = -1
+                shown.append(' ')
+            }
+            orig[shown.length] = i
+            shown.append(chars[i])
+        }
+        val text = shown.toString()
+        for (at in occurrences(text, q)) {
+            var a = at
+            while (a < at + q.length && orig[a] < 0) a++
+            var z = at + q.length - 1
+            while (z > a && orig[z] < 0) z--
+            if (orig[a] < 0 || orig[z] < 0) continue
+            val rects = layer.rects(orig[a], orig[z])
+            for (r in rects) out.add(NoteHit(page, pageId, RectF(r), snippet(text, at, q.length)))
         }
     }
 }

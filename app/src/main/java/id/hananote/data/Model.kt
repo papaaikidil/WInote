@@ -690,6 +690,44 @@ object InternalLink {
     }
 }
 
+/**
+ * Kartu hafalan. Kartu teks: [front] pertanyaan, [back] jawaban. Kartu selotip: [tapeKey] = "idHalaman:idSelotip",
+ * depannya potongan halaman dengan selotip tertutup, belakangnya terbuka. [box] tingkat hafal 0..5 (Leitner),
+ * [due] waktu kartu perlu diulang lagi.
+ */
+data class StudyCard(
+    val id: String,
+    val front: String,
+    val back: String,
+    val pageId: String = "",
+    val tapeKey: String = "",
+    val box: Int = 0,
+    val due: Long = 0L,
+) {
+    val isTape: Boolean get() = tapeKey.isNotEmpty()
+
+    /** Penilaian setelah melihat jawaban: 0 lupa, 1 ragu, 2 ingat. Hasil: kartu dengan jadwal ulang barunya. */
+    fun rated(rating: Int, now: Long = System.currentTimeMillis()): StudyCard {
+        val nb = when (rating) {
+            0 -> 0
+            1 -> box.coerceAtLeast(1)
+            else -> (box + 1).coerceAtMost(5)
+        }
+        val wait = when (rating) {
+            0 -> 60_000L
+            1 -> INTERVALS[nb] / 2
+            else -> INTERVALS[nb]
+        }
+        return copy(box = nb, due = now + wait)
+    }
+
+    companion object {
+        private const val DAY = 24L * 3600_000L
+        /** Jarak ulang tiap tingkat hafal: langsung, 1, 3, 7, 14, dan 30 hari. */
+        val INTERVALS = longArrayOf(0L, DAY, 3 * DAY, 7 * DAY, 14 * DAY, 30 * DAY)
+    }
+}
+
 /** Satu baris daftar isi catatan: judul bab yang menunjuk ke halaman [pageId]; [level] 0 = bab, 1 = sub-bab. */
 data class OutlineEntry(val title: String, val pageId: String, val level: Int = 0)
 

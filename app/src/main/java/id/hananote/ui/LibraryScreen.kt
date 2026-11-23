@@ -68,6 +68,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.CreateNewFolder
@@ -185,6 +186,7 @@ private class LibActions(
     val search: () -> Unit,
     val show: (LibDialog?) -> Unit,
     val importPdf: (bookId: String) -> Unit,
+    val scanDoc: (bookId: String) -> Unit,
     val pinBook: (Book, Boolean) -> Unit,
     val pinNote: (Note, Boolean) -> Unit,
     val reorderBooks: (List<String>) -> Unit,
@@ -270,6 +272,30 @@ fun LibraryScreen(
             }
         }
     }
+    // Pindai dokumen: hasil PDF-nya langsung jadi catatan baru di buku yang dipilih.
+    var scanError by remember { mutableStateOf<String?>(null) }
+    val scanner = rememberDocScanner(
+        onPdf = { uri, _ ->
+            val book = pdfBook
+            if (book != null) {
+                pdfBusy = true
+                scope.launch {
+                    val note = withContext(Dispatchers.IO) { runCatching { repo.createNoteFromPdf(context.applicationContext, book, uri, "Pindaian") }.getOrNull() }
+                    pdfBusy = false
+                    if (note != null) onOpenNote(note) else pdfError = true
+                }
+            }
+        },
+        onError = { scanError = it },
+    )
+    scanError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { scanError = null },
+            title = { Text("Pemindai belum bisa dipakai") },
+            text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { scanError = null }) { Text("OK") } },
+        )
+    }
     val actions = remember {
         LibActions(
             selectBook = onSelectBook,
@@ -279,6 +305,10 @@ fun LibraryScreen(
             importPdf = { book ->
                 pdfBook = book
                 runCatching { pickPdf.launch(arrayOf("application/pdf")) }
+            },
+            scanDoc = { book ->
+                pdfBook = book
+                scanner()
             },
             pinBook = { b, on -> repo.setBookPinned(b.id, on) },
             pinNote = { n, on -> repo.setNotePinned(n.id, on) },
@@ -1130,7 +1160,11 @@ private fun LibraryDialogs(
             // Sub-buku dihapus: kembali ke buku induknya.
             actions.selectBook(dialog.book.parent.ifEmpty { null })
         }
-        is LibDialog.NewNote -> NewNoteDialog(repo.prefs, onDismiss, onPdf = { actions.importPdf(dialog.bookId); onDismiss() }) { title, w, h, template, color ->
+        is LibDialog.NewNote -> NewNoteDialog(
+            repo.prefs, onDismiss,
+            onPdf = { actions.importPdf(dialog.bookId); onDismiss() },
+            onScan = { actions.scanDoc(dialog.bookId); onDismiss() },
+        ) { title, w, h, template, color ->
             val n = repo.createNote(dialog.bookId, title, w, h, template, color)
             onDismiss()
             actions.openNote(n)
@@ -1478,6 +1512,7 @@ private fun NewNoteDialog(
     prefs: SharedPreferences,
     onDismiss: () -> Unit,
     onPdf: () -> Unit,
+    onScan: () -> Unit,
     onCreate: (String, Float, Float, PaperTemplate, Int) -> Unit,
 ) {
     val defaultTitle = remember { "Catatan " + SimpleDateFormat("d MMM", Locale.forLanguageTag("id-ID")).format(System.currentTimeMillis()) }
@@ -1514,6 +1549,11 @@ private fun NewNoteDialog(
                     Icon(Icons.Filled.PictureAsPdf, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Buka PDF untuk ditulisi…")
+                }
+                OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.DocumentScanner, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pindai dokumen dengan kamera…")
                 }
             }
         },

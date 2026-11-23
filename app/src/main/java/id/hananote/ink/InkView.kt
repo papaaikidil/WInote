@@ -2529,6 +2529,10 @@ class InkView(context: Context) : View(context) {
         }
         drawPdfOverlay(canvas, p)
         drawSearchMarks(canvas)
+        laser?.let { l ->
+            l.draw(canvas, 1f / scale)
+            if (l.visible()) postInvalidateOnAnimation()
+        }
         lifted?.let { l ->
             val preview = widthPreview
             if (preview != null && (dragCorner == 5 || dragCorner == 6)) {
@@ -4413,6 +4417,7 @@ class InkView(context: Context) : View(context) {
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         if (page == null) return false
+        if (laser != null && laserTouch(e)) return true
         recordForPrediction(e)
         trackMultiTap(e)
         if (e.actionMasked == MotionEvent.ACTION_DOWN && turnSnap != null && turnArmed) endPageTurn()
@@ -5357,6 +5362,70 @@ class InkView(context: Context) : View(context) {
         val v = floatArrayOf(u.left, u.top, u.right, u.bottom)
         viewMatrix.mapPoints(v)
         onPdfSelection?.invoke(PdfSelection(r.first, r.last, layer.text(r.first, r.last), RectF(min(v[0], v[2]), min(v[1], v[3]), max(v[0], v[2]), max(v[1], v[3]))))
+    }
+
+    // ---------- laser presentasi ----------
+
+    /** Laser aktif: pena atau satu jari menggambar jejak laser yang memudar (tidak disimpan). Null = mati. */
+    var laser: LaserTrail? = null
+        set(v) {
+            field?.removeListener(laserListener)
+            field = v
+            v?.addListener(laserListener)
+            laserPointer = -1
+            invalidate()
+        }
+    private val laserListener: () -> Unit = { postInvalidateOnAnimation() }
+    private var laserPointer = -1
+    private var laserPalm = false
+
+    /**
+     * Sentuhan saat laser aktif. Satu pena/jari: laser. Jari kedua: laser berhenti dan halaman bisa digeser atau
+     * diperbesar seperti biasa (hasil false). Hasil true: sentuhan sudah dipakai laser.
+     */
+    private fun laserTouch(e: MotionEvent): Boolean {
+        val l = laser ?: return false
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                laserPalm = palmLike(e, 0)
+                // Telapak tangan yang menempel diabaikan sampai diangkat.
+                if (laserPalm) return true
+                laserPointer = e.getPointerId(0)
+                val pp = toPage(e.getX(0), e.getY(0))
+                l.start(pp.x, pp.y)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (laserPalm) return true
+                if (laserPointer < 0) return false
+                val i = e.findPointerIndex(laserPointer)
+                if (i < 0) return true
+                for (h in 0 until e.historySize) {
+                    val pp = toPage(e.getHistoricalX(i, h), e.getHistoricalY(i, h))
+                    l.add(pp.x, pp.y)
+                }
+                val pp = toPage(e.getX(i), e.getY(i))
+                l.add(pp.x, pp.y)
+                return true
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (laserPointer < 0) return false
+                // Dua jari: hentikan laser, lalu geser/perbesar halaman seperti biasa.
+                laserPointer = -1
+                l.end()
+                startPan(e, 0)
+                onExtraDown(e)
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (laserPalm) { laserPalm = false; return true }
+                if (laserPointer < 0) return false
+                laserPointer = -1
+                l.end()
+                return true
+            }
+            else -> return laserPalm || laserPointer >= 0
+        }
     }
 
     // ---------- sorotan cari di dalam catatan ----------

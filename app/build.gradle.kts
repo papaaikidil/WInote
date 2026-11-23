@@ -110,4 +110,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-base:18.5.0")
     // Edit PDF di catatan: membaca teks PDF beserta posisinya (pilih, stabilo, ubah teks) dan kolom formulir.
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    // Pindai dokumen dengan kamera (pemindai ML Kit lewat Layanan Google Play): hasilnya PDF jadi halaman catatan.
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
 }
