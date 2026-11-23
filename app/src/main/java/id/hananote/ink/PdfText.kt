@@ -112,6 +112,36 @@ object PdfText {
         }
     }
 
+    /** Satu entri daftar isi bawaan PDF: judul, nomor halaman PDF (mulai 0), dan kedalaman. */
+    class OutlineItem(val title: String, val page: Int, val level: Int)
+
+    /** Baca daftar isi (bookmark) bawaan PDF di latar; [done] dipanggil di utas utama (kosong bila tidak ada). */
+    fun loadOutline(context: Context, file: File, done: (List<OutlineItem>) -> Unit) {
+        init(context)
+        worker.execute {
+            val r = runCatching { readOutline(file) }.onFailure { id.hananote.data.CrashLog.note("daftar isi PDF gagal: ${it.javaClass.simpleName}") }.getOrNull()
+            main.post { done(r.orEmpty()) }
+        }
+    }
+
+    private fun readOutline(file: File): List<OutlineItem> = synchronized(this) {
+        val d = document(file)
+        val root = d.documentCatalog.documentOutline ?: return emptyList()
+        val out = ArrayList<OutlineItem>()
+        fun walk(node: com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode, level: Int) {
+            for (item in node.children()) {
+                if (out.size >= 500) return
+                val page = runCatching { item.findDestinationPage(d) }.getOrNull()
+                val idx = if (page != null) d.pages.indexOf(page) else -1
+                val title = item.title?.trim().orEmpty()
+                if (idx >= 0 && title.isNotEmpty()) out.add(OutlineItem(title, idx, level))
+                if (level < 3) walk(item, level + 1)
+            }
+        }
+        walk(root, 0)
+        return out
+    }
+
     /** Tutup dokumen yang sedang terbuka (mis. saat catatan ditutup). */
     fun release() {
         worker.execute {

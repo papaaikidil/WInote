@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.RectF
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
@@ -649,11 +650,14 @@ class Repository private constructor(context: Context) {
         if (src.exists()) src.copyTo(File(dir, "$toPageId.bin"), overwrite = true)
         val idx = File(dir, "$fromPageId.idx")
         if (idx.exists()) idx.copyTo(File(dir, "$toPageId.idx"), overwrite = true)
+        val lin = File(dir, "$fromPageId.lin")
+        if (lin.exists()) lin.copyTo(File(dir, "$toPageId.lin"), overwrite = true)
     }
 
     fun deletePageFile(noteId: String, pageId: String) {
         File(File(notesRoot, noteId), "$pageId.bin").delete()
         File(File(notesRoot, noteId), "$pageId.idx").delete()
+        File(File(notesRoot, noteId), "$pageId.lin").delete()
     }
 
     // ---------- gambar ----------
@@ -797,6 +801,56 @@ class Repository private constructor(context: Context) {
         writeAtomic(indexFile(noteId, pageId), text)
     }
 
+    // ---------- daftar isi ----------
+
+    private fun outlineFile(noteId: String) = File(noteDir(noteId), "outline.json")
+
+    /** Daftar isi buatan sendiri catatan ini (urut seperti disusun). */
+    fun loadOutline(noteId: String): List<OutlineEntry> {
+        val f = outlineFile(noteId)
+        if (!f.exists()) return emptyList()
+        return runCatching {
+            val a = JSONArray(f.readText())
+            (0 until a.length()).map { i ->
+                val o = a.getJSONObject(i)
+                OutlineEntry(o.optString("t"), o.optString("p"), o.optInt("l", 0))
+            }.filter { it.pageId.isNotEmpty() }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveOutline(noteId: String, entries: List<OutlineEntry>) {
+        if (!noteDir(noteId).exists()) return
+        val a = JSONArray()
+        for (e in entries) a.put(JSONObject().put("t", e.title).put("p", e.pageId).put("l", e.level))
+        writeAtomic(outlineFile(noteId), a.toString())
+        touchNote(noteId)
+    }
+
+    /** Letak tiap baris tulisan tangan yang sudah terbaca: "l t r b<TAB>teks" per baris (untuk cari di catatan). */
+    fun linesFile(noteId: String, pageId: String) = File(noteDir(noteId), "$pageId.lin")
+
+    fun writeLines(noteId: String, pageId: String, text: String) {
+        if (!noteDir(noteId).exists()) return
+        writeAtomic(linesFile(noteId, pageId), text)
+    }
+
+    /** Baris tulisan tangan terbaca beserta kotaknya (satuan halaman). */
+    fun readLines(noteId: String, pageId: String): List<Pair<RectF, String>> {
+        val f = linesFile(noteId, pageId)
+        if (!f.exists()) return emptyList()
+        val out = ArrayList<Pair<RectF, String>>()
+        runCatching {
+            for (line in f.readLines()) {
+                val tab = line.indexOf('\t')
+                if (tab <= 0) continue
+                val n = line.substring(0, tab).split(' ').mapNotNull { it.toFloatOrNull() }
+                if (n.size != 4) continue
+                out.add(RectF(n[0], n[1], n[2], n[3]) to line.substring(tab + 1))
+            }
+        }
+        return out
+    }
+
     /** Teks halaman yang bisa dicari: dari indeks, dengan teks ketik terbaru bila indeksnya tertinggal. */
     private fun searchableText(noteId: String, pageId: String): String {
         val idx = indexFile(noteId, pageId)
@@ -808,6 +862,11 @@ class Repository private constructor(context: Context) {
         val hand = index?.let { PageText.handwritingPart(it) }.orEmpty()
         return typed + "\n" + hand
     }
+
+    /** Baris pertama isi halaman (teks ketik atau tulisan tangan terbaca), untuk usulan judul bab. */
+    fun firstLine(noteId: String, pageId: String): String =
+        runCatching { searchableText(noteId, pageId) }.getOrDefault("")
+            .lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }?.take(60).orEmpty()
 
     /** Cuplikan isi halaman pertama (teks ketik dan tulisan tangan yang sudah terbaca), untuk widget. */
     fun snippet(noteId: String, maxChars: Int = 180): String {
@@ -903,7 +962,9 @@ class Repository private constructor(context: Context) {
                 if (!bin.exists()) continue
                 val needs = !idx.exists() ||
                     idx.lastModified() + 1500 < bin.lastModified() ||
-                    (handwritingReady && runCatching { idx.bufferedReader().use { it.readLine() } }.getOrNull() == PageText.PARTIAL)
+                    (handwritingReady && runCatching { idx.bufferedReader().use { it.readLine() } }.getOrNull() == PageText.PARTIAL) ||
+                    // Indeks lama tanpa letak baris tulisan tangan (dibutuhkan cari di dalam catatan).
+                    (handwritingReady && !linesFile(note.id, p.id).exists())
                 if (needs) out.add(note.id to p)
             }
         }
@@ -962,7 +1023,7 @@ class Repository private constructor(context: Context) {
         if (notesFile.exists()) put("notes.json", notesFile)
         for (n in notesNow) {
             val dir = File(notesRoot, n.id)
-            dir.listFiles { f -> f.isFile && SAFE_NAME.matches(f.name) && !f.name.endsWith(".tmp") && !f.name.endsWith(".idx") }
+            dir.listFiles { f -> f.isFile && SAFE_NAME.matches(f.name) && !f.name.endsWith(".tmp") && !f.name.endsWith(".idx") && !f.name.endsWith(".lin") }
                 ?.forEach { put("notes/${n.id}/${it.name}", it) }
             if (n.art.isNotEmpty() && SAFE_NAME.matches(n.art)) {
                 ArtStorage.dir(appContext, n.art).listFiles { f -> f.isFile && SAFE_NAME.matches(f.name) && !f.name.endsWith(".tmp") }

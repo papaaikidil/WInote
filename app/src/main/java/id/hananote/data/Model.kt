@@ -666,6 +666,32 @@ data class Note(
 )
 
 /**
+ * Link di dalam WInote: ke halaman catatan ini ("winote:page/<idHalaman>") atau ke catatan lain
+ * ("winote:note/<idCatatan>" atau "winote:note/<idCatatan>/<idHalaman>").
+ */
+object InternalLink {
+    const val PREFIX = "winote:"
+
+    fun page(pageId: String) = "${PREFIX}page/$pageId"
+    fun note(noteId: String, pageId: String? = null) = "${PREFIX}note/$noteId" + (pageId?.let { "/$it" } ?: "")
+    fun isInternal(url: String) = url.startsWith(PREFIX)
+
+    /** Hasil: (idCatatan atau null untuk catatan ini, idHalaman atau null). */
+    fun parse(url: String): Pair<String?, String?>? {
+        if (!isInternal(url)) return null
+        val parts = url.removePrefix(PREFIX).split('/')
+        return when (parts.firstOrNull()) {
+            "page" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { null to it }
+            "note" -> parts.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { it to parts.getOrNull(2)?.takeIf { p -> p.isNotEmpty() } }
+            else -> null
+        }
+    }
+}
+
+/** Satu baris daftar isi catatan: judul bab yang menunjuk ke halaman [pageId]; [level] 0 = bab, 1 = sub-bab. */
+data class OutlineEntry(val title: String, val pageId: String, val level: Int = 0)
+
+/**
  * Pengaturan nomor halaman sebuah catatan. [position]: 0 bawah tengah, 1 bawah kanan, 2 bawah kiri, 3 atas kanan,
  * 4 atas tengah. [format]: 0 "1", 1 "Hal. 1", 2 "1 / 12", 3 "- 1 -". [start]: nomor halaman pertama.
  * [skipFirst]: halaman pertama (sampul) tidak diberi nomor.

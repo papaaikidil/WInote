@@ -27,6 +27,7 @@ object PageIndexer {
         val ink = content.strokes.filter { it.tool.isWriting && it.size > 0 }
         var complete = true
         var hand = ""
+        val lines = StringBuilder()
         if (ink.isNotEmpty()) {
             val ready = runCatching { Handwriting.isReady() }.getOrDefault(false)
             if (ready) {
@@ -45,6 +46,9 @@ object PageIndexer {
                     if (text.isNotEmpty()) {
                         sb.append(text).append('\n')
                         before = text
+                        val bx = line.box
+                        lines.append(bx.left).append(' ').append(bx.top).append(' ').append(bx.right).append(' ').append(bx.bottom)
+                            .append('\t').append(text.replace('\n', ' ').replace('\t', ' ')).append('\n')
                     }
                 }
                 hand = sb.toString().trimEnd()
@@ -54,7 +58,10 @@ object PageIndexer {
         }
         val composed = PageText.compose(typed, hand, complete)
         // Ditulis lewat jalur simpan, jadi selalu sesudah isi halaman yang sedang disimpan.
-        withContext(repo.writeDispatcher) { repo.writeIndex(noteId, page.id, composed) }
+        withContext(repo.writeDispatcher) {
+            repo.writeIndex(noteId, page.id, composed)
+            if (complete || ink.isEmpty()) repo.writeLines(noteId, page.id, lines.toString())
+        }
     }
 
     /** Lengkapi indeks semua halaman yang belum punya atau sudah tertinggal. */

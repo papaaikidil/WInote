@@ -1,4 +1,4 @@
-"""Buat PDF uji (tanpa pustaka): 2 halaman A4 berteks (Helvetica, Times) dan formulir AcroForm (teks, centang, tanda tangan)."""
+"""Buat PDF uji (tanpa pustaka): 2 halaman A4 berteks (Helvetica, Times), formulir AcroForm (teks, centang, tanda tangan), dan daftar isi (bookmark)."""
 import sys
 
 out = sys.argv[1]
@@ -22,7 +22,7 @@ BT /F1 12 Tf 60 540 Td (Tanda tangan:) Tj ET
 BT /F3 12 Tf 60 572 Td (Catatan: dokumen ini dibuat untuk uji fitur edit PDF.) Tj ET"""
 page2 = """BT /F3 14 Tf 60 780 Td (Halaman kedua dokumen PDF.) Tj 0 -20 Td (Teks ini memakai huruf Times.) Tj ET"""
 
-obj(1, "<< /Type /Catalog /Pages 2 0 R /AcroForm 10 0 R >>")
+obj(1, "<< /Type /Catalog /Pages 2 0 R /AcroForm 10 0 R /Outlines 16 0 R >>")
 obj(2, "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
 res = "/Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >>"
 obj(3, f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] {res} /Contents 8 0 R /Annots [11 0 R 12 0 R 13 0 R] >>")
@@ -38,6 +38,10 @@ obj(12, "<< /Type /Annot /Subtype /Widget /FT /Btn /T (setuju) /Rect [130 596 14
 obj(13, "<< /Type /Annot /Subtype /Widget /FT /Sig /T (ttd) /Rect [170 500 330 550] /P 3 0 R /F 4 >>")
 stream(14, "q 0 g 1.5 w 3 8 m 7 3 l 13 13 l S Q", "/Type /XObject /Subtype /Form /BBox [0 0 16 16] ")
 stream(15, "", "/Type /XObject /Subtype /Form /BBox [0 0 16 16] ")
+# Daftar isi bawaan PDF (bookmark): dua bab.
+obj(16, "<< /Type /Outlines /First 17 0 R /Last 18 0 R /Count 2 >>")
+obj(17, "<< /Title (Surat pernyataan) /Parent 16 0 R /Next 18 0 R /Dest [3 0 R /Fit] >>")
+obj(18, "<< /Title (Lampiran huruf Times) /Parent 16 0 R /Prev 17 0 R /Dest [4 0 R /Fit] >>")
 
 buf = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
 offs = {}

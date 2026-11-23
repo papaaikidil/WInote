@@ -108,7 +108,9 @@ if cmd == "garis":
         syn()
 elif cmd == "jalur":
     # Satu jari melewati titik-titik (persen layar) x0 y0 x1 y1 ... dengan interpolasi halus (Catmull-Rom).
-    v = list(map(float, a))
+    # Diakhiri "tahan": jari tetap menempel di titik terakhir (angkat dengan perintah "angkat").
+    hold_end = len(a) > 0 and a[-1] == "tahan"
+    v = list(map(float, a[:-1] if hold_end else a))
     P = [(W * v[i] / 100, H * v[i + 1] / 100) for i in range(0, len(v) - 1, 2)]
     pts = [P[0]]
     for k in range(len(P) - 1):
@@ -125,9 +127,10 @@ elif cmd == "jalur":
     for p in pts[1:]:
         move(0, *p)
         syn()
-    up(0)
-    ev(1, 330, 0)
-    syn()
+    if not hold_end:
+        up(0)
+        ev(1, 330, 0)
+        syn()
 elif cmd == "geser3":
     # Tiga jari mendarat hampir bersamaan lalu bergeser ke bawah sejauh a[0] persen tinggi layar.
     dist = H * float(a[0]) / 100

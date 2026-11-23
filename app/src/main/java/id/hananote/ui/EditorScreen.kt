@@ -40,6 +40,8 @@ import id.hananote.ink.PdfFieldBox
 import id.hananote.ink.PdfGeom
 import id.hananote.ink.PdfPages
 import id.hananote.ink.PdfSelection
+import id.hananote.ink.NoteHit
+import id.hananote.ink.NoteSearch
 import id.hananote.ink.PdfText
 import id.hananote.ink.PdfTextLayer
 import androidx.core.content.FileProvider
@@ -68,7 +70,10 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.StayCurrentLandscape
 import androidx.compose.material.icons.filled.StayCurrentPortrait
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Toc
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.luminance
@@ -217,6 +222,7 @@ import id.hananote.data.FontEntry
 import id.hananote.data.FontRegistry
 import id.hananote.data.ImageItem
 import id.hananote.data.InputMode
+import id.hananote.data.InternalLink
 import id.hananote.data.LinkItem
 import id.hananote.data.PageItem
 import id.hananote.data.ShapeKind
@@ -257,6 +263,7 @@ import id.hananote.data.Align
 import id.hananote.data.TextLists
 import id.hananote.data.TextRuns
 import id.hananote.data.EraserMode
+import id.hananote.data.OutlineEntry
 import id.hananote.data.PageBackground
 import id.hananote.data.CrashLog
 import id.hananote.data.PaperTexture
@@ -360,6 +367,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.abs
@@ -572,6 +581,29 @@ class EditorController(private val repo: Repository, val noteId: String) {
     var autoCaps by mutableStateOf(prefs.getBoolean("auto_caps", true))
         private set
 
+    /** Bentuk otomatis: goresan yang ujungnya ditahan sebentar jadi garis, lingkaran, kotak, ... yang rapi. */
+    var autoShape by mutableStateOf(prefs.getBoolean("auto_shape", true))
+        private set
+
+    fun toggleAutoShape() {
+        autoShape = !autoShape
+        prefs.edit().putBoolean("auto_shape", autoShape).apply()
+        view?.autoShape = autoShape
+        notice = if (autoShape) {
+            "Bentuk otomatis aktif: gambar bentuk lalu tahan pena sebentar di ujungnya."
+        } else {
+            "Bentuk otomatis mati."
+        }
+    }
+
+    /** Goresan baru saja berubah jadi bentuk rapi; petunjuk cara memakainya ditampilkan sekali. */
+    fun autoShapeDone(kind: String) {
+        if (!prefs.getBoolean("hint_auto_shape", false)) {
+            prefs.edit().putBoolean("hint_auto_shape", true).apply()
+            notice = "$kind dirapikan. Tahan pena sebentar di ujung goresan untuk bentuk otomatis; matikan di Alat → Bentuk otomatis."
+        }
+    }
+
     fun toggleAutoCaps() {
         autoCaps = !autoCaps
         prefs.edit().putBoolean("auto_caps", autoCaps).apply()
@@ -752,7 +784,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
                 }
             }
         }
-        v.onOpenLink = { linkToOpen = it }
+        v.onOpenLink = { followLink(it) }
         v.onSwipePage = { dir -> turnPage(dir) }
         // Ketuk dua jari: urungkan; tiga jari: ulangi.
         v.onMultiTap = { n ->
@@ -823,6 +855,8 @@ class EditorController(private val repo: Repository, val noteId: String) {
         v.onPdfSelection = { sel -> pdfSel = sel }
         v.onPdfFieldTapped = { f -> pdfFieldTapped(f) }
         v.onPdfNoText = { pdfNoText() }
+        v.autoShape = autoShape
+        v.onAutoShape = { autoShapeDone(it) }
         v.pdfFormMode = pdfForm
         v.imageDir = repo.noteDir(noteId)
         refreshPageLabels()
@@ -2426,6 +2460,49 @@ class EditorController(private val repo: Repository, val noteId: String) {
     }
 
     fun selectedLink(): LinkItem? = view?.selectedItem() as? LinkItem
+
+    /** Catatan lain yang diminta dibuka lewat link (id catatan, halaman ke-, atau -1). */
+    var noteToOpen by mutableStateOf<Pair<String, Int>?>(null)
+
+    /** Ikuti link: website dibuka di browser, link WInote langsung ke halaman atau catatannya. */
+    fun followLink(url: String) {
+        val target = InternalLink.parse(url)
+        if (target == null) {
+            linkToOpen = url
+            return
+        }
+        val (otherNote, pageId) = target
+        if (otherNote == null || otherNote == noteId) {
+            val i = if (pageId == null) 0 else pages.indexOfFirst { it.id == pageId }
+            if (i < 0) {
+                notice = "Halaman tujuan link ini sudah dihapus."
+                return
+            }
+            CrashLog.note("link ke halaman")
+            if (i != index) showPage(i)
+            notice = "Halaman ${i + 1}"
+            return
+        }
+        val n = repo.note(otherNote)
+        if (n == null) {
+            notice = "Catatan tujuan link ini sudah dihapus."
+            return
+        }
+        val i = pageId?.let { pid -> repo.loadPages(otherNote).indexOfFirst { it.id == pid } } ?: -1
+        CrashLog.note("link ke catatan lain")
+        flush()
+        noteToOpen = otherNote to i
+    }
+
+    /** Teks pendek isi halaman ke-[i], untuk daftar tujuan link. */
+    fun pageLabel(i: Int): String {
+        val p = pages.getOrNull(i) ?: return ""
+        return repo.firstLine(noteId, p.id)
+    }
+
+    fun otherNotes(): List<id.hananote.data.Note> = repo.notes.value.filter { it.id != noteId && it.art.isEmpty() }
+    fun bookTitle(bookId: String): String = repo.books.value.firstOrNull { it.id == bookId }?.title.orEmpty()
+    fun pagesOf(otherNote: String): List<PageMeta> = repo.loadPages(otherNote)
     fun selectedImage(): ImageItem? = view?.selectedItem() as? ImageItem
     fun imageDir(): File = repo.noteDir(noteId)
 
@@ -2492,6 +2569,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
     private fun normalizeUrl(raw: String): String {
         val t = raw.trim()
         if (t.isEmpty()) return ""
+        if (InternalLink.isInternal(t)) return t
         return if (t.startsWith("http://", true) || t.startsWith("https://", true)) t else "https://$t"
     }
 
@@ -2917,6 +2995,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
     private fun onPageShown() {
         val v = view ?: return
         pdfSel = null
+        markSearchPage()
         if (mode == InputMode.PDF) {
             loadPdfLayer(announce = false)
             if (pdfForm) loadPdfFields(announce = false) else v.pdfFields = emptyList()
@@ -3355,6 +3434,223 @@ class EditorController(private val repo: Repository, val noteId: String) {
         notice = "Halaman ${index + 1} ditandai sebagai bacaan terakhir."
     }
 
+    // ---------- cari di dalam catatan ----------
+
+    var searchOpen by mutableStateOf(false)
+        private set
+    var searchQuery by mutableStateOf("")
+        private set
+    /** Semua kata yang ketemu, urut halaman lalu dari atas ke bawah. */
+    var searchHits by mutableStateOf<List<NoteHit>>(emptyList())
+        private set
+    var searchAt by mutableIntStateOf(-1)
+        private set
+    var searchBusy by mutableStateOf(false)
+        private set
+    private var searchJob: Job? = null
+    private var searchReveal: RectF? = null
+
+    fun openSearch() {
+        searchOpen = true
+        CrashLog.note("cari di catatan")
+    }
+
+    fun closeSearch() {
+        searchJob?.cancel()
+        searchOpen = false
+        searchQuery = ""
+        searchHits = emptyList()
+        searchAt = -1
+        searchBusy = false
+        searchReveal = null
+        view?.searchMarks = emptyList()
+        view?.searchCurrent = null
+    }
+
+    /** Kata yang dicari berubah: cari ulang (sesudah jeda singkat) di semua halaman catatan ini. */
+    fun setSearch(q: String) {
+        searchQuery = q
+        searchJob?.cancel()
+        searchHits = emptyList()
+        searchAt = -1
+        val query = q.trim()
+        if (query.isEmpty()) {
+            searchBusy = false
+            markSearchPage()
+            return
+        }
+        searchBusy = true
+        searchJob = main.launch {
+            delay(250)
+            val all = pages.toList()
+            val cur = page.id
+            val live = view?.contentSnapshot()
+            val ctx = view?.context
+            val found = ArrayList<NoteHit>()
+            for ((i, p) in all.withIndex()) {
+                val hits = ArrayList<NoteHit>()
+                val content = if (p.id == cur && live != null) live else withContext(repo.writeDispatcher) {
+                    runCatching { repo.loadContent(noteId, p.id) }.getOrNull()
+                }
+                withContext(Dispatchers.Default) {
+                    content?.let { NoteSearch.inContent(it, query, i, p.id, hits) }
+                    NoteSearch.inHandwriting(repo.readLines(noteId, p.id), query, i, p.id, hits)
+                }
+                val src = pdfSource(p)
+                if (src != null && ctx != null) {
+                    val text = PdfText.cachedText(src.first, src.second) ?: suspendCancellableCoroutine { cont ->
+                        PdfText.loadText(ctx, src.first, src.second) { t -> if (cont.isActive) cont.resume(t) }
+                    }
+                    if (text != null && !text.isEmpty) {
+                        val layer = PdfTextLayer(text, p.width, p.height, PageBackground.pdfRotation(p.background))
+                        NoteSearch.inPdf(layer, query, i, p.id, hits)
+                    }
+                }
+                if (hits.isEmpty()) continue
+                hits.sortWith(compareBy({ (it.rect.top / 6f).toInt() }, { it.rect.left }))
+                found.addAll(hits)
+                searchHits = found.toList()
+                // Hasil pertama di halaman ini atau sesudahnya langsung dituju.
+                if (searchAt < 0 && i >= index) goToHit(found.indexOfFirst { it.pageIndex >= index })
+                markSearchPage()
+            }
+            searchBusy = false
+            if (searchAt < 0 && found.isNotEmpty()) goToHit(0)
+            markSearchPage()
+        }
+    }
+
+    fun nextHit() {
+        val n = searchHits.size
+        if (n == 0) return
+        goToHit(if (searchAt < 0) 0 else (searchAt + 1) % n)
+    }
+
+    fun prevHit() {
+        val n = searchHits.size
+        if (n == 0) return
+        goToHit(if (searchAt <= 0) n - 1 else searchAt - 1)
+    }
+
+    fun goToHit(k: Int) {
+        val h = searchHits.getOrNull(k) ?: return
+        searchAt = k
+        val target = pages.indexOfFirst { it.id == h.pageId }
+        if (target < 0) return
+        if (target != index) {
+            searchReveal = h.rect
+            showPage(target)
+        } else {
+            markSearchPage()
+            revealSearch(h.rect)
+        }
+    }
+
+    private fun revealSearch(r: RectF) {
+        val v = view ?: return
+        val dp = v.resources.displayMetrics.density
+        v.reveal(r, (if (readMode) 140f else 84f) * dp)
+    }
+
+    /** Sorotan kata yang ketemu di halaman yang sedang tampil. */
+    private fun markSearchPage() {
+        val v = view ?: return
+        if (!searchOpen) {
+            v.searchMarks = emptyList()
+            v.searchCurrent = null
+            return
+        }
+        val pid = page.id
+        v.searchMarks = searchHits.filter { it.pageId == pid }.map { it.rect }
+        v.searchCurrent = searchHits.getOrNull(searchAt)?.takeIf { it.pageId == pid }?.rect
+        searchReveal?.let { r ->
+            if (v.searchCurrent === r) {
+                searchReveal = null
+                revealSearch(r)
+            }
+        }
+    }
+
+    // ---------- daftar isi ----------
+
+    /** Daftar isi buatan sendiri, urut halaman. */
+    val outline = mutableStateListOf<OutlineEntry>()
+    /** Daftar isi bawaan PDF di catatan ini, sudah menunjuk ke halaman catatan. */
+    var pdfOutline by mutableStateOf<List<OutlineEntry>>(emptyList())
+        private set
+    private var outlineLoaded = false
+
+    /** Muat daftar isi (dan daftar isi bawaan PDF) saat panelnya dibuka. */
+    fun refreshOutline() {
+        val ids = pages.map { it.id }.toSet()
+        outline.clear()
+        outline.addAll(repo.loadOutline(noteId).filter { it.pageId in ids })
+        outlineLoaded = true
+        val ctx = view?.context ?: return
+        val files = pages.mapNotNull { PageBackground.pdfOf(it.background)?.first }.distinct()
+        if (files.isEmpty()) { pdfOutline = emptyList(); return }
+        val acc = ArrayList<Pair<Int, OutlineEntry>>()
+        var left = files.size
+        for (name in files) {
+            PdfText.loadOutline(ctx, File(repo.noteDir(noteId), name)) { items ->
+                for (it in items) {
+                    val at = pages.indexOfFirst { p -> PageBackground.pdfOf(p.background)?.let { (n, i) -> n == name && i == it.page } == true }
+                    if (at >= 0) acc.add(at to OutlineEntry(it.title, pages[at].id, it.level.coerceAtMost(2)))
+                }
+                left--
+                if (left == 0) pdfOutline = acc.sortedBy { it.first }.map { it.second }
+            }
+        }
+    }
+
+    fun outlinePage(e: OutlineEntry): Int = pages.indexOfFirst { it.id == e.pageId }
+
+    /** Usulan judul bab untuk halaman ke-[i]: baris pertama isinya, atau "Halaman N". */
+    fun outlineSuggestion(i: Int): String {
+        val p = pages.getOrNull(i) ?: return ""
+        return repo.firstLine(noteId, p.id).ifEmpty { "Halaman ${i + 1}" }
+    }
+
+    private fun saveOutlineNow() {
+        repo.saveOutline(noteId, outline.toList())
+    }
+
+    /** Tambahkan halaman ke-[i] ke daftar isi, di urutan halamannya. */
+    fun addOutline(title: String, i: Int, level: Int = 0) {
+        val p = pages.getOrNull(i) ?: return
+        if (!outlineLoaded) refreshOutline()
+        val entry = OutlineEntry(title.trim().ifEmpty { "Halaman ${i + 1}" }, p.id, level.coerceIn(0, 2))
+        val at = outline.indexOfFirst { outlinePage(it) > i }.let { if (it < 0) outline.size else it }
+        outline.add(at, entry)
+        saveOutlineNow()
+        CrashLog.note("daftar isi: tambah")
+        notice = "Halaman ${i + 1} masuk daftar isi: ${entry.title}"
+    }
+
+    fun renameOutline(k: Int, title: String) {
+        val e = outline.getOrNull(k) ?: return
+        outline[k] = e.copy(title = title.trim().ifEmpty { e.title })
+        saveOutlineNow()
+    }
+
+    fun setOutlineLevel(k: Int, level: Int) {
+        val e = outline.getOrNull(k) ?: return
+        outline[k] = e.copy(level = level.coerceIn(0, 2))
+        saveOutlineNow()
+    }
+
+    fun removeOutline(k: Int) {
+        if (k !in outline.indices) return
+        outline.removeAt(k)
+        saveOutlineNow()
+    }
+
+    /** Buka halaman yang ditunjuk entri daftar isi. */
+    fun goOutline(e: OutlineEntry) {
+        val i = outlinePage(e)
+        if (i >= 0) showPage(i)
+    }
+
     // ---------- halaman ----------
 
     fun addPage(after: Int = index) {
@@ -3656,6 +3952,8 @@ private sealed interface EditorDialog {
     data object Emoji : EditorDialog
     data object PageNumbers : EditorDialog
     data class Orientation(val index: Int) : EditorDialog
+    /** Daftar isi; [addFor]: langsung tambahkan halaman ke-[addFor] sebagai bab. */
+    data class Outline(val addFor: Int? = null) : EditorDialog
 }
 
 private enum class EditorSheet { ToolOptions, Pages }
@@ -3665,8 +3963,22 @@ private enum class EditorSheet { ToolOptions, Pages }
 // =====================================================================
 
 @Composable
-fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: () -> Unit) {
+fun EditorScreen(
+    repo: Repository,
+    noteId: String,
+    isTablet: Boolean,
+    onBack: () -> Unit,
+    onOpenNote: (String, Int) -> Unit = { _, _ -> },
+) {
     val c = remember(noteId) { EditorController(repo, noteId) }
+    // Link ke catatan lain: buka catatan itu (di halaman tujuannya).
+    val jump = c.noteToOpen
+    LaunchedEffect(jump) {
+        if (jump != null) {
+            c.noteToOpen = null
+            onOpenNote(jump.first, jump.second)
+        }
+    }
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner, c) {
         val obs = LifecycleEventObserver { _, e ->
@@ -3805,12 +4117,14 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
                 v.deskColor = desk
                 v.accentColor = accent
                 v.selectionBarTop = if (isTablet && c.focusMode) 80f else 12f
+                v.autoShape = c.autoShape
             },
         )
         c.canvasMenu?.let { CanvasMenuPopup(c, it) }
         if (c.viewTilted) StraightenChip(c, Modifier.align(Alignment.TopStart).padding(12.dp))
         if (c.readMode) ReadModeChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 14.dp else 10.dp))
-        if (c.readMode) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
+        if (c.readMode && !c.searchOpen) ResumeReadingChip(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.focusMode) 72.dp else 66.dp))
+        if (c.searchOpen) NoteSearchBar(c, Modifier.align(Alignment.TopCenter).padding(top = if (c.readMode) 64.dp else 10.dp))
         if (!c.readMode && c.mode == InputMode.PDF && c.pdfSel != null) PdfActionBar(c, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         (c.convert as? ConvertState.Working)?.let { ConvertProgress(c, it.message, Modifier.align(Alignment.TopCenter).padding(top = 72.dp)) }
         InlineEditing(c, fonts, addedFont, addFont, ribbon = isTablet && !c.focusMode && c.mode == InputMode.TYPE)
@@ -3910,7 +4224,8 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
             confirm = "Hapus",
             onDismiss = { dialog = null },
         ) { c.deletePage(d.index); dialog = null }
-        EditorDialog.InsertLink -> LinkDialog(
+        EditorDialog.InsertLink -> LinkTargetDialog(
+            c = c,
             heading = "Sisipkan link",
             initialUrl = "",
             initialLabel = "",
@@ -3919,7 +4234,8 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
         ) { url, label -> c.insertLink(url, label); dialog = null }
         EditorDialog.EditLink -> {
             val l = c.selectedLink()
-            LinkDialog(
+            LinkTargetDialog(
+                c = c,
                 heading = "Ubah link",
                 initialUrl = l?.url ?: "",
                 initialLabel = l?.label ?: "",
@@ -3942,6 +4258,7 @@ fun EditorScreen(repo: Repository, noteId: String, isTablet: Boolean, onBack: ()
         EditorDialog.Export -> ExportDialog(c, onDismiss = { dialog = null })
         EditorDialog.PageNumbers -> PageNumbersDialog(c, onDismiss = { dialog = null })
         is EditorDialog.Orientation -> OrientationDialog(c, d.index, onDismiss = { dialog = null })
+        is EditorDialog.Outline -> OutlineSheet(c, d.addFor, onDismiss = { dialog = null })
         EditorDialog.InsertDate -> DateDialog(
             onDismiss = { dialog = null },
             onDate = { text -> c.insertDate(text); dialog = null },
@@ -4036,6 +4353,7 @@ private fun TabletEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                NoteNavButtons(c, onDialog)
                 ReadModeButton(c)
                 if (!c.readMode) {
                     IconButton(onClick = { c.undo() }, enabled = c.canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Urungkan") }
@@ -4226,6 +4544,7 @@ private fun FeatureGroupButtons(c: EditorController, group: String?, insert: Ins
         }
         "Alat" -> {
             FeatureButton(Icons.Filled.Straighten, "Penggaris", active = c.ruler, onClick = { c.toggleRuler() })
+            FeatureButton(Icons.Filled.Category, "Bentuk otomatis", active = c.autoShape, onClick = { c.toggleAutoShape() })
             FeatureButton(Icons.Filled.TouchApp, "Jari", active = c.fingerDraws, onClick = { c.toggleFinger() })
             FeatureButton(Icons.Filled.Tune, "Kertas", onClick = { onDialog(EditorDialog.Paper) })
             FeatureButton(Icons.Filled.Share, "Ekspor", onClick = { onDialog(EditorDialog.Export) })
@@ -4596,6 +4915,11 @@ private fun PageThumb(
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Tambah halaman sesudahnya") }, leadingIcon = { Icon(Icons.Filled.Add, null) }, onClick = { menu = false; c.addPage(i); onOpened() })
                 DropdownMenuItem(text = { Text("Duplikat") }, leadingIcon = { Icon(Icons.Filled.ContentCopy, null) }, onClick = { menu = false; c.duplicatePage(i); onOpened() })
+                DropdownMenuItem(
+                    text = { Text("Masukkan ke daftar isi") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Toc, null) },
+                    onClick = { menu = false; onOpened(); onDialog(EditorDialog.Outline(addFor = i)) },
+                )
                 if (PageBackground.pdfOf(p.background) == null && p.width != p.height) {
                     val land = p.width > p.height
                     DropdownMenuItem(
@@ -4658,6 +4982,7 @@ private fun PhoneEditor(
                     }
                 },
                 actions = {
+                    NoteNavButtons(c, onDialog)
                     ReadModeButton(c)
                     IconButton(onClick = { c.toggleFocus() }) {
                         Icon(Icons.Filled.Fullscreen, contentDescription = if (c.readMode) "Layar penuh untuk membaca" else "Layar penuh untuk menulis")
@@ -5369,7 +5694,7 @@ private fun SelectionBar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
             Text(sel.kind, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(6.dp))
             if (sel.url != null) {
-                TextButton(onClick = { c.linkToOpen = sel.url }) { Text("Buka") }
+                TextButton(onClick = { c.followLink(sel.url) }) { Text("Buka") }
                 TextButton(onClick = { onDialog(EditorDialog.EditLink) }) { Text("Ubah") }
             }
             if (sel.text != null) {
@@ -5741,47 +6066,6 @@ private fun BackgroundSwatch(label: String, selected: Boolean, onClick: () -> Un
             maxLines = 1,
         )
     }
-}
-
-@Composable
-private fun LinkDialog(
-    heading: String,
-    initialUrl: String,
-    initialLabel: String,
-    confirm: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
-) {
-    var url by remember { mutableStateOf(initialUrl) }
-    var label by remember { mutableStateOf(initialLabel) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(heading) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("Alamat website") },
-                    placeholder = { Text("contoh: titikbotanika.com") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = { label = it },
-                    label = { Text("Nama yang ditampilkan (boleh kosong)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(url, label.trim()) }, enabled = url.isNotBlank()) { Text(confirm) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
-    )
 }
 
 @Composable
@@ -7283,5 +7567,21 @@ private fun OrientationChoice(label: String, landscape: Boolean, selected: Boole
             style = MaterialTheme.typography.labelLarge,
             color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+
+/** Tombol cari di catatan dan daftar isi di bilah judul. */
+@Composable
+private fun NoteNavButtons(c: EditorController, onDialog: (EditorDialog) -> Unit) {
+    IconButton(onClick = { if (c.searchOpen) c.closeSearch() else c.openSearch() }) {
+        Icon(
+            Icons.Filled.Search,
+            contentDescription = if (c.searchOpen) "Tutup pencarian" else "Cari di catatan",
+            tint = if (c.searchOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    IconButton(onClick = { onDialog(EditorDialog.Outline()) }) {
+        Icon(Icons.AutoMirrored.Filled.Toc, contentDescription = "Daftar isi", tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

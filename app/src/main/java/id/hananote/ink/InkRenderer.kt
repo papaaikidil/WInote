@@ -898,7 +898,8 @@ object InkRenderer {
                     isUnderlineText = true
                 }
                 val pad = item.h * 0.45f
-                val shown = TextUtils.ellipsize("🔗 " + item.label, tp, item.w - pad * 2, TextUtils.TruncateAt.END)
+                val glyph = if (id.hananote.data.InternalLink.isInternal(item.url)) "📄 " else "🔗 "
+                val shown = TextUtils.ellipsize(glyph + item.label, tp, item.w - pad * 2, TextUtils.TruncateAt.END)
                 val baseline = t + item.h / 2f - (tp.descent() + tp.ascent()) / 2f
                 c.drawText(shown, 0, shown.length, l + pad, baseline, tp)
             }

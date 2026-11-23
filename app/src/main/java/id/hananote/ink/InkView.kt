@@ -1,5 +1,7 @@
 package id.hananote.ink
 
+import id.goresan.engine.QuickShape
+
 import android.annotation.SuppressLint
 import android.animation.ValueAnimator
 import android.content.Context
@@ -232,6 +234,10 @@ class InkView(context: Context) : View(context) {
     private var predictor: MotionEventPredictor? = null
     private var predictorTried = false
     private var lastInkMove = 0L
+    private companion object AutoShapeTiming {
+        /** Lama pena harus diam di ujung goresan sebelum berubah jadi bentuk. */
+        const val AUTO_SHAPE_HOLD_MS = 600L
+    }
     private val tailXs = FloatArray(12)
     private val tailYs = FloatArray(12)
     private val tailPs = FloatArray(12)
@@ -2522,6 +2528,7 @@ class InkView(context: Context) : View(context) {
             canvas.restore()
         }
         drawPdfOverlay(canvas, p)
+        drawSearchMarks(canvas)
         lifted?.let { l ->
             val preview = widthPreview
             if (preview != null && (dragCorner == 5 || dragCorner == 6)) {
@@ -4566,8 +4573,15 @@ class InkView(context: Context) : View(context) {
             Mode.DRAW -> {
                 val i = e.findPointerIndex(activePointer)
                 if (i < 0) return
+                if (snapped != null) {
+                    // Sudah jadi bentuk: tidak menambah coretan lagi (garis lurus: ujungnya mengikuti pena).
+                    autoShapeFollow(e.getX(i), e.getY(i))
+                    invalidate()
+                    return
+                }
                 for (h in 0 until e.historySize) addPoint(e.getHistoricalX(i, h), e.getHistoricalY(i, h), e.getHistoricalPressure(i, h), false, e.getHistoricalEventTime(h))
                 addPoint(e.getX(i), e.getY(i), e.getPressure(i), false, e.eventTime)
+                autoShapeMoved(e.getX(i), e.getY(i))
                 lastInkMove = SystemClock.uptimeMillis()
                 invalidate()
             }
@@ -4733,13 +4747,15 @@ class InkView(context: Context) : View(context) {
         disarmLongPress()
         when (mode) {
             Mode.DRAW -> {
+                removeCallbacks(holdCheck)
                 if (commit) {
                     val i = e.findPointerIndex(activePointer)
-                    if (i >= 0) addPoint(e.getX(i), e.getY(i), e.getPressure(i), false, e.eventTime)
+                    if (i >= 0 && snapped == null) addPoint(e.getX(i), e.getY(i), e.getPressure(i), false, e.eventTime)
                     commitStroke()
                 } else {
                     builder = null
                 }
+                snapped = null
             }
             Mode.ERASE -> commitErase()
             Mode.SHAPE -> if (commit) commitShape()
@@ -4790,6 +4806,8 @@ class InkView(context: Context) : View(context) {
         disarmLongPress()
         if (mode == Mode.ERASE) commitErase()
         if (mode == Mode.SELECT) selectUp(commit = false)
+        removeCallbacks(holdCheck)
+        snapped = null
         builder = null
         if (gestureActive) endPanZoom()
         mode = Mode.NONE
@@ -4868,7 +4886,78 @@ class InkView(context: Context) : View(context) {
         builder = StrokeBuilder(tool, color, baseWidth)
         smoothP = if (finger) 0.5f else e.getPressure(i).coerceIn(0.05f, 1f)
         addPoint(e.getX(i), e.getY(i), e.getPressure(i), true, e.eventTime)
+        armAutoShape(e.getX(i), e.getY(i))
         invalidate()
+    }
+
+    // ---------- bentuk otomatis ----------
+
+    /** Goresan yang ujungnya ditahan sebentar (pena diam) diganti bentuk rapi: garis, lingkaran, kotak, ... */
+    var autoShape = true
+    /** Dipanggil sekali saat goresan berubah jadi bentuk (nama bentuknya). */
+    var onAutoShape: ((String) -> Unit)? = null
+    private var holdX = 0f
+    private var holdY = 0f
+    private var snapped: QuickShape.Shape? = null
+    private val holdCheck = Runnable { tryAutoShape() }
+
+    private fun armAutoShape(vx: Float, vy: Float) {
+        snapped = null
+        holdX = vx; holdY = vy
+        removeCallbacks(holdCheck)
+        if (autoShape) postDelayed(holdCheck, AUTO_SHAPE_HOLD_MS)
+    }
+
+    /** Pena bergerak: tunggu lagi dari awal; pena yang diam di satu titik memicu bentuk otomatis. */
+    private fun autoShapeMoved(vx: Float, vy: Float) {
+        if (!autoShape || snapped != null) return
+        if (hypot(vx - holdX, vy - holdY) < 4f * density) return
+        holdX = vx; holdY = vy
+        removeCallbacks(holdCheck)
+        postDelayed(holdCheck, AUTO_SHAPE_HOLD_MS)
+    }
+
+    private fun tryAutoShape() {
+        val b = builder ?: return
+        if (mode != Mode.DRAW || snapped != null || rulerEdge != null) return
+        if (b.tool == Tool.ERASER || b.size < 8) return
+        var minX = b.xs[0]; var maxX = minX; var minY = b.ys[0]; var maxY = minY
+        for (k in 1 until b.size) {
+            minX = min(minX, b.xs[k]); maxX = max(maxX, b.xs[k])
+            minY = min(minY, b.ys[k]); maxY = max(maxY, b.ys[k])
+        }
+        // Coretan kecil (huruf, titik) tidak diubah jadi bentuk.
+        if (max(maxX - minX, maxY - minY) * scale < 28f * density) return
+        val shape = runCatching { QuickShape.recognize(b.xs, b.ys, b.size) }.getOrNull() ?: return
+        snapped = shape
+        replaceWithShape(b, shape)
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        onAutoShape?.invoke(shape.kind.label)
+        invalidate()
+    }
+
+    /** Ganti isi goresan yang sedang ditulis dengan titik-titik bentuk rapi, tekanan rata. */
+    private fun replaceWithShape(b: StrokeBuilder, shape: QuickShape.Shape) {
+        var sum = 0f
+        for (k in 0 until b.size) sum += b.ps[k]
+        val p = if (b.size > 0) (sum / b.size).coerceIn(0.2f, 1f) else 0.5f
+        val pts = shape.path(max(1.5f / scale, 0.6f))
+        val nb = StrokeBuilder(b.tool, b.color, b.width)
+        var k = 0
+        while (k + 1 < pts.size) { nb.add(pts[k], pts[k + 1], p); k += 2 }
+        if (nb.size > 0) builder = nb
+    }
+
+    /** Setelah jadi garis lurus, ujungnya masih mengikuti pena sampai diangkat. */
+    private fun autoShapeFollow(vx: Float, vy: Float) {
+        val sh = snapped ?: return
+        if (sh.kind != QuickShape.Kind.LINE) return
+        val b = builder ?: return
+        pt[0] = vx; pt[1] = vy
+        inverseMatrix.mapPoints(pt)
+        val moved = sh.withEnd(pt[0], pt[1])
+        snapped = moved
+        replaceWithShape(b, moved)
     }
 
     private fun addPoint(vx: Float, vy: Float, rawP: Float, force: Boolean, time: Long) {
@@ -5268,6 +5357,59 @@ class InkView(context: Context) : View(context) {
         val v = floatArrayOf(u.left, u.top, u.right, u.bottom)
         viewMatrix.mapPoints(v)
         onPdfSelection?.invoke(PdfSelection(r.first, r.last, layer.text(r.first, r.last), RectF(min(v[0], v[2]), min(v[1], v[3]), max(v[0], v[2]), max(v[1], v[3]))))
+    }
+
+    // ---------- sorotan cari di dalam catatan ----------
+
+    /** Kotak kata yang ketemu di halaman ini (satuan halaman). */
+    var searchMarks: List<RectF> = emptyList()
+        set(v) { field = v; invalidate() }
+    /** Kotak yang sedang dituju (disorot lebih tegas). */
+    var searchCurrent: RectF? = null
+        set(v) { field = v; invalidate() }
+    private val searchFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x66FFD54F; style = Paint.Style.FILL }
+    private val searchNowFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x80FF9800.toInt(); style = Paint.Style.FILL }
+    private val searchNowLine = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE65100.toInt(); style = Paint.Style.STROKE }
+    private val searchBox = RectF()
+
+    private fun drawSearchMarks(canvas: Canvas) {
+        if (searchMarks.isEmpty() && searchCurrent == null) return
+        val pad = 2f / scale
+        val rad = 3f / scale
+        for (r in searchMarks) {
+            if (r == searchCurrent) continue
+            searchBox.set(r.left - pad, r.top - pad, r.right + pad, r.bottom + pad)
+            canvas.drawRoundRect(searchBox, rad, rad, searchFill)
+        }
+        searchCurrent?.let { r ->
+            searchBox.set(r.left - pad, r.top - pad, r.right + pad, r.bottom + pad)
+            canvas.drawRoundRect(searchBox, rad, rad, searchNowFill)
+            searchNowLine.strokeWidth = 2f / scale
+            canvas.drawRoundRect(searchBox, rad, rad, searchNowLine)
+        }
+    }
+
+    /**
+     * Geser halaman supaya kotak [r] (satuan halaman) terlihat, tidak tertutup [topInset] piksel di atas layar
+     * (bilah pencarian). Skala tidak berubah.
+     */
+    fun reveal(r: RectF, topInset: Float) {
+        if (page == null || width == 0) return
+        searchBox.set(r)
+        viewMatrix.mapRect(searchBox)
+        val pad = 32f * density
+        val top = topInset + pad
+        val bottom = height - pad
+        var dx = 0f
+        var dy = 0f
+        if (searchBox.top < top || searchBox.bottom > bottom) dy = (top + bottom) / 2f - searchBox.centerY()
+        if (searchBox.left < pad || searchBox.right > width - pad) dx = width / 2f - searchBox.centerX()
+        if (dx == 0f && dy == 0f) return
+        tx += dx
+        ty += dy
+        clamp(Clamp.FREE)
+        updateMatrix()
+        viewMoved()
     }
 
     private fun drawPdfOverlay(canvas: Canvas, p: PageMeta) {

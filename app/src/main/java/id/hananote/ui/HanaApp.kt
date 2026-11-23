@@ -51,7 +51,18 @@ fun HanaApp(repo: Repository, openRequest: MutableStateFlow<String?> = MutableSt
         val noteId = openNote
         if (noteId != null && repo.note(noteId)?.let { it.art.isEmpty() } == true) {
             key(noteId) {
-                EditorScreen(repo, noteId, isTablet, onBack = { openNote = null })
+                EditorScreen(
+                    repo, noteId, isTablet,
+                    onBack = { openNote = null },
+                    onOpenNote = { id, page ->
+                        if (page >= 0) {
+                            repo.prefs.edit().putInt("page_$id", page).apply()
+                            repo.pageJump.value = id to page
+                        }
+                        repo.note(id)?.let { openBook = it.bookId }
+                        openNote = id
+                    },
+                )
             }
         } else {
             LibraryScreen(
