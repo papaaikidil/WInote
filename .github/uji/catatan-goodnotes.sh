@@ -308,6 +308,16 @@ tap_node "Catatan baru" 3 || true
 shot catatan-baru-pindai
 tap_node "Pindai dokumen dengan kamera…" 8 || echo "PINDAI TIDAK ADA"
 shot pemindai
+tap_node "OK" 2 || adb shell input keyevent 4
+sleep 1
+# Kembali naik: tiap buku induk menampilkan deretan sub-bukunya.
+tap_node "Kembali ke Bab 1" 4 || echo "KEMBALI KE BAB 1 TIDAK ADA"
+shot bab-1-berisi-sub-buku
+tap_node "Kembali ke Buku Pertama" 4 || echo "KEMBALI KE BUKU PERTAMA TIDAK ADA"
+shot buku-berisi-sub-buku
+P=$(find_node "Bab 1"); [ -n "$P" ] && { adb shell input swipe $P $P 1200; sleep 2; shot menu-sub-buku; adb shell input keyevent 4; sleep 1; }
+tap_node "Kembali ke rak" 4 || echo "KEMBALI KE RAK TIDAK ADA"
+shot rak
 adb shell "run-as $PKG sh -c 'cat files/hana/books.json'" < /dev/null > $OUT/buku.json 2>&1
 adb logcat -d | grep -iE "FATAL|AndroidRuntime|hananote" | tail -80 > $OUT/logcat.txt
 grep -c "FATAL" $OUT/logcat.txt
