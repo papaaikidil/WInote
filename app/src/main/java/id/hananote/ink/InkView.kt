@@ -43,6 +43,7 @@ import id.hananote.data.Tool
 import java.io.File
 import id.hananote.data.TextLists
 import id.hananote.data.EraserMode
+import id.hananote.data.TableBorders
 import id.hananote.data.TableItem
 import id.hananote.data.TapeItem
 import id.hananote.data.TapeShape
@@ -2527,6 +2528,7 @@ class InkView(context: Context) : View(context) {
             InkRenderer.drawTape(canvas, tp, tapePaint, 0.85f)
             canvas.restore()
         }
+        drawTableGridlines(canvas)
         drawPdfOverlay(canvas, p)
         drawSearchMarks(canvas)
         laser?.let { l ->
@@ -3554,6 +3556,27 @@ class InkView(context: Context) : View(context) {
         bringTypingIntoView()
     }
 
+    /**
+     * Warna isi sel yang sedang diketik. [scope]: 0 sel ini, 1 seluruh barisnya, 2 seluruh kolomnya, 3 semua sel.
+     * [fill] 0 = kembali mengikuti warna tabel.
+     */
+    fun fillCellEdit(fill: Int, scope: Int) {
+        val t = cellTable() ?: return
+        val targets = when (scope) {
+            1 -> (0 until t.cols).map { cellR to it }
+            2 -> (0 until t.rows).map { it to cellC }
+            3 -> (0 until t.rows).flatMap { r -> (0 until t.cols).map { r to it } }
+            else -> listOf(cellR to cellC)
+        }
+        setTableLive(t.withCellFill(targets, fill))
+    }
+
+    /** Ubah garis dan warna tabel yang selnya sedang diketik (jadi satu langkah urungkan bersama ketikannya). */
+    fun restyleCellTable(change: (TableItem) -> TableItem) {
+        val t = cellTable() ?: return
+        setTableLive(InkRenderer.fitTable(change(t)))
+    }
+
     /** Tambah baris kosong di bawah baris [after] tabel ini (bisa diurungkan). */
     fun addTableRow(tableId: Long, after: Int): TableItem? {
         val t = items.firstOrNull { it.id == tableId } as? TableItem ?: return null
@@ -3585,7 +3608,9 @@ class InkView(context: Context) : View(context) {
         val fin = if (text != text.trimEnd()) cur.withCell(cellR, cellC, text.trimEnd()) else cur
         if (fin.cells == before.cells && fin.textSize == before.textSize && fin.font == before.font &&
             fin.align == before.align && fin.h == before.h && fin.rows == before.rows &&
-            fin.colFrac.contentEquals(before.colFrac) && fin.rowFrac.contentEquals(before.rowFrac)
+            fin.colFrac.contentEquals(before.colFrac) && fin.rowFrac.contentEquals(before.rowFrac) &&
+            fin.style == before.style && fin.cellFills == before.cellFills && fin.color == before.color &&
+            fin.header == before.header
         ) {
             items[idx] = before
             refreshRegion(r)
@@ -5440,6 +5465,40 @@ class InkView(context: Context) : View(context) {
     private val searchNowFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x80FF9800.toInt(); style = Paint.Style.FILL }
     private val searchNowLine = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE65100.toInt(); style = Paint.Style.STROKE }
     private val searchBox = RectF()
+
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0x9958A6E0.toInt()
+    }
+
+    /**
+     * Garis bantu tabel (seperti "Lihat Garis Kisi" di Word): garis yang dimatikan tetap terlihat samar putus-putus
+     * selama menyunting, supaya sel tetap mudah ditemukan. Tidak ikut tercetak, diekspor, atau tampil di mode baca.
+     */
+    private fun drawTableGridlines(canvas: Canvas) {
+        if (readOnly) return
+        var dash: DashPathEffect? = null
+        for (it in items) {
+            val t = it as? TableItem ?: continue
+            val st = t.style
+            if (st.borders == TableBorders.ALL) continue
+            if (dash == null) {
+                dash = DashPathEffect(floatArrayOf(4f / scale, 3f / scale), 0f)
+                gridPaint.pathEffect = dash
+                gridPaint.strokeWidth = 1f / scale
+            }
+            val l = t.x
+            val top = t.y
+            val r = t.x + t.w
+            val b = t.y + t.h
+            if (!st.has(TableBorders.TOP)) canvas.drawLine(l, top, r, top, gridPaint)
+            if (!st.has(TableBorders.BOTTOM)) canvas.drawLine(l, b, r, b, gridPaint)
+            if (!st.has(TableBorders.LEFT)) canvas.drawLine(l, top, l, b, gridPaint)
+            if (!st.has(TableBorders.RIGHT)) canvas.drawLine(r, top, r, b, gridPaint)
+            if (!st.has(TableBorders.INSIDE_H)) for (k in 1 until t.rows) { val yy = top + t.rowEdge(k); canvas.drawLine(l, yy, r, yy, gridPaint) }
+            if (!st.has(TableBorders.INSIDE_V)) for (k in 1 until t.cols) { val xx = l + t.colEdge(k); canvas.drawLine(xx, top, xx, b, gridPaint) }
+        }
+    }
 
     private fun drawSearchMarks(canvas: Canvas) {
         if (searchMarks.isEmpty() && searchCurrent == null) return

@@ -1413,6 +1413,40 @@ object PageIO {
         out.writeLong(it.group)
         out.writeLong(it.z)
         writeMasks(out, it.masks)
+        // Tambahan di ujung data benda: versi lama yang tidak mengenalnya cukup melewatinya.
+        if (it is TableItem) writeTableLook(out, it)
+    }
+
+    /** Penanda tambahan garis dan warna tabel ("TBL1"). */
+    private const val TABLE_LOOK = 0x54424C31
+
+    private fun writeTableLook(out: DataOutputStream, t: TableItem) {
+        val st = t.style
+        if (st == TableStyle() && !t.hasCellFills) return
+        out.writeInt(TABLE_LOOK)
+        out.writeInt(st.borders)
+        out.writeFloat(st.lineWidth)
+        out.writeInt(st.fill)
+        out.writeInt(st.headerFill)
+        out.writeBoolean(st.banded)
+        val fills = if (t.hasCellFills) t.cellFills else emptyList()
+        out.writeInt(fills.size)
+        for (f in fills) out.writeInt(f)
+    }
+
+    /** Garis dan warna tabel yang tersimpan setelah data bendanya; bila tidak ada, tabelnya tetap seperti semula. */
+    private fun readTableLook(d: DataInputStream, t: TableItem): TableItem {
+        if (d.available() < 4 || d.readInt() != TABLE_LOOK) return t
+        val borders = d.readInt() and TableBorders.ALL
+        val lw = d.readFloat().takeIf { it.isFinite() && it in 0f..24f } ?: 0f
+        val fill = d.readInt()
+        val headerFill = d.readInt()
+        val banded = d.readBoolean()
+        val n = d.readInt()
+        if (n < 0 || n > 20_000) return t
+        val fills = List(n) { d.readInt() }
+        val styled = t.withStyle(TableStyle(borders, lw, fill, headerFill, banded))
+        return if (fills.size == t.rows * t.cols) styled.withCellFills(fills) else styled
     }
 
     private fun writeItemBody(out: DataOutputStream, it: PageItem) {
@@ -1573,13 +1607,14 @@ object PageIO {
                             inp.readFully(bytes)
                             val item = runCatching {
                                 DataInputStream(java.io.ByteArrayInputStream(bytes)).use { d ->
-                                    readItem(d, type, version)?.also { item ->
+                                    readItem(d, type, version)?.let { item ->
                                         if (version >= 8) {
                                             item.id = d.readLong()
                                             item.group = d.readLong()
                                         }
                                         if (version >= 9) item.z = d.readLong()
                                         if (version >= 11) item.masks = readMasks(d)
+                                        if (item is TableItem && version >= 11) runCatching { readTableLook(d, item) }.getOrDefault(item) else item
                                     }
                                 }
                             }.getOrNull()

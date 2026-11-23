@@ -37,6 +37,7 @@ import id.hananote.data.ImageItem
 import id.hananote.data.LinkItem
 import id.hananote.data.PageItem
 import id.hananote.data.StickyItem
+import id.hananote.data.TableBorders
 import id.hananote.data.TableItem
 import id.hananote.data.TapeItem
 import id.hananote.data.CoverItem
@@ -737,7 +738,7 @@ object InkRenderer {
         val bold = t.header && r == 0
         val tp = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = t.textSize
-            color = CELL_INK
+            color = cellInk(t, r, c)
             val face = FontRegistry.typeface(t.font)
             typeface = if (bold) Typeface.create(face, Typeface.BOLD) else face
         }
@@ -775,6 +776,80 @@ object InkRenderer {
             }
         }
         return if (changed) t.withRowHeights(heights) else t
+    }
+
+    /** Warna latar satu sel (0 = tanpa warna): warna sel sendiri, baris judul, baris selang-seling, atau isi tabel. */
+    fun cellBackground(t: TableItem, r: Int, k: Int): Int {
+        val own = t.cellFill(r, k)
+        if (own != 0) return own
+        val st = t.style
+        if (t.header && r == 0) return if (st.headerFill != 0) st.headerFill else withAlpha(t.color, 0.10f)
+        val bodyRow = if (t.header) r - 1 else r
+        if (st.banded && bodyRow % 2 == 1) {
+            // Baris selang-seling: warna isi (atau kertas) sedikit digelapkan dengan warna garis.
+            val base = if (st.fill != 0) st.fill else Color.WHITE
+            return blend(base, t.color, 0.09f)
+        }
+        return st.fill
+    }
+
+    private fun blend(a: Int, b: Int, f: Float): Int {
+        fun ch(x: Int, y: Int) = (x + (y - x) * f).toInt().coerceIn(0, 255)
+        return Color.argb(
+            maxOf(Color.alpha(a), (Color.alpha(b) * f).toInt()),
+            ch(Color.red(a), Color.red(b)), ch(Color.green(a), Color.green(b)), ch(Color.blue(a), Color.blue(b)),
+        )
+    }
+
+    /** Warna huruf sel: putih di atas latar gelap supaya tetap terbaca. */
+    private fun cellInk(t: TableItem, r: Int, k: Int): Int {
+        val bg = cellBackground(t, r, k)
+        if (bg == 0 || Color.alpha(bg) < 140) return CELL_INK
+        val lum = (0.299 * Color.red(bg) + 0.587 * Color.green(bg) + 0.114 * Color.blue(bg)) / 255.0
+        return if (lum < 0.5) Color.WHITE else CELL_INK
+    }
+
+    private fun drawTableFills(c: Canvas, t: TableItem, paint: Paint) {
+        paint.style = Paint.Style.FILL
+        val l = t.x
+        val top = t.y
+        for (r in 0 until t.rows) for (k in 0 until t.cols) {
+            val bg = cellBackground(t, r, k)
+            if (bg == 0) continue
+            paint.color = bg
+            c.drawRect(l + t.colEdge(k), top + t.rowEdge(r), l + t.colEdge(k + 1), top + t.rowEdge(r + 1), paint)
+        }
+    }
+
+    /** Garis tabel sesuai pilihan garis yang tampil dan tebalnya. */
+    private fun drawTableLines(c: Canvas, t: TableItem, paint: Paint) {
+        val st = t.style
+        if (st.borders == TableBorders.NONE) return
+        val l = t.x
+        val top = t.y
+        val r = t.x + t.w
+        val b = t.y + t.h
+        paint.style = Paint.Style.STROKE
+        paint.color = t.color
+        if (st.has(TableBorders.INSIDE_H) || st.has(TableBorders.INSIDE_V)) {
+            paint.strokeWidth = st.innerWidth
+            paint.strokeCap = Paint.Cap.BUTT
+            if (st.has(TableBorders.INSIDE_H)) for (k in 1 until t.rows) { val yy = top + t.rowEdge(k); c.drawLine(l, yy, r, yy, paint) }
+            if (st.has(TableBorders.INSIDE_V)) for (k in 1 until t.cols) { val xx = l + t.colEdge(k); c.drawLine(xx, top, xx, b, paint) }
+        }
+        paint.strokeWidth = st.outerWidth
+        if (st.borders and TableBorders.OUTSIDE == TableBorders.OUTSIDE) {
+            paint.strokeJoin = Paint.Join.MITER
+            c.drawRect(l, top, r, b, paint)
+        } else {
+            // Sebagian tepi saja: ujung garis dipanjangkan setengah tebalnya supaya sudutnya rapat.
+            paint.strokeCap = Paint.Cap.SQUARE
+            if (st.has(TableBorders.TOP)) c.drawLine(l, top, r, top, paint)
+            if (st.has(TableBorders.BOTTOM)) c.drawLine(l, b, r, b, paint)
+            if (st.has(TableBorders.LEFT)) c.drawLine(l, top, l, b, paint)
+            if (st.has(TableBorders.RIGHT)) c.drawLine(r, top, r, b, paint)
+        }
+        paint.strokeCap = Paint.Cap.BUTT
     }
 
     private fun drawCells(c: Canvas, t: TableItem) {
@@ -869,18 +944,8 @@ object InkRenderer {
             is MindMapItem -> MindMapRenderer.drawItem(c, item)
             is AudioItem -> drawAudio(c, item, paint, playing = false)
             is TableItem -> {
-                if (item.header) {
-                    paint.style = Paint.Style.FILL
-                    paint.color = withAlpha(item.color, 0.10f)
-                    c.drawRect(l, t, r, t + item.rowEdge(1), paint)
-                }
-                paint.style = Paint.Style.STROKE
-                paint.color = item.color
-                paint.strokeWidth = 1.2f
-                c.drawRect(l, t, r, b, paint)
-                paint.strokeWidth = 0.8f
-                for (k in 1 until item.rows) { val yy = t + item.rowEdge(k); c.drawLine(l, yy, r, yy, paint) }
-                for (k in 1 until item.cols) { val xx = l + item.colEdge(k); c.drawLine(xx, t, xx, b, paint) }
+                drawTableFills(c, item, paint)
+                drawTableLines(c, item, paint)
                 drawCells(c, item)
             }
             is LinkItem -> {

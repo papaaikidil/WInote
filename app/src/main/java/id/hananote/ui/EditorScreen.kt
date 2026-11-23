@@ -71,6 +71,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.StayCurrentLandscape
 import androidx.compose.material.icons.filled.StayCurrentPortrait
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.BorderAll
+import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.Style
@@ -234,6 +236,9 @@ import id.hananote.data.TapeColors
 import id.hananote.data.TapeShape
 import id.hananote.data.StickyItem
 import id.hananote.data.TableItem
+import id.hananote.data.TableFillColors
+import id.hananote.data.TableFillNames
+import id.hananote.data.TableStyle
 import id.hananote.ink.SelectionInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.TextFields
@@ -1662,6 +1667,38 @@ class EditorController(private val repo: Repository, val noteId: String) {
         val t = v.selectedItem() as? TableItem ?: return
         CrashLog.note("atur tabel ${rows}x$cols")
         v.replaceSelectedItem(InkRenderer.fitTable(t.withLayout(rows, cols, colFrac, rowFrac, header, height)), moveInk = false)
+    }
+
+    /** Dialog garis dan warna tabel sedang terbuka. */
+    var tableLookOpen by mutableStateOf(false)
+
+    /** Tabel yang garis dan warnanya diatur: tabel yang selnya sedang diketik, atau tabel yang dipilih. */
+    fun tableForStyle(): TableItem? = view?.typingCell()?.first ?: selectedTable()
+
+    fun openTableLook() {
+        if (tableForStyle() != null) tableLookOpen = true
+    }
+
+    /** Terapkan garis, tebal garis, dan warna tabel (bisa diurungkan). */
+    fun applyTableStyle(style: TableStyle, color: Int, header: Boolean, clearCellFills: Boolean) {
+        val v = view ?: return
+        CrashLog.note("garis & warna tabel: garis ${style.borders}, tebal ${style.lineWidth}")
+        val change = { t: TableItem -> t.withStyle(style, color, header, clearCellFills) }
+        if (v.typingCell() != null) {
+            v.restyleCellTable(change)
+            typeStyleTick++
+            return
+        }
+        val t = selectedTable() ?: return
+        v.replaceSelectedItem(InkRenderer.fitTable(change(t)), moveInk = false)
+    }
+
+    /** Warna isi sel yang sedang diketik: [scope] 0 sel ini, 1 barisnya, 2 kolomnya, 3 semua sel; 0 = tanpa warna. */
+    fun typeCellFill(fill: Int, scope: Int) {
+        if (typeKind != TypeKind.CELL) return
+        CrashLog.note("warna sel tabel")
+        view?.fillCellEdit(fill, scope)
+        typeStyleTick++
     }
 
     fun prefs(): android.content.SharedPreferences = repo.prefs
@@ -4497,6 +4534,17 @@ fun EditorScreen(
     c.bgRemoval?.let { RemoveBgDialog(c, it) }
     c.voice?.let { VoiceDialog(c, it) }
     c.pdfEditing?.let { t -> PdfEditDialog(t, onDismiss = { c.pdfEditing = null }) { c.pdfApplyEdit(it) } }
+    if (c.tableLookOpen) {
+        val t = c.tableForStyle()
+        if (t == null) {
+            LaunchedEffect(Unit) { c.tableLookOpen = false }
+        } else {
+            TableStyleDialog(t, onDismiss = { c.tableLookOpen = false }) { style, color, header, clear ->
+                c.applyTableStyle(style, color, header, clear)
+                c.tableLookOpen = false
+            }
+        }
+    }
     if (c.rotateAsk) {
         AlertDialog(
             onDismissRequest = { c.rotateAsk = false },
@@ -6078,6 +6126,7 @@ private fun SelectionBar(c: EditorController, onDialog: (EditorDialog) -> Unit, 
             }
             if (sel.table) {
                 TextButton(onClick = { onDialog(EditorDialog.TableLayout) }) { Text("Atur tabel") }
+                TextButton(onClick = { c.openTableLook() }) { Text("Garis & warna") }
             }
             if (sel.recolor) {
                 Box {
@@ -7577,7 +7626,31 @@ private fun FloatingBar(anchor: android.graphics.RectF, content: @Composable () 
     }
 }
 
-private enum class BarPanel { FONT, COLOR }
+private enum class BarPanel { FONT, COLOR, CELL_FILL }
+
+/** Warna isi sel yang sedang diketik: untuk sel ini, barisnya, kolomnya, atau semua sel. */
+@Composable
+private fun CellFillPanel(c: EditorController) {
+    var scope by remember { mutableIntStateOf(0) }
+    var custom by remember { mutableStateOf(false) }
+    val scopes = listOf("Sel ini", "Baris", "Kolom", "Semua sel")
+    scopes.forEachIndexed { i, label ->
+        FilterChip(
+            selected = scope == i,
+            onClick = { scope = i },
+            label = { Text(label) },
+            modifier = Modifier.padding(end = 4.dp),
+        )
+    }
+    BarDivider()
+    NoFillDot(onClick = { c.typeCellFill(0, scope) })
+    TableFillColors.forEachIndexed { i, col ->
+        ColorDot(Color(col), false, { c.typeCellFill(col, scope) }, size = 24.dp, description = "Sel ${TableFillNames[i]}")
+    }
+    CustomColorDot(onClick = { custom = true }, size = 24.dp)
+    Spacer(Modifier.width(6.dp))
+    if (custom) ColorPickerDialog(0xFFDEEAF6.toInt(), onDismiss = { custom = false }) { c.typeCellFill(it, scope); custom = false }
+}
 
 /** Bilah alat teks yang sedang diketik: huruf, ukuran, warna, perataan, daftar, salin/tempel, selesai. */
 @Composable
@@ -7603,6 +7676,11 @@ private fun TextTypeBar(c: EditorController, value: TextFieldValue, fonts: List<
             Spacer(Modifier.width(6.dp))
             return
         }
+        BarPanel.CELL_FILL -> {
+            IconButton(onClick = { panel = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali") }
+            CellFillPanel(c)
+            return
+        }
         null -> Unit
     }
     if (c.typeKind == TypeKind.CELL) {
@@ -7612,6 +7690,16 @@ private fun TextTypeBar(c: EditorController, value: TextFieldValue, fonts: List<
             Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(2.dp))
             Text("Baris")
+        }
+        TextButton(onClick = { panel = BarPanel.CELL_FILL }) {
+            Icon(Icons.Filled.FormatColorFill, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Warna sel")
+        }
+        TextButton(onClick = { c.openTableLook() }) {
+            Icon(Icons.Filled.BorderAll, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Garis & warna")
         }
         BarDivider()
     }

@@ -322,9 +322,53 @@ class LinkItem(x: Float, y: Float, w: Float, h: Float, val url: String, val labe
 }
 
 /**
+ * Garis tabel yang tampil, seperti menu Batas (Borders) di Word: tepi atas, bawah, kiri, kanan, garis dalam
+ * mendatar (antarbaris), dan garis dalam tegak (antarkolom). Disimpan sebagai gabungan bit.
+ */
+object TableBorders {
+    const val TOP = 1
+    const val BOTTOM = 2
+    const val LEFT = 4
+    const val RIGHT = 8
+    const val INSIDE_H = 16
+    const val INSIDE_V = 32
+    const val OUTSIDE = TOP or BOTTOM or LEFT or RIGHT
+    const val INSIDE = INSIDE_H or INSIDE_V
+    const val ALL = OUTSIDE or INSIDE
+    const val NONE = 0
+}
+
+/**
+ * Tampilan garis dan warna tabel (seperti Batas dan Bayangan di Word).
+ * [borders] garis yang tampil ([TableBorders]); [lineWidth] tebal garis dalam poin, 0 = bawaan (tepi 1,2 pt,
+ * garis dalam 0,8 pt); [fill] warna isi semua sel, 0 = tanpa warna; [headerFill] warna baris judul, 0 = warna
+ * garis yang dibuat tipis; [banded] baris isi selang-seling diberi warna samar.
+ */
+data class TableStyle(
+    val borders: Int = TableBorders.ALL,
+    val lineWidth: Float = 0f,
+    val fill: Int = 0,
+    val headerFill: Int = 0,
+    val banded: Boolean = false,
+) {
+    fun has(edge: Int) = borders and edge == edge
+
+    /** Tebal garis tepi dan garis dalam yang benar-benar digambar. */
+    val outerWidth: Float get() = if (lineWidth > 0f) lineWidth else 1.2f
+    val innerWidth: Float get() = if (lineWidth > 0f) lineWidth else 0.8f
+
+    companion object {
+        /** Pilihan tebal garis seperti di Word (poin). */
+        val WIDTHS = floatArrayOf(0.5f, 0.75f, 1f, 1.5f, 2.25f, 3f, 4.5f, 6f)
+    }
+}
+
+/**
  * Tabel untuk ditulisi atau diketik. Lebar tiap kolom dan tinggi tiap baris disimpan sebagai bagian dari
  * ukuran tabel (jumlahnya 1), jadi tetap sebanding saat tabel diperbesar atau diperkecil. Teks ketik tiap sel
  * menjadi bagian dari tabel, jadi ikut tergeser dan mengalir ulang mengikuti lebar kolom.
+ * [color] warna garis; [style] garis yang tampil, tebalnya, dan warna isi; [cellFills] warna isi tiap sel
+ * (rows × cols, 0 = mengikuti [style]).
  */
 class TableItem(
     x: Float, y: Float, w: Float, h: Float,
@@ -339,6 +383,8 @@ class TableItem(
     val textSize: Float = CELL_TEXT_SIZE,
     val font: String = FontRegistry.DEFAULT,
     val align: Align = Align.LEFT,
+    val style: TableStyle = TableStyle(),
+    cellFills: List<Int>? = null,
 ) : PageItem(x, y, w, h, 0f) {
     val colFrac: FloatArray = normalized(colSizes, cols)
     val rowFrac: FloatArray = normalized(rowSizes, rows)
@@ -347,23 +393,46 @@ class TableItem(
         cells.size == rows * cols -> cells
         else -> List(rows * cols) { cells.getOrNull(it) ?: "" }
     }
+    val cellFills: List<Int> = when {
+        cellFills == null || cellFills.isEmpty() -> List(rows * cols) { 0 }
+        cellFills.size == rows * cols -> cellFills
+        else -> List(rows * cols) { cellFills.getOrNull(it) ?: 0 }
+    }
 
     /** Ada sel yang sudah berisi teks. */
     val hasText: Boolean get() = cells.any { it.isNotEmpty() }
 
+    /** Ada sel yang diberi warna sendiri. */
+    val hasCellFills: Boolean get() = cellFills.any { it != 0 }
+
     fun cell(r: Int, c: Int): String = cells.getOrNull(r * cols + c) ?: ""
 
+    fun cellFill(r: Int, c: Int): Int = cellFills.getOrNull(r * cols + c) ?: 0
+
+    /** Salinan dengan bagian yang diganti; nomor, kelompok, dan lapisannya tetap. */
+    private fun rebuilt(
+        x: Float = this.x, y: Float = this.y, w: Float = this.w, h: Float = this.h,
+        rows: Int = this.rows, cols: Int = this.cols, color: Int = this.color,
+        colSizes: FloatArray = colFrac, rowSizes: FloatArray = rowFrac, header: Boolean = this.header,
+        cells: List<String> = this.cells, textSize: Float = this.textSize, font: String = this.font,
+        align: Align = this.align, style: TableStyle = this.style, fills: List<Int> = cellFills,
+    ): TableItem =
+        TableItem(x, y, w, h, rows, cols, color, colSizes, rowSizes, header, cells, textSize, font, align, style, fills).keepFrom(this)
+
     override fun copyAt(x: Float, y: Float, w: Float, h: Float, rotation: Float) =
-        TableItem(x, y, w, h, rows, cols, color, colFrac, rowFrac, header, cells, textSize, font, align)
+        TableItem(x, y, w, h, rows, cols, color, colFrac, rowFrac, header, cells, textSize, font, align, style, cellFills)
 
     /** Susunan baru: jumlah baris/kolom, ukurannya, dan tinggi tabel. Posisi dan lebar tetap; isi sel tetap di tempatnya. */
     fun withLayout(rows: Int, cols: Int, colSizes: FloatArray, rowSizes: FloatArray, header: Boolean, height: Float): TableItem {
-        val moved = List(rows * cols) { k ->
+        fun <T> moved(src: (Int, Int) -> T, empty: T) = List(rows * cols) { k ->
             val r = k / cols
             val c = k % cols
-            if (r < this.rows && c < this.cols) cell(r, c) else ""
+            if (r < this.rows && c < this.cols) src(r, c) else empty
         }
-        return TableItem(x, y, w, height, rows, cols, color, colSizes, rowSizes, header, moved, textSize, font, align).keepFrom(this)
+        return rebuilt(
+            h = height, rows = rows, cols = cols, colSizes = colSizes, rowSizes = rowSizes, header = header,
+            cells = moved({ r, c -> cell(r, c) }, ""), fills = moved({ r, c -> cellFill(r, c) }, 0),
+        )
     }
 
     /** Isi satu sel diganti. */
@@ -371,19 +440,33 @@ class TableItem(
         val next = cells.toMutableList()
         val k = r * cols + c
         if (k in next.indices) next[k] = text
-        return TableItem(x, y, w, h, rows, cols, color, colFrac, rowFrac, header, next, textSize, font, align).keepFrom(this)
+        return rebuilt(cells = next)
     }
 
+    /** Warna isi sel-sel [targets] (pasangan baris, kolom) diganti; 0 = mengikuti warna tabel. */
+    fun withCellFill(targets: List<Pair<Int, Int>>, fill: Int): TableItem {
+        val next = cellFills.toMutableList()
+        for ((r, c) in targets) {
+            val k = r * cols + c
+            if (r in 0 until rows && c in 0 until cols && k in next.indices) next[k] = fill
+        }
+        return rebuilt(fills = next)
+    }
+
+    /** Garis, tebal garis, dan warna diganti. [color] warna garis. */
+    fun withStyle(style: TableStyle, color: Int = this.color, header: Boolean = this.header, clearCellFills: Boolean = false): TableItem =
+        rebuilt(style = style, color = color, header = header, fills = if (clearCellFills) List(rows * cols) { 0 } else cellFills)
+
+    /** Semua warna isi sel diganti sekaligus (rows × cols). */
+    fun withCellFills(fills: List<Int>): TableItem = rebuilt(fills = fills)
+
     /** Lebar tiap kolom (poin, atau sebanding) diganti; lebar tabel tetap. */
-    fun withColumnWidths(widths: FloatArray): TableItem =
-        TableItem(x, y, w, h, rows, cols, color, widths, rowFrac, header, cells, textSize, font, align).keepFrom(this)
+    fun withColumnWidths(widths: FloatArray): TableItem = rebuilt(colSizes = widths)
 
     /** Tinggi tiap baris (poin) diganti; tinggi tabel ikut. */
-    fun withRowHeights(heights: FloatArray): TableItem =
-        TableItem(x, y, w, heights.sum(), rows, cols, color, colFrac, heights, header, cells, textSize, font, align).keepFrom(this)
+    fun withRowHeights(heights: FloatArray): TableItem = rebuilt(h = heights.sum(), rowSizes = heights)
 
-    fun withTextStyle(font: String, size: Float, align: Align): TableItem =
-        TableItem(x, y, w, h, rows, cols, color, colFrac, rowFrac, header, cells, size, font, align).keepFrom(this)
+    fun withTextStyle(font: String, size: Float, align: Align): TableItem = rebuilt(textSize = size, font = font, align = align)
 
     /** Satu baris kosong ditambahkan di bawah baris [after], setinggi baris itu. */
     fun withRowAdded(after: Int): TableItem {
@@ -393,6 +476,7 @@ class TableItem(
         val newH = heights.getOrNull(after.coerceIn(0, rows - 1)) ?: (h / rows)
         heights.add(at, newH)
         val next = ArrayList<String>()
+        val fills = ArrayList<Int>()
         for (r in 0 until rows + 1) for (c in 0 until cols) {
             next.add(
                 when {
@@ -401,9 +485,16 @@ class TableItem(
                     else -> cell(r - 1, c)
                 }
             )
+            // Baris baru ikut warna baris di atasnya, seperti di Word.
+            fills.add(
+                when {
+                    r < at -> cellFill(r, c)
+                    r == at -> if (at > 0 && !(header && at - 1 == 0)) cellFill(at - 1, c) else 0
+                    else -> cellFill(r - 1, c)
+                }
+            )
         }
-        return TableItem(x, y, w, h + newH, rows + 1, cols, color, colFrac, heights.toFloatArray(), header, next, textSize, font, align)
-            .keepFrom(this)
+        return rebuilt(h = h + newH, rows = rows + 1, rowSizes = heights.toFloatArray(), cells = next, fills = fills)
     }
 
     /** Jarak tepi kiri kolom [i] (0..cols) dari tepi kiri tabel. */
@@ -626,6 +717,22 @@ val InkColors: List<Int> = listOf(
     0xFF1F2430.toInt(), 0xFF2F43B5.toInt(), 0xFFC0392B.toInt(), 0xFF1E7B52.toInt(),
     0xFF6E3A5E.toInt(), 0xFFE07B00.toInt(), 0xFF6B7280.toInt(), 0xFFFFFFFF.toInt(),
 )
+
+/** Warna isi sel tabel: warna muda seperti bayangan sel di Word, lalu beberapa warna tegas. */
+val TableFillColors: List<Int> = listOf(
+    0xFFF2F2F2.toInt(), 0xFFD9D9D9.toInt(), 0xFFDEEAF6.toInt(), 0xFFE2EFD9.toInt(), 0xFFFFF2CC.toInt(),
+    0xFFFBE4D5.toInt(), 0xFFF8D7E3.toInt(), 0xFFE6DDF2.toInt(),
+    0xFF2F43B5.toInt(), 0xFF1E7B52.toInt(), 0xFFC0392B.toInt(), 0xFFE07B00.toInt(), 0xFF6E3A5E.toInt(), 0xFF1F2430.toInt(),
+)
+
+/** Nama warna [TableFillColors], untuk pembaca layar. */
+val TableFillNames: List<String> = listOf(
+    "Abu muda", "Abu", "Biru muda", "Hijau muda", "Kuning muda", "Jingga muda", "Merah muda", "Ungu muda",
+    "Biru", "Hijau", "Merah", "Jingga", "Ungu", "Hitam",
+)
+
+/** Nama warna [InkColors], untuk pembaca layar. */
+val InkColorNames: List<String> = listOf("Hitam", "Biru", "Merah", "Hijau", "Ungu", "Jingga", "Abu-abu", "Putih")
 
 val HighlighterColors: List<Int> = listOf(
     0xFFFFE14D.toInt(), 0xFF8BE38B.toInt(), 0xFFFF9FC6.toInt(),

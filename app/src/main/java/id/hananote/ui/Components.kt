@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -403,6 +404,38 @@ fun ColorDot(color: Color, selected: Boolean, onClick: () -> Unit, size: Dp = 26
     ) {
         if (selected) Box(Modifier.size(size + 10.dp).border(2.dp, ring, CircleShape))
         Box(Modifier.size(size).clip(CircleShape).background(color).border(1.dp, outline.copy(alpha = 0.5f), CircleShape))
+    }
+}
+
+/** Pilihan "tanpa warna": lingkaran putih dicoret miring. */
+@Composable
+fun NoFillDot(onClick: () -> Unit, selected: Boolean = false, size: Dp = 24.dp, description: String = "Tanpa warna") {
+    val ring = MaterialTheme.colorScheme.onSurface
+    val outline = MaterialTheme.colorScheme.outline
+    Box(
+        Modifier
+            .size(size + 14.dp)
+            .clip(CircleShape)
+            .toolClick(onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) Box(Modifier.size(size + 10.dp).border(2.dp, ring, CircleShape))
+        Box(
+            Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, outline.copy(alpha = 0.6f), CircleShape)
+                .drawBehind {
+                    drawLine(
+                        Color(0xFFD32F2F),
+                        androidx.compose.ui.geometry.Offset(this.size.width * 0.18f, this.size.height * 0.82f),
+                        androidx.compose.ui.geometry.Offset(this.size.width * 0.82f, this.size.height * 0.18f),
+                        strokeWidth = 2.dp.toPx(),
+                    )
+                },
+        )
     }
 }
 
