@@ -1,0 +1,80 @@
+11-23 14:43:18.743  8118  8118 D AndroidRuntime: Shutting down VM
+11-23 14:43:19.645   514  1691 D CoreBackPreview: Window{a170265 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 14:43:19.660   514  1691 W InputManager-JNI: Input channel object 'a170265 id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 14:43:19.725  1606  1606 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 14:43:23.086  8147  8147 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:23.091  8147  8147 I AndroidRuntime: Using default boot image
+11-23 14:43:23.091  8147  8147 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:23.206  8147  8147 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:24.308  8147  8147 D AndroidRuntime: Shutting down VM
+11-23 14:43:26.615  8177  8177 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:26.620  8177  8177 I AndroidRuntime: Using default boot image
+11-23 14:43:26.620  8177  8177 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:26.737  8177  8177 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:27.777  8177  8177 D AndroidRuntime: Shutting down VM
+11-23 14:43:29.046  8201  8201 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:29.050  8201  8201 I AndroidRuntime: Using default boot image
+11-23 14:43:29.050  8201  8201 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:29.169  8201  8201 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:30.219  8201  8201 D AndroidRuntime: Shutting down VM
+11-23 14:43:31.135  8219  8219 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:31.138  8219  8219 I AndroidRuntime: Using default boot image
+11-23 14:43:31.138  8219  8219 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:31.254  8219  8219 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:32.281  8219  8219 D AndroidRuntime: Shutting down VM
+11-23 14:43:38.276  8244  8244 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:38.280  8244  8244 I AndroidRuntime: Using default boot image
+11-23 14:43:38.280  8244  8244 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:38.387  8244  8244 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:39.416  8244  8244 D AndroidRuntime: Shutting down VM
+11-23 14:43:40.381  8263  8263 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:40.385  8263  8263 I AndroidRuntime: Using default boot image
+11-23 14:43:40.385  8263  8263 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:40.493  8263  8263 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:41.512  8263  8263 D AndroidRuntime: Shutting down VM
+11-23 14:43:46.466  8287  8287 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:46.471  8287  8287 I AndroidRuntime: Using default boot image
+11-23 14:43:46.471  8287  8287 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:46.574  8287  8287 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:47.624  8287  8287 D AndroidRuntime: Shutting down VM
+11-23 14:43:48.882  6939  6950 I id.hananote.app: NativeAlloc concurrent copying GC freed 250273(10MB) AllocSpace objects, 11(444KB) LOS objects, 49% free, 11MB/23MB, paused 22us,37us total 123.606ms
+11-23 14:43:58.517  8359  8359 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:43:58.522  8359  8359 I AndroidRuntime: Using default boot image
+11-23 14:43:58.522  8359  8359 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:43:58.638  8359  8359 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:43:59.763  8359  8359 D AndroidRuntime: Shutting down VM
+11-23 14:44:02.724  8389  8389 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:02.729  8389  8389 I AndroidRuntime: Using default boot image
+11-23 14:44:02.729  8389  8389 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:02.847  8389  8389 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:03.994  8389  8389 D AndroidRuntime: Shutting down VM
+11-23 14:44:10.016  8429  8429 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:10.021  8429  8429 I AndroidRuntime: Using default boot image
+11-23 14:44:10.021  8429  8429 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:10.141  8429  8429 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:11.270  8429  8429 D AndroidRuntime: Shutting down VM
+11-23 14:44:12.181   514  1876 D CoreBackPreview: Window{5b616f9 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@b0613bb, mPriority=0}
+11-23 14:44:12.798  1606  1606 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 14:44:15.225  8460  8460 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:15.230  8460  8460 I AndroidRuntime: Using default boot image
+11-23 14:44:15.230  8460  8460 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:15.336  8460  8460 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:16.563  8460  8460 D AndroidRuntime: Shutting down VM
+11-23 14:44:18.537  8485  8485 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:18.541  8485  8485 I AndroidRuntime: Using default boot image
+11-23 14:44:18.541  8485  8485 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:18.656  8485  8485 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:19.780  8485  8485 D AndroidRuntime: Shutting down VM
+11-23 14:44:20.705   514  1291 D CoreBackPreview: Window{5b616f9 u0 id.hananote.app/id.hananote.MainActivity}: Setting back callback null
+11-23 14:44:20.714   514  1291 W InputManager-JNI: Input channel object '5b616f9 id.hananote.app/id.hananote.MainActivity (client)' was disposed without first being removed with the input manager!
+11-23 14:44:20.756  1606  1606 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=id.hananote.app fieldId=-1 fieldName=null extras=null}, false)
+11-23 14:44:23.773  8510  8510 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:23.778  8510  8510 I AndroidRuntime: Using default boot image
+11-23 14:44:23.778  8510  8510 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:23.876  8510  8510 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:24.978  8510  8510 D AndroidRuntime: Shutting down VM
+11-23 14:44:29.301  8540  8540 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
+11-23 14:44:29.305  8540  8540 I AndroidRuntime: Using default boot image
+11-23 14:44:29.305  8540  8540 I AndroidRuntime: Leaving lock profiling enabled
+11-23 14:44:29.418  8540  8540 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+11-23 14:44:30.460  8540  8540 D AndroidRuntime: Shutting down VM
