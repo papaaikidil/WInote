@@ -3498,7 +3498,7 @@ class EditorController(private val repo: Repository, val noteId: String) {
                 }
                 val src = pdfSource(p)
                 if (src != null && ctx != null) {
-                    val text = PdfText.cachedText(src.first, src.second) ?: suspendCancellableCoroutine { cont ->
+                    val text = PdfText.cachedText(src.first, src.second) ?: suspendCancellableCoroutine<id.hananote.ink.PdfPageText?> { cont ->
                         PdfText.loadText(ctx, src.first, src.second) { t -> if (cont.isActive) cont.resume(t) }
                     }
                     if (text != null && !text.isEmpty) {

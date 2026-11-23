@@ -176,7 +176,8 @@ class Repository private constructor(context: Context) {
 
     /** Catatan di Sampah; [withBook] berisi id bukunya bila ikut terhapus bersama bukunya. */
     data class TrashedNote(val note: Note, val at: Long, val withBook: String? = null)
-    data class TrashedBook(val book: Book, val at: Long)
+    /** [withBook]: ikut terhapus bersama buku induknya ini (dipulihkan/dihapus bersamanya). */
+    data class TrashedBook(val book: Book, val at: Long, val withBook: String? = null)
 
 
     /** Pindahkan catatan ke Sampah (berkasnya tetap ada sampai Sampah dikosongkan). */
@@ -189,15 +190,19 @@ class Repository private constructor(context: Context) {
         widgetsChanged()
     }
 
-    /** Pindahkan buku beserta semua catatannya ke Sampah. */
+    /** Pindahkan buku beserta semua catatannya (dan sub-bukunya) ke Sampah. */
     fun deleteBook(id: String) = synchronized(lock) {
         val b = _books.value.firstOrNull { it.id == id } ?: return@synchronized
         val now = System.currentTimeMillis()
-        val inBook = _notes.value.filter { it.bookId == id }
-        _notes.value = _notes.value.filter { it.bookId != id }
-        _books.value = _books.value.filter { it.id != id }
-        _trashNotes.value = _trashNotes.value + inBook.map { TrashedNote(it, now, withBook = id) }
-        _trashBooks.value = _trashBooks.value.filter { it.book.id != id } + TrashedBook(b, now)
+        val subs = descendantBooks(_books.value, id)
+        val gone = subs + id
+        val inBook = _notes.value.filter { it.bookId in gone }
+        val subBooks = _books.value.filter { it.id in subs }
+        _notes.value = _notes.value.filter { it.bookId !in gone }
+        _books.value = _books.value.filter { it.id !in gone }
+        _trashNotes.value = _trashNotes.value + inBook.map { TrashedNote(it, now, withBook = it.bookId) }
+        _trashBooks.value = _trashBooks.value.filter { it.book.id !in gone } + TrashedBook(b, now) +
+            subBooks.map { TrashedBook(it, now, withBook = id) }
         saveNotes()
         saveBooks()
         saveTrash()
@@ -224,13 +229,17 @@ class Repository private constructor(context: Context) {
         target.id
     }
 
-    /** Kembalikan buku beserta catatan yang ikut terhapus bersamanya. */
+    /** Kembalikan buku beserta catatan dan sub-buku yang ikut terhapus bersamanya. */
     fun restoreBook(id: String) = synchronized(lock) {
         val t = _trashBooks.value.firstOrNull { it.book.id == id } ?: return@synchronized
-        val back = _trashNotes.value.filter { it.withBook == id }.map { it.note }
-        _trashBooks.value = _trashBooks.value.filter { it.book.id != id }
-        _trashNotes.value = _trashNotes.value.filter { it.withBook != id }
-        _books.value = _books.value.filter { it.id != id } + t.book
+        val subs = _trashBooks.value.filter { it.withBook == id }
+        val ids = subs.mapTo(HashSet()) { it.book.id } + id
+        val back = _trashNotes.value.filter { it.withBook in ids }.map { it.note }
+        _trashBooks.value = _trashBooks.value.filter { it.book.id !in ids }
+        _trashNotes.value = _trashNotes.value.filter { it.withBook !in ids }
+        // Induknya sudah tidak ada: kembali langsung ke rak.
+        val root = if (t.book.parent.isNotEmpty() && _books.value.none { it.id == t.book.parent }) t.book.copy(parent = "") else t.book
+        _books.value = _books.value.filter { it.id !in ids } + root + subs.map { it.book }
         _notes.value = _notes.value.filter { n -> back.none { it.id == n.id } } + back
         saveBooks()
         saveNotes()
@@ -250,11 +259,14 @@ class Repository private constructor(context: Context) {
     /** Hapus permanen buku dari Sampah, beserta catatan yang ikut terhapus bersamanya. */
     fun deleteBookForever(id: String) = synchronized(lock) {
         val t = _trashBooks.value.firstOrNull { it.book.id == id } ?: return@synchronized
-        _trashNotes.value.filter { it.withBook == id }.forEach { purge(it.note) }
-        _trashNotes.value = _trashNotes.value.filter { it.withBook != id }
-        _trashBooks.value = _trashBooks.value.filter { it.book.id != id }
+        val subs = _trashBooks.value.filter { it.withBook == id }
+        val ids = subs.mapTo(HashSet()) { it.book.id } + id
+        _trashNotes.value.filter { it.withBook in ids }.forEach { purge(it.note) }
+        _trashNotes.value = _trashNotes.value.filter { it.withBook !in ids }
+        _trashBooks.value = _trashBooks.value.filter { it.book.id !in ids }
         saveTrash()
         dropCoverIfUnused(t.book.cover)
+        subs.forEach { dropCoverIfUnused(it.book.cover) }
     }
 
     /** Kosongkan Sampah: semua isinya dihapus permanen. */
@@ -270,7 +282,7 @@ class Repository private constructor(context: Context) {
     /** Isi Sampah yang sudah lebih dari [TRASH_DAYS] hari dihapus permanen. */
     private fun purgeOldTrash() = synchronized(lock) {
         val limit = System.currentTimeMillis() - TRASH_DAYS * 24L * 3600_000L
-        _trashBooks.value.filter { it.at < limit }.forEach { deleteBookForever(it.book.id) }
+        _trashBooks.value.filter { it.at < limit && it.withBook == null }.forEach { deleteBookForever(it.book.id) }
         _trashNotes.value.filter { it.at < limit && it.withBook == null }.forEach { deleteNoteForever(it.note.id) }
     }
 
@@ -282,7 +294,7 @@ class Repository private constructor(context: Context) {
 
     private fun saveTrash() {
         val books = JSONArray()
-        _trashBooks.value.forEach { books.put(bookJson(it.book).put("at", it.at)) }
+        _trashBooks.value.forEach { t -> books.put(bookJson(t.book).put("at", t.at).apply { t.withBook?.let { put("withBook", it) } }) }
         val notes = JSONArray()
         _trashNotes.value.forEach { t ->
             notes.put(noteJson(t.note).put("at", t.at).apply { t.withBook?.let { put("withBook", it) } })
@@ -297,7 +309,7 @@ class Repository private constructor(context: Context) {
             val books = o.optJSONArray("books") ?: JSONArray()
             val notes = o.optJSONArray("notes") ?: JSONArray()
             _trashBooks.value = (0 until books.length()).mapNotNull { i ->
-                books.optJSONObject(i)?.let { j -> bookFrom(j)?.let { TrashedBook(it, j.optLong("at")) } }
+                books.optJSONObject(i)?.let { j -> bookFrom(j)?.let { TrashedBook(it, j.optLong("at"), j.optString("withBook", "").ifBlank { null }) } }
             }
             _trashNotes.value = (0 until notes.length()).mapNotNull { i ->
                 notes.optJSONObject(i)?.let { j ->
@@ -309,15 +321,30 @@ class Repository private constructor(context: Context) {
 
     // ---------- buku ----------
 
-    fun createBook(title: String, color: Int, cover: String = ""): Book = synchronized(lock) {
+    fun createBook(title: String, color: Int, cover: String = "", parent: String = ""): Book = synchronized(lock) {
         val now = System.currentTimeMillis()
-        // Buku baru di ujung rak.
+        // Buku baru di ujung rak (atau di ujung sub-buku induknya).
         val order = (_books.value.maxOfOrNull { it.order } ?: 0L) + 1
-        val b = Book(UUID.randomUUID().toString(), title.ifBlank { "Buku baru" }, color, now, now, order = order, cover = cover)
+        val p = parent.takeIf { id -> _books.value.any { it.id == id } }.orEmpty()
+        val b = Book(UUID.randomUUID().toString(), title.ifBlank { "Buku baru" }, color, now, now, order = order, cover = cover, parent = p)
         _books.value = _books.value + b
         saveBooks()
         pruneCovers()
         b
+    }
+
+    /**
+     * Pindahkan buku (beserta isinya) ke dalam buku [parent], atau ke rak bila [parent] kosong. Tidak bisa
+     * dipindah ke dalam dirinya sendiri atau sub-bukunya. Hasil: berhasil dipindah.
+     */
+    fun moveBook(id: String, parent: String): Boolean = synchronized(lock) {
+        val all = _books.value
+        if (all.none { it.id == id }) return@synchronized false
+        if (parent.isNotEmpty() && (parent == id || parent in descendantBooks(all, id) || all.none { it.id == parent })) return@synchronized false
+        val order = (all.maxOfOrNull { it.order } ?: 0L) + 1
+        _books.value = all.map { if (it.id == id) it.copy(parent = parent, order = order, updated = System.currentTimeMillis()) else it }
+        saveBooks()
+        true
     }
 
     fun updateBook(id: String, title: String, color: Int, cover: String? = null) = synchronized(lock) {
@@ -1139,6 +1166,7 @@ class Repository private constructor(context: Context) {
             pinned = o.optBoolean("pinned", false),
             manualNotes = o.optBoolean("manualNotes", false),
             cover = o.optString("cover", ""),
+            parent = o.optString("parent", ""),
         )
     }.getOrNull()
 
@@ -1156,6 +1184,7 @@ class Repository private constructor(context: Context) {
         JSONObject().put("id", b.id).put("title", b.title).put("color", b.color).put("created", b.created).put("updated", b.updated)
             .put("order", b.order).put("pinned", b.pinned).put("manualNotes", b.manualNotes)
             .apply { if (b.cover.isNotBlank()) put("cover", b.cover) }
+            .apply { if (b.parent.isNotBlank()) put("parent", b.parent) }
 
     private fun noteJson(n: Note): JSONObject =
         JSONObject().put("id", n.id).put("bookId", n.bookId).put("title", n.title)

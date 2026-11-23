@@ -646,6 +646,8 @@ data class Book(
     val manualNotes: Boolean = false,
     /** Gambar sampul (nama berkas di folder sampul), atau kosong untuk sampul warna. */
     val cover: String = "",
+    /** Buku induk (folder bertingkat); kosong = langsung di rak. */
+    val parent: String = "",
 )
 
 data class Note(
@@ -730,6 +732,53 @@ data class PageNumberSpec(val position: Int = 0, val format: Int = 0, val start:
 }
 
 /** Urutan rak: buku yang disematkan dulu, lalu menurut urutan yang diatur. */
+/** Buku yang tampil langsung di rak: tanpa induk, atau induknya sudah tidak ada. */
+fun topBooks(books: List<Book>): List<Book> {
+    val ids = books.mapTo(HashSet()) { it.id }
+    return books.filter { it.parent.isEmpty() || it.parent == it.id || it.parent !in ids }
+}
+
+/** Sub-buku langsung di dalam buku [parent]. */
+fun childBooks(books: List<Book>, parent: String): List<Book> = books.filter { it.parent == parent && it.id != parent }
+
+/** Jalur dari buku paling atas sampai buku [id] (termasuk [id]). */
+fun bookPath(books: List<Book>, id: String): List<Book> {
+    val byId = books.associateBy { it.id }
+    val out = ArrayList<Book>()
+    var cur = byId[id]
+    while (cur != null && out.none { it.id == cur!!.id } && out.size < 32) {
+        out.add(0, cur)
+        cur = cur.parent.takeIf { it.isNotEmpty() }?.let { byId[it] }
+    }
+    return out
+}
+
+/** Semua buku di dalam buku [id], sampai ke dalam-dalamnya (tanpa [id] sendiri). */
+fun descendantBooks(books: List<Book>, id: String): Set<String> {
+    val out = HashSet<String>()
+    val todo = ArrayDeque(listOf(id))
+    while (todo.isNotEmpty()) {
+        val cur = todo.removeFirst()
+        for (b in books) if (b.parent == cur && b.id != id && out.add(b.id)) todo.addLast(b.id)
+    }
+    return out
+}
+
+/** Semua buku sebagai pohon (urut rak), dengan kedalamannya: untuk daftar pilihan tujuan pindah. */
+fun bookTree(books: List<Book>): List<Pair<Book, Int>> {
+    val out = ArrayList<Pair<Book, Int>>()
+    val seen = HashSet<String>()
+    fun walk(list: List<Book>, depth: Int) {
+        for (b in shelfOrder(list)) {
+            if (!seen.add(b.id)) continue
+            out.add(b to depth)
+            if (depth < 12) walk(childBooks(books, b.id), depth + 1)
+        }
+    }
+    walk(topBooks(books), 0)
+    return out
+}
+
 fun shelfOrder(books: List<Book>): List<Book> =
     books.sortedWith(compareByDescending<Book> { it.pinned }.thenBy { it.order }.thenBy { it.created })
 

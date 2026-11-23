@@ -58,11 +58,19 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Update
 import id.hananote.data.notesOrder
 import id.hananote.data.shelfOrder
+import id.hananote.data.topBooks
+import id.hananote.data.childBooks
+import id.hananote.data.bookPath
+import id.hananote.data.bookTree
+import id.hananote.data.descendantBooks
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -158,7 +166,9 @@ private sealed interface LibDialog {
     data object Theme : LibDialog
     data object Backup : LibDialog
     data class Crash(val fresh: Boolean) : LibDialog
-    data object NewBook : LibDialog
+    /** Buku baru; [parent] tidak kosong = sub-buku di dalam buku itu. */
+    data class NewBook(val parent: String = "") : LibDialog
+    data class MoveBook(val book: Book) : LibDialog
     data class EditBook(val book: Book) : LibDialog
     data class DeleteBook(val book: Book, val count: Int) : LibDialog
     data class NewNote(val bookId: String) : LibDialog
@@ -234,7 +244,7 @@ fun LibraryScreen(
     var dialog by remember { mutableStateOf<LibDialog?>(null) }
     var searching by rememberSaveable { mutableStateOf(false) }
 
-    val shelf = remember(books) { shelfOrder(books) }
+    val shelf = remember(books) { shelfOrder(topBooks(books)) }
     val counts = remember(notes) { notes.groupingBy { it.bookId }.eachCount() }
     // Tiap kali layar ini tampil lagi (misalnya selesai menggambar), gambar baru dimasukkan ke bukunya.
     val owner = LocalLifecycleOwner.current
@@ -315,10 +325,12 @@ fun LibraryScreen(
     }
 
     // Rak berupa kisi sampul buku; buka buku untuk melihat catatannya (tablet dan HP sama).
-    val current = shelf.firstOrNull { it.id == selectedBookId }
-    BackHandler(enabled = current != null) { onSelectBook(null) }
-    if (current == null) ShelfScreen(repo, shelf, counts, actions)
-    else BookScreen(repo, current, notes, counts[current.id] ?: 0, thumbs, actions)
+    val current = books.firstOrNull { it.id == selectedBookId }
+    // Kembali dari sub-buku ke buku induknya, dari buku paling atas ke rak.
+    val up = current?.parent?.takeIf { p -> p.isNotEmpty() && books.any { it.id == p } }
+    BackHandler(enabled = current != null) { onSelectBook(up) }
+    if (current == null) ShelfScreen(repo, shelf, counts, actions, books)
+    else BookScreen(repo, current, notes, counts[current.id] ?: 0, thumbs, actions, books, counts, onUp = { onSelectBook(up) })
 
     // Aplikasi sempat tertutup sendiri: tawarkan laporan galatnya sekali.
     LaunchedEffect(Unit) {
@@ -346,7 +358,7 @@ private fun wideScreen(): Boolean = LocalConfiguration.current.screenWidthDp >= 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ShelfScreen(repo: Repository, shelf: List<Book>, counts: Map<String, Int>, actions: LibActions) {
+private fun ShelfScreen(repo: Repository, shelf: List<Book>, counts: Map<String, Int>, actions: LibActions, all: List<Book>) {
     val gridState = rememberLazyGridState()
     val reorder = remember { ReorderState() }
     bindReorder(reorder, shelf, { it.pinned }, { it.id }, actions.reorderBooks)
@@ -362,14 +374,14 @@ private fun ShelfScreen(repo: Repository, shelf: List<Book>, counts: Map<String,
                     IconButton(onClick = { actions.show(LibDialog.Backup) }) { Icon(Icons.Filled.Backup, contentDescription = "Cadangan") }
                     TrashButton(repo) { actions.show(LibDialog.Trash) }
                     IconButton(onClick = { actions.show(LibDialog.Theme) }) { Icon(Icons.Filled.Palette, contentDescription = "Tampilan aplikasi") }
-                    IconButton(onClick = { actions.show(LibDialog.NewBook) }) { Icon(Icons.Filled.Add, contentDescription = "Buku baru") }
+                    IconButton(onClick = { actions.show(LibDialog.NewBook()) }) { Icon(Icons.Filled.Add, contentDescription = "Buku baru") }
                     Spacer(Modifier.width(4.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { actions.show(LibDialog.NewBook) }, shape = CircleShape) {
+            FloatingActionButton(onClick = { actions.show(LibDialog.NewBook()) }, shape = CircleShape) {
                 Icon(Icons.Filled.Add, contentDescription = "Buku baru")
             }
         },
@@ -391,6 +403,7 @@ private fun ShelfScreen(repo: Repository, shelf: List<Book>, counts: Map<String,
                         repo = repo, book = b, count = counts[b.id] ?: 0,
                         modifier = if (reorder.dragKey == b.id) Modifier else Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                         actions = actions, reorder = reorder, index = i,
+                        subCount = childBooks(all, b.id).size,
                     )
                 }
             }
@@ -420,7 +433,14 @@ fun startDrawing(ctx: Context, open: String? = null, gallery: Boolean = false) {
  * layer, Alpha Lock, dan ColorDrop. Gambarnya disimpan di buku [bookId].
  */
 @Composable
-private fun AddMenu(firstLabel: String, onFirst: () -> Unit, repo: Repository, bookId: String, anchor: @Composable (open: () -> Unit) -> Unit) {
+private fun AddMenu(
+    firstLabel: String,
+    onFirst: () -> Unit,
+    repo: Repository,
+    bookId: String,
+    onSubBook: (() -> Unit)? = null,
+    anchor: @Composable (open: () -> Unit) -> Unit,
+) {
     val ctx = LocalContext.current
     var open by remember { mutableStateOf(false) }
     Box {
@@ -431,6 +451,13 @@ private fun AddMenu(firstLabel: String, onFirst: () -> Unit, repo: Repository, b
                 leadingIcon = { Icon(if (firstLabel.startsWith("Buku")) Icons.AutoMirrored.Filled.MenuBook else Icons.Filled.Description, contentDescription = null) },
                 onClick = { open = false; onFirst() },
             )
+            if (onSubBook != null) {
+                DropdownMenuItem(
+                    text = { Text("Sub-buku baru") },
+                    leadingIcon = { Icon(Icons.Filled.CreateNewFolder, contentDescription = null) },
+                    onClick = { open = false; onSubBook() },
+                )
+            }
             DropdownMenuItem(
                 text = {
                     Column {
@@ -460,21 +487,35 @@ private fun BookScreen(
     count: Int,
     thumbs: Long,
     actions: LibActions,
+    all: List<Book>,
+    counts: Map<String, Int>,
+    onUp: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     val wide = wideScreen()
+    val children = remember(all, book.id) { shelfOrder(childBooks(all, book.id)) }
+    val path = remember(all, book.id) { bookPath(all, book.id) }
+    val parentTitle = path.getOrNull(path.size - 2)?.title
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = { actions.selectBook(null) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali ke rak")
+                    IconButton(onClick = onUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = if (parentTitle != null) "Kembali ke $parentTitle" else "Kembali ke rak")
                     }
                 },
                 title = {
                     Column {
                         Text(book.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("$count catatan", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // Jalur folder: Rak › Seminar › TDA, lalu isinya.
+                        val trail = if (path.size > 1) (listOf("Rak") + path.dropLast(1).map { it.title }).joinToString(" › ") + " · " else ""
+                        Text(
+                            trail + "$count catatan" + if (children.isNotEmpty()) " · ${children.size} sub-buku" else "",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 },
                 actions = {
@@ -484,7 +525,10 @@ private fun BookScreen(
                             Icon(Icons.Filled.Update, contentDescription = "Urutkan menurut terakhir diubah")
                         }
                     }
-                    AddMenu(firstLabel = "Catatan baru", onFirst = { actions.show(LibDialog.NewNote(book.id)) }, repo = repo, bookId = book.id) { open ->
+                    AddMenu(
+                        firstLabel = "Catatan baru", onFirst = { actions.show(LibDialog.NewNote(book.id)) }, repo = repo, bookId = book.id,
+                        onSubBook = { actions.show(LibDialog.NewBook(book.id)) },
+                    ) { open ->
                         IconButton(onClick = open) { Icon(Icons.Filled.Add, contentDescription = "Tambah catatan atau gambar") }
                     }
                     Box {
@@ -494,6 +538,16 @@ private fun BookScreen(
                                 text = { Text("Ubah nama & sampul") },
                                 leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                                 onClick = { menu = false; actions.show(LibDialog.EditBook(book)) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Sub-buku baru") },
+                                leadingIcon = { Icon(Icons.Filled.CreateNewFolder, contentDescription = null) },
+                                onClick = { menu = false; actions.show(LibDialog.NewBook(book.id)) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pindahkan buku ke…") },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
+                                onClick = { menu = false; actions.show(LibDialog.MoveBook(book)) },
                             )
                             DropdownMenuItem(
                                 text = { Text(if (book.pinned) "Lepas sematan buku" else "Sematkan buku di depan") },
@@ -519,7 +573,10 @@ private fun BookScreen(
             )
         },
         floatingActionButton = {
-            AddMenu(firstLabel = "Catatan baru", onFirst = { actions.show(LibDialog.NewNote(book.id)) }, repo = repo, bookId = book.id) { open ->
+            AddMenu(
+                firstLabel = "Catatan baru", onFirst = { actions.show(LibDialog.NewNote(book.id)) }, repo = repo, bookId = book.id,
+                onSubBook = { actions.show(LibDialog.NewBook(book.id)) },
+            ) { open ->
                 FloatingActionButton(onClick = open, shape = CircleShape) {
                     Icon(Icons.Filled.Add, contentDescription = "Tambah catatan atau gambar")
                 }
@@ -530,6 +587,13 @@ private fun BookScreen(
         Column(Modifier.padding(top = pad.calculateTopPadding()).fillMaxSize()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
             val side = if (wide) 40.dp else 20.dp
+            if (children.isNotEmpty()) {
+                SubBooksRow(repo, children, all, counts, actions, side)
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(horizontal = side),
+                )
+            }
             NotesGrid(
                 repo = repo,
                 bookId = book.id,
@@ -539,6 +603,69 @@ private fun BookScreen(
                 actions = actions,
                 onCreate = { actions.show(LibDialog.NewNote(book.id)) },
             )
+        }
+    }
+}
+
+/** Sub-buku di dalam buku ini: satu baris sampul kecil yang bisa digeser ke samping. */
+@Composable
+private fun SubBooksRow(repo: Repository, children: List<Book>, all: List<Book>, counts: Map<String, Int>, actions: LibActions, side: androidx.compose.ui.unit.Dp) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp)) {
+        Text(
+            "Sub-buku",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = side, bottom = 10.dp),
+        )
+        androidx.compose.foundation.lazy.LazyRow(
+            contentPadding = PaddingValues(horizontal = side),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            items(children.size, key = { children[it].id }) { k ->
+                val b = children[k]
+                val cover = rememberCover(repo, b.cover)
+                var menu by remember { mutableStateOf(false) }
+                val sub = childBooks(all, b.id).size
+                Column(
+                    Modifier
+                        .width(96.dp)
+                        .combinedClickable(
+                            onClickLabel = "Buka buku",
+                            onLongClick = { menu = true },
+                            onClick = { actions.selectBook(b.id) },
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box {
+                        BookCover(title = b.title, subtitle = "", color = b.color, selected = false, image = cover, label = false, modifier = Modifier.fillMaxWidth())
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Ubah nama & sampul") },
+                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                onClick = { menu = false; actions.show(LibDialog.EditBook(b)) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pindahkan buku ke…") },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
+                                onClick = { menu = false; actions.show(LibDialog.MoveBook(b)) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Hapus buku") },
+                                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                                onClick = { menu = false; actions.show(LibDialog.DeleteBook(b, counts[b.id] ?: 0)) },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(b.title, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${counts[b.id] ?: 0} catatan" + if (sub > 0) " · $sub" else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }
@@ -699,6 +826,7 @@ private fun BookTile(
     actions: LibActions,
     reorder: ReorderState,
     index: Int,
+    subCount: Int = 0,
 ) {
     var menu by remember { mutableStateOf(false) }
     val dragging = reorder.dragKey == book.id
@@ -742,6 +870,11 @@ private fun BookTile(
                     onClick = { menu = false; actions.show(LibDialog.EditBook(book)) },
                 )
                 DropdownMenuItem(
+                    text = { Text("Pindahkan buku ke…") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
+                    onClick = { menu = false; actions.show(LibDialog.MoveBook(book)) },
+                )
+                DropdownMenuItem(
                     text = { Text("Hapus buku") },
                     leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                     onClick = { menu = false; actions.show(LibDialog.DeleteBook(book, count)) },
@@ -759,7 +892,7 @@ private fun BookTile(
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            "$count catatan",
+            "$count catatan" + if (subCount > 0) " · $subCount sub-buku" else "",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -934,18 +1067,44 @@ private fun LibraryDialogs(
         LibDialog.Theme -> ThemeDialog(repo, onDismiss)
         LibDialog.Backup -> BackupDialog(repo, onDismiss)
         is LibDialog.Crash -> CrashDialog(dialog.fresh, onDismiss)
-        LibDialog.NewBook -> BookDialog(
+        is LibDialog.NewBook -> BookDialog(
             repo = repo,
-            heading = "Buku baru",
+            heading = if (dialog.parent.isEmpty()) "Buku baru" else "Sub-buku baru",
             initialTitle = "",
             initialColor = BookColors[shelf.size % BookColors.size],
             initialCover = "",
             confirm = "Buat buku",
             onDismiss = onDismiss,
         ) { title, color, cover ->
-            val b = repo.createBook(title, color, cover)
+            val b = repo.createBook(title, color, cover, parent = dialog.parent)
             onDismiss()
             actions.selectBook(b.id)
+        }
+        is LibDialog.MoveBook -> {
+            val all = repo.books.value
+            val blocked = descendantBooks(all, dialog.book.id) + dialog.book.id
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Pindahkan “${dialog.book.title}” ke") },
+                text = {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        if (dialog.book.parent.isNotEmpty()) {
+                            BookPickRow(title = "Rak (paling atas)", color = null, depth = 0) {
+                                repo.moveBook(dialog.book.id, "")
+                                onDismiss()
+                            }
+                        }
+                        for ((b, depth) in bookTree(all)) {
+                            if (b.id in blocked || b.id == dialog.book.parent) continue
+                            BookPickRow(title = b.title, color = b.color, depth = depth) {
+                                repo.moveBook(dialog.book.id, b.id)
+                                onDismiss()
+                            }
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } },
+            )
         }
         is LibDialog.EditBook -> BookDialog(
             repo = repo,
@@ -968,7 +1127,8 @@ private fun LibraryDialogs(
         ) {
             repo.deleteBook(dialog.book.id)
             onDismiss()
-            actions.selectBook(null)
+            // Sub-buku dihapus: kembali ke buku induknya.
+            actions.selectBook(dialog.book.parent.ifEmpty { null })
         }
         is LibDialog.NewNote -> NewNoteDialog(repo.prefs, onDismiss, onPdf = { actions.importPdf(dialog.bookId); onDismiss() }) { title, w, h, template, color ->
             val n = repo.createNote(dialog.bookId, title, w, h, template, color)
@@ -990,24 +1150,16 @@ private fun LibraryDialogs(
             title = { Text("Pindahkan ke buku") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    shelf.filter { it.id != dialog.note.bookId }.forEach { b ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    repo.moveNote(dialog.note.id, b.id)
-                                    onDismiss()
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.size(width = 18.dp, height = 24.dp).clip(RoundedCornerShape(2.dp, 5.dp, 5.dp, 2.dp)).background(Color(b.color)))
-                            Spacer(Modifier.width(14.dp))
-                            Text(b.title, style = MaterialTheme.typography.bodyLarge)
+                    // Semua buku dan sub-buku, berjenjang seperti di rak.
+                    val tree = bookTree(repo.books.value)
+                    for ((b, depth) in tree) {
+                        if (b.id == dialog.note.bookId) continue
+                        BookPickRow(title = b.title, color = b.color, depth = depth) {
+                            repo.moveNote(dialog.note.id, b.id)
+                            onDismiss()
                         }
                     }
-                    if (shelf.size < 2) Text("Belum ada buku lain. Buat buku baru dulu dari rak.")
+                    if (tree.size < 2) Text("Belum ada buku lain. Buat buku baru dulu dari rak.")
                 }
             },
             confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } },
@@ -1025,12 +1177,33 @@ private fun LibraryDialogs(
     }
 }
 
+/** Satu pilihan buku tujuan (berjenjang menurut [depth]); [color] null = rak. */
+@Composable
+private fun BookPickRow(title: String, color: Int?, depth: Int, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(start = 8.dp + 22.dp * depth, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (color != null) {
+            Box(Modifier.size(width = 18.dp, height = 24.dp).clip(RoundedCornerShape(2.dp, 5.dp, 5.dp, 2.dp)).background(Color(color)))
+        } else {
+            Icon(Icons.Filled.Home, contentDescription = null, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
 /** Tombol Sampah di rak, dengan jumlah isinya. */
 @Composable
 private fun TrashButton(repo: Repository, onClick: () -> Unit) {
     val notes by repo.trashNotes.collectAsState()
     val books by repo.trashBooks.collectAsState()
-    val n = books.size + notes.count { it.withBook == null }
+    val n = books.count { it.withBook == null } + notes.count { it.withBook == null }
     IconButton(onClick = onClick) {
         BadgedBox(badge = { if (n > 0) Badge { Text(if (n > 99) "99+" else "$n") } }) {
             Icon(Icons.Filled.Delete, contentDescription = if (n > 0) "Sampah, $n isi" else "Sampah")
@@ -1054,7 +1227,7 @@ private fun TrashDialog(repo: Repository, onDismiss: () -> Unit) {
     var info by remember { mutableStateOf<String?>(null) }
     val loose = tNotes.filter { it.withBook == null }
     // Buku dan catatan dicampur, yang terakhir dihapus di atas.
-    val rows: List<Any> = (tBooks.map { it as Any } + loose.map { it as Any })
+    val rows: List<Any> = (tBooks.filter { it.withBook == null }.map { it as Any } + loose.map { it as Any })
         .sortedByDescending { if (it is Repository.TrashedBook) it.at else (it as Repository.TrashedNote).at }
     val empty = rows.isEmpty()
     AlertDialog(
