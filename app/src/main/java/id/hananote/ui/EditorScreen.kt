@@ -84,7 +84,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -282,8 +281,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.ui.text.SpanStyle
@@ -560,16 +562,19 @@ class EditorController(private val repo: Repository, val noteId: String) {
         else -> tool
     }
 
-    /** Kelompok bilah fitur yang terbuka. Awalnya hanya Sisipkan, supaya bilah tidak penuh. */
-    private val openGroups = mutableStateMapOf<String, Boolean>()
+    /**
+     * Kelompok bilah fitur yang tombolnya sedang turun di bawah bilah (satu kelompok sekaligus), null bila
+     * semua tersembunyi. Awalnya Sisipkan. Diingat antar catatan.
+     */
+    var openGroup by mutableStateOf<String?>(prefs.getString("feature_group", "Sisipkan")?.takeIf { it.isNotEmpty() })
+        private set
 
-    fun isGroupOpen(name: String): Boolean =
-        openGroups[name] ?: prefs.getBoolean("group_open_$name", name == "Sisipkan")
+    fun isGroupOpen(name: String): Boolean = openGroup == name
 
+    /** Ketuk judul kelompok: tombolnya turun; ketuk lagi: naik dan tersembunyi. Kelompok lain langsung berganti. */
     fun toggleGroup(name: String) {
-        val next = !isGroupOpen(name)
-        openGroups[name] = next
-        prefs.edit().putBoolean("group_open_$name", next).apply()
+        openGroup = if (openGroup == name) null else name
+        prefs.edit().putString("feature_group", openGroup ?: "").apply()
     }
 
     /** Huruf besar otomatis di awal kalimat untuk teks dari tulisan tangan dan suara. */
@@ -4154,17 +4159,61 @@ private fun TabletEditor(
  */
 @Composable
 private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (EditorDialog) -> Unit) {
-    // Tinggi tetap: membuka atau menutup kelompok hanya melebar/menyempit ke samping, tidak menggeser kanvas.
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        FeatureGroup(c, "Sisipkan", Icons.Filled.AddCircle) {
+    Column(Modifier.fillMaxWidth()) {
+        // Baris judul kelompok. Tombol kelompok yang dibuka turun di baris bawahnya, dan naik lagi saat disembunyikan.
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            FeaturePill(c, "Sisipkan", Icons.Filled.AddCircle)
+            FeaturePill(c, "Suara", Icons.Filled.Mic)
+            FeaturePill(c, "Tulisan", Icons.Filled.TextFields)
+            FeaturePill(c, "Alat", Icons.Filled.Straighten)
+            FeaturePill(c, "Halaman", Icons.Filled.AutoStories)
+            FeaturePill(c, "PDF", Icons.Filled.PictureAsPdf)
+            Spacer(Modifier.width(8.dp))
+        }
+        // Saat menutup, isi kelompok terakhir tetap tampil sampai baris selesai naik.
+        var shown by remember { mutableStateOf(c.openGroup) }
+        LaunchedEffect(c.openGroup) { c.openGroup?.let { shown = it } }
+        val target = c.openGroup ?: shown
+        AnimatedVisibility(
+            visible = c.openGroup != null,
+            enter = expandVertically(tween(240), expandFrom = Alignment.Top) +
+                slideInVertically(tween(240)) { -it } + fadeIn(tween(200)),
+            exit = shrinkVertically(tween(220), shrinkTowards = Alignment.Top) +
+                slideOutVertically(tween(220)) { -it } + fadeOut(tween(160)),
+        ) {
+            Column {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                Crossfade(targetState = target, animationSpec = tween(160), label = "kelompok") { g ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(58.dp)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        FeatureGroupButtons(c, g, insert, onDialog)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Tombol-tombol satu kelompok fitur. */
+@Composable
+private fun FeatureGroupButtons(c: EditorController, group: String?, insert: InsertActions, onDialog: (EditorDialog) -> Unit) {
+    when (group) {
+        "Sisipkan" -> {
             FeatureButton(Icons.Filled.TextFields, "Teks", onClick = insert.text)
             FeatureButton(Icons.Filled.CheckBox, "Centang", onClick = { c.newText(TextLists.BOX) })
             FeatureButton(Icons.Filled.Image, "Gambar", onClick = insert.image)
@@ -4176,23 +4225,23 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
             FeatureButton(Icons.Filled.CalendarMonth, "Tanggal", onClick = insert.date)
             FeatureButton(Icons.Filled.AccountTree, "Mind map", onClick = insert.mindMap)
         }
-        FeatureGroup(c, "Suara", Icons.Filled.Mic) {
+        "Suara" -> {
             FeatureButton(Icons.Filled.RecordVoiceOver, "Dikte", onClick = insert.dictate)
             FeatureButton(Icons.Filled.Mic, "Rekam", onClick = insert.record)
         }
-        FeatureGroup(c, "Tulisan", Icons.Filled.TextFields) {
+        "Tulisan" -> {
             FeatureButton(Icons.Filled.Transform, "Jadi teks", active = c.convertPick, onClick = { if (c.convertPick) c.cancelConvertPick() else c.requestConvert() })
             FeatureButton(Icons.Filled.AutoFixHigh, "Otomatis", active = c.autoText, onClick = { c.toggleAutoText() })
             FeatureButton(Icons.Filled.FormatSize, "Huruf besar", active = c.autoCaps, onClick = { c.toggleAutoCaps() })
             FeatureButton(Icons.Filled.Translate, "Bahasa", onClick = { onDialog(EditorDialog.InkLang) })
         }
-        FeatureGroup(c, "Alat", Icons.Filled.Straighten) {
+        "Alat" -> {
             FeatureButton(Icons.Filled.Straighten, "Penggaris", active = c.ruler, onClick = { c.toggleRuler() })
             FeatureButton(Icons.Filled.TouchApp, "Jari", active = c.fingerDraws, onClick = { c.toggleFinger() })
             FeatureButton(Icons.Filled.Tune, "Kertas", onClick = { onDialog(EditorDialog.Paper) })
             FeatureButton(Icons.Filled.Share, "Ekspor", onClick = { onDialog(EditorDialog.Export) })
         }
-        FeatureGroup(c, "Halaman", Icons.Filled.AutoStories) {
+        "Halaman" -> {
             FeatureButton(Icons.Filled.PostAdd, "Tambah", onClick = { c.addPage() })
             FeatureButton(Icons.Filled.ContentCopy, "Duplikat", onClick = { c.duplicatePage() })
             FeatureButton(Icons.Filled.PictureAsPdf, "Impor PDF", onClick = insert.pdf)
@@ -4203,7 +4252,7 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
                 onClick = { onDialog(EditorDialog.Orientation(c.index)) },
             )
         }
-        FeatureGroup(c, "PDF", Icons.Filled.PictureAsPdf) {
+        "PDF" -> {
             FeatureButton(Icons.Filled.Highlight, "Pilih teks", active = c.mode == InputMode.PDF && !c.pdfForm, onClick = { c.selectPdfText() })
             FeatureButton(Icons.Filled.CheckBox, "Formulir", active = c.mode == InputMode.PDF && c.pdfForm, onClick = { c.togglePdfForm() })
             FeatureButton(Icons.Filled.Gesture, "Tanda tangan", onClick = { c.openSignature() })
@@ -4211,71 +4260,39 @@ private fun FeatureBar(c: EditorController, insert: InsertActions, onDialog: (Ed
             FeatureButton(Icons.Filled.MergeType, "Gabung PDF", onClick = insert.pdf)
             FeatureButton(Icons.Filled.Share, "Ekspor hal.", onClick = { onDialog(EditorDialog.Export) })
         }
-        Spacer(Modifier.width(8.dp))
+        else -> Unit
     }
 }
 
 /**
- * Satu kelompok fitur: judul berbentuk pil yang bisa diketuk untuk membuka atau menyembunyikan
- * tombol-tombolnya. Saat tersembunyi, hanya judulnya yang tampil.
+ * Judul satu kelompok fitur berbentuk pil. Diketuk: tombol-tombolnya turun di bawah bilah; diketuk lagi:
+ * naik dan tersembunyi.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FeatureGroup(
-    c: EditorController,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    content: @Composable () -> Unit,
-) {
+private fun FeaturePill(c: EditorController, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     val open = c.isGroupOpen(label)
     val bg = if (open) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
     val fg = if (open) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    // Kelompok yang baru dibuka digeser masuk layar supaya tombolnya tidak tersembunyi di ujung kanan bilah.
-    val reveal = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
-    var justOpened by remember { mutableStateOf(false) }
-    LaunchedEffect(open, justOpened) {
-        if (open && justOpened) {
-            delay(260)
-            reveal.bringIntoView()
-            justOpened = false
-        }
-    }
+    val turn by animateFloatAsState(if (open) 180f else 0f, tween(220), label = "panah")
     Row(
-        Modifier.bringIntoViewRequester(reveal),
+        Modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .toolClick(if (open) "Sembunyikan $label" else "Tampilkan $label") { c.toggleGroup(label) }
+            .padding(start = 10.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier
-                .height(40.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(bg)
-                .toolClick(if (open) "Sembunyikan $label" else "Tampilkan $label") {
-                    justOpened = !open
-                    c.toggleGroup(label)
-                }
-                .padding(start = 10.dp, end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, color = fg, maxLines = 1)
-            Icon(
-                if (open) Icons.AutoMirrored.Filled.KeyboardArrowLeft else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = fg,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        AnimatedVisibility(
-            visible = open,
-            enter = expandHorizontally(tween(220), expandFrom = Alignment.Start) + fadeIn(tween(180, delayMillis = 40)),
-            exit = shrinkHorizontally(tween(200), shrinkTowards = Alignment.Start) + fadeOut(tween(120)),
-        ) {
-            Row(Modifier.padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                content()
-                BarDivider()
-            }
-        }
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = fg, maxLines = 1)
+        // Panah ke bawah: tombolnya akan turun; berputar ke atas saat terbuka.
+        Icon(
+            Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = fg,
+            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = turn },
+        )
     }
 }
 
