@@ -219,10 +219,16 @@ shot bilah-ringkas-lagi
 # ---------- 8. Tombol Pilih sendiri di samping tombol kuas ----------
 tap_node "Pilih" 2 || echo "PILIH TIDAK ADA"
 shot mode-pilih
-read A B < <(pct 190 390)
-adb shell input tap $A $B; sleep 2
-shot garis-terpilih
+adb logcat -c
+read A B < <(pct 190 330)
+echo "ketuk garis stabilo di $A $B"
+adb shell input tap $A $B; sleep 0.7
+shot stabilo-terpilih
+sleep 1.5
+shot stabilo-terpilih-2
 tap_node "Pilih" 2 || true
 shot kembali-ke-pena
+adb logcat -d > $OUT/logcat-penuh.txt
 adb logcat -d | grep -iE "FATAL|AndroidRuntime" | tail -40 > $OUT/logcat.txt
+adb shell "run-as $PKG sh -c 'ls -la files; cat files/crash/*.txt 2>/dev/null | tail -60'" < /dev/null > $OUT/jejak.txt 2>&1
 echo selesai
