@@ -228,6 +228,14 @@ sleep 1.5
 shot stabilo-terpilih-2
 tap_node "Pilih" 2 || true
 shot kembali-ke-pena
+# ---------- 9. Pilih juga ada di mode Teks, dan kembali ke mode Teks ----------
+find_node "Tabel" | grep -q . && tap_node "Sisipkan" 2
+tap_node "Teks" 2 || echo "MODE TEKS TIDAK ADA"
+shot mode-teks-ada-pilih
+tap_node "Pilih" 2 || echo "PILIH DI MODE TEKS TIDAK ADA"
+shot pilih-dari-teks
+tap_node "Pilih" 2 || true
+shot kembali-ke-teks
 adb logcat -d > $OUT/logcat-penuh.txt
 adb logcat -d | grep -iE "FATAL|AndroidRuntime" | tail -40 > $OUT/logcat.txt
 adb shell "run-as $PKG sh -c 'ls -la files; cat files/crash/*.txt 2>/dev/null | tail -60'" < /dev/null > $OUT/jejak.txt 2>&1

@@ -1204,16 +1204,22 @@ class EditorController(private val repo: Repository, val noteId: String) {
     /** Mode sebelum tombol Pilih diketuk, untuk kembali ke alat itu saat Pilih diketuk lagi. */
     private var beforeSelect = InputMode.INK
 
-    /** Tombol Pilih di bilah: masuk ke mode pilih, atau kembali ke alat sebelumnya bila sudah di mode pilih. */
+    /**
+     * Tombol Pilih di bilah (selalu ada, juga di mode Teks): masuk ke mode pilih, atau kembali ke alat/mode
+     * sebelumnya bila sudah di mode pilih.
+     */
     fun toggleSelect() {
         if (mode == InputMode.SELECT) {
             when (beforeSelect) {
                 InputMode.SHAPE -> selectShapes()
                 InputMode.TAPE -> selectTape()
+                InputMode.TYPE -> selectTyping()
                 else -> selectTool(tool)
             }
         } else {
-            if (mode == InputMode.INK || mode == InputMode.SHAPE || mode == InputMode.TAPE) beforeSelect = mode
+            if (mode == InputMode.INK || mode == InputMode.SHAPE || mode == InputMode.TAPE || mode == InputMode.TYPE) beforeSelect = mode
+            // Ketikan yang sedang berjalan diselesaikan dulu supaya hasilnya tersimpan sebelum memilih benda.
+            if (mode == InputMode.TYPE) finishEditing(commit = true)
             selectPointer()
         }
     }
@@ -4808,6 +4814,8 @@ private fun TabletEditor(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 ModeSwitch(c, Modifier.align(Alignment.CenterVertically))
+                // Pilih selalu ada di tempat yang sama, di mode tulis maupun mode Teks.
+                Box(Modifier.align(Alignment.CenterVertically)) { SelectQuickButton(c) }
                 BarDivider(Modifier.align(Alignment.CenterVertically))
                 if (c.mode == InputMode.TYPE) {
                     // Mode Teks: pita format seperti di pengolah kata, menggantikan alat tulis.
@@ -4829,7 +4837,6 @@ private fun TabletEditor(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         BrushPicker(c)
-                        SelectQuickButton(c)
                         if (c.mode != InputMode.SELECT && c.mode != InputMode.PDF) ToolSettingsPicker(c, onDialog)
                     }
                     when (c.mode) {
@@ -5811,16 +5818,7 @@ private fun ToolTray(c: EditorController) {
         ) {
             TapeGlyph(Color(c.colorOf(Tool.TAPE)), c.mode == InputMode.TAPE)
         }
-        Box(
-            Modifier
-                .size(width = 42.dp, height = 56.dp)
-                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                .toolClick { c.selectPointer() }
-                .semantics { contentDescription = "Pilih" },
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            SelectGlyph(MaterialTheme.colorScheme.onSurface, c.mode == InputMode.SELECT)
-        }
+        // (Pilih punya tombol sendiri yang selalu ada di bilah.)
     }
 }
 
