@@ -1201,6 +1201,23 @@ class EditorController(private val repo: Repository, val noteId: String) {
     /** Mode Pensil: kembali menulis dengan alat tulis terakhir. */
     fun selectPencil() = selectTool(tool)
 
+    /** Mode sebelum tombol Pilih diketuk, untuk kembali ke alat itu saat Pilih diketuk lagi. */
+    private var beforeSelect = InputMode.INK
+
+    /** Tombol Pilih di bilah: masuk ke mode pilih, atau kembali ke alat sebelumnya bila sudah di mode pilih. */
+    fun toggleSelect() {
+        if (mode == InputMode.SELECT) {
+            when (beforeSelect) {
+                InputMode.SHAPE -> selectShapes()
+                InputMode.TAPE -> selectTape()
+                else -> selectTool(tool)
+            }
+        } else {
+            if (mode == InputMode.INK || mode == InputMode.SHAPE || mode == InputMode.TAPE) beforeSelect = mode
+            selectPointer()
+        }
+    }
+
     /** Mode Teks: ketuk di mana saja di halaman lalu langsung mengetik, seperti di pengolah kata. */
     fun selectTyping() {
         CrashLog.note("mode teks")
@@ -4812,6 +4829,7 @@ private fun TabletEditor(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         BrushPicker(c)
+                        SelectQuickButton(c)
                         if (c.mode != InputMode.SELECT && c.mode != InputMode.PDF) ToolSettingsPicker(c, onDialog)
                     }
                     when (c.mode) {
@@ -5810,8 +5828,8 @@ private fun ToolTray(c: EditorController) {
 private fun currentToolLabel(c: EditorController): String = when (c.mode) {
     InputMode.SHAPE -> "Bentuk"
     InputMode.TAPE -> "Selotip"
-    InputMode.SELECT -> "Pilih"
     InputMode.PDF -> "PDF"
+    // Di mode pilih, tombol kuas tetap menunjukkan alat tulis terakhir (Pilih punya tombol sendiri).
     else -> c.tool.label
 }
 
@@ -5833,7 +5851,6 @@ private fun SmallToolGlyph(c: EditorController, which: String) {
 private fun currentGlyphKey(c: EditorController): String = when (c.mode) {
     InputMode.SHAPE -> "Bentuk"
     InputMode.TAPE -> "Selotip"
-    InputMode.SELECT -> "Pilih"
     InputMode.PDF -> "PDF"
     else -> c.tool.name
 }
@@ -5893,6 +5910,33 @@ private fun TraySection(title: String) {
     )
 }
 
+/**
+ * Tombol Pilih sendiri di samping tombol kuas: sekali ketuk langsung memilih benda (ketuk atau laso), ketuk lagi
+ * untuk kembali ke alat tulis sebelumnya.
+ */
+@Composable
+private fun SelectQuickButton(c: EditorController) {
+    val scheme = MaterialTheme.colorScheme
+    val on = c.mode == InputMode.SELECT
+    Row(
+        Modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (on) scheme.primaryContainer else scheme.surfaceVariant.copy(alpha = 0.7f))
+            .border(1.dp, if (on) scheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
+            .toolClick(onClickLabel = if (on) "Kembali ke alat tulis" else "Pilih benda", onClick = { c.toggleSelect() })
+            .semantics { contentDescription = "Pilih"; selected = on }
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(width = 22.dp, height = 32.dp).clipToBounds(), contentAlignment = Alignment.BottomCenter) {
+            SelectGlyph(if (on) scheme.onPrimaryContainer else scheme.onSurface, true, Modifier.size(width = 22.dp, height = 36.dp))
+        }
+        Spacer(Modifier.width(6.dp))
+        Text("Pilih", style = MaterialTheme.typography.labelLarge, color = if (on) scheme.onPrimaryContainer else scheme.onSurface)
+    }
+}
+
 /** Pilihan kuas: satu tombol berisi alat yang sedang dipakai; ketuk untuk daftar semua alat, tegak ke bawah. */
 @Composable
 private fun BrushPicker(c: EditorController) {
@@ -5914,7 +5958,6 @@ private fun BrushPicker(c: EditorController) {
                 HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 TrayMenuRow("Bentuk", c.mode == InputMode.SHAPE, onClick = { open = false; c.selectShapes() }) { SmallToolGlyph(c, "Bentuk") }
                 TrayMenuRow("Selotip", c.mode == InputMode.TAPE, onClick = { open = false; c.selectTape() }) { SmallToolGlyph(c, "Selotip") }
-                TrayMenuRow("Pilih", c.mode == InputMode.SELECT, onClick = { open = false; c.selectPointer() }) { SmallToolGlyph(c, "Pilih") }
             }
         }
     }

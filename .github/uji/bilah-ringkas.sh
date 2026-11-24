@@ -216,5 +216,13 @@ tap_node "Jajarkan semua alat di bilah" 2 || echo "JAJARKAN TIDAK ADA"
 shot bilah-lengkap
 tap_node "Ringkas bilah alat" 2 || echo "RINGKAS TIDAK ADA"
 shot bilah-ringkas-lagi
+# ---------- 8. Tombol Pilih sendiri di samping tombol kuas ----------
+tap_node "Pilih" 2 || echo "PILIH TIDAK ADA"
+shot mode-pilih
+read A B < <(pct 190 390)
+adb shell input tap $A $B; sleep 2
+shot garis-terpilih
+tap_node "Pilih" 2 || true
+shot kembali-ke-pena
 adb logcat -d | grep -iE "FATAL|AndroidRuntime" | tail -40 > $OUT/logcat.txt
 echo selesai
