@@ -1293,6 +1293,14 @@ chip Mode baca menandai halaman ini secara manual.
   Segitiga, Belah ketupat, Segi enam, Bintang, Hati) pindah ke tombol **Bentuk** tersendiri. Tombol yang sedang dipakai
   disorot.
 
+## Perubahan 0.1.140: Tombol Pilih yang selalu ada
+
+- **Pilih** (penunjuk untuk memilih benda) sekarang punya tombol sendiri tepat setelah Pensil | Teks, dan selalu
+  ada di tempat yang sama: di mode tulis maupun mode Teks, di bilah ringkas maupun bilah lengkap.
+- Sekali ketuk langsung ke mode pilih (ketuk benda atau lingkari dengan laso); ketuk lagi untuk kembali ke alat atau
+  mode sebelumnya (pena, bentuk, selotip, atau mode Teks). Ketikan yang sedang berjalan disimpan dulu sebelum pindah.
+- Pilih tidak lagi ada di daftar pilihan kuas.
+
 ## Perubahan 0.1.139: Bilah alat ringkas (pilihan kuas)
 
 - Deretan alat tulis di bilah tablet sekarang ringkas: **satu tombol pilihan kuas** (gambar dan nama alat yang
