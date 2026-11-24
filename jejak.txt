@@ -1,0 +1,10 @@
+total 72
+drwxrwx--x 7 u0_a174 u0_a174 4096 2026-11-24 01:06 .
+drwx------ 8 u0_a174 u0_a174 4096 2026-11-24 01:06 ..
+drwx------ 2 u0_a174 u0_a174 4096 2026-11-24 01:06 crash
+drwx------ 6 u0_a174 u0_a174 4096 2026-11-24 01:08 hana
+drwx------ 2 u0_a174 u0_a174 4096 2026-11-24 01:06 karya
+drwx------ 3 u0_a174 u0_a174 4096 2026-11-24 01:06 mdd_pds_config
+drwx------ 3 u0_a174 u0_a174 4096 2026-11-24 01:06 mlkit_digital_ink_recognition
+-rw------- 1 u0_a174 u0_a174   24 2026-11-24 01:06 profileInstalled
+-rw-rw-rw- 1 u0_a174 u0_a174 2991 2026-11-24 01:06 surat.pdf
