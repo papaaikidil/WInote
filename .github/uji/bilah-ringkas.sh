@@ -220,9 +220,7 @@ shot bilah-ringkas-lagi
 tap_node "Pilih" 2 || echo "PILIH TIDAK ADA"
 shot mode-pilih
 adb logcat -c
-read A B < <(pct 190 330)
-echo "ketuk garis stabilo di $A $B"
-adb shell input tap $A $B; sleep 0.7
+ketuk_pt 190 330 0.7
 shot stabilo-terpilih
 sleep 1.5
 shot stabilo-terpilih-2
